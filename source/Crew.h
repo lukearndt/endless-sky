@@ -1,4 +1,4 @@
-/* CrewEconomics.h
+/* Crew.h
 Copyright (c) 2019 by Luke Arndt
 
 Endless Sky is free software: you can redistribute it and/or modify it under the
@@ -10,18 +10,27 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 */
 
-#ifndef CREW_ECONOMICS_H_
-#define CREW_ECONOMICS_H_
+#ifndef CREW_H_
+#define CREW_H_
 
 #include "Ship.h"
 
 using namespace std;
 
-class CrewEconomics
+class Crew
 {
 public:
   // Calculate one day's salaries for the Player's fleet
   static int64_t CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships);
+
+  // Load a definition for a crew economics setting.
+	void Load(const DataNode &node);
+	const std::string &Name() const;
+	const int64_t &Value() const;
+
+private:
+  std::string name;
+  int64_t value;
 
   // Maybe these could be game settings?
   static const int64_t CREW_PER_OFFICER = 5;

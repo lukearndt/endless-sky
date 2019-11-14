@@ -1,4 +1,4 @@
-/* CrewEconomics.cpp
+/* Crew.cpp
 Copyright (c) 2019 by Luke Arndt
 
 Endless Sky is free software: you can redistribute it and/or modify it under the
@@ -10,25 +10,25 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 */
 
-#include "CrewEconomics.h"
+#include "Crew.h"
+#include "GameData.h"
 
-int64_t CrewEconomics::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
+int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
 {
-	int64_t commanders = 0;
-	int64_t officers = 0;
+	int64_t juniorOfficers = 0;
+	int64_t seniorOfficers = 0;
+	int64_t pilots = 0;
 	int64_t totalCrew = 0;
 	int64_t totalSalaries = 0;
 
-	// Even if a ship is parked, we have to pay its crew.
-	// In the future, paid shore leave will improve the ship's morale.
 	for(const shared_ptr<Ship> &ship : ships)
 		if(!ship->IsDestroyed()) {
-			// Every ship needs one commander.
-			commanders += 1;
-			// We need officers to manage our regular crew.
+			// Every ship needs a pilot.
+			pilots += 1;
+			// We need juniorOfficers to manage our regular crew.
 			// If we ever support hiring more crew for escorts, we should use ship->Crew() for these.
-			officers += ship->RequiredCrew() / CREW_PER_OFFICER;
-			// This is easier than omitting commanders and officers as we go.
+			juniorOfficers += ship->RequiredCrew() / GameData::Crew().Get("Crew Per Junior Officer").Value();
+			// This is easier than omitting seniorOfficers and juniorOfficers as we go.
 			totalCrew += ship->RequiredCrew();
 		}
 
@@ -37,12 +37,22 @@ int64_t CrewEconomics::CalculateSalaries(const Ship *flagship, const vector<shar
 		totalCrew += flagship->Crew() - flagship->RequiredCrew();
 
 	// We don't need a commander for the flagship. We command it directly.
-	totalSalaries += (commanders - 1) * CREDITS_PER_COMMANDER;
+	totalSalaries += (seniorOfficers - 1) * CREDITS_PER_COMMANDER;
 
-	totalSalaries += officers * CREDITS_PER_OFFICER;
+	totalSalaries += juniorOfficers * CREDITS_PER_OFFICER;
 
-	// Commanders and officers are not regular crew members.
-	totalSalaries += (totalCrew - commanders - officers) * CREDITS_PER_REGULAR;
+	// seniorOfficers and juniorOfficers are not regular crew members.
+	totalSalaries += (totalCrew - seniorOfficers - juniorOfficers) * CREDITS_PER_REGULAR;
 
 	return totalSalaries;
+}
+
+const string &Crew::Name() const
+{
+	return name;
+}
+
+const int64_t &Crew::Value() const
+{
+	return value;
 }
