@@ -13,16 +13,70 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Crew.h"
 #include "GameData.h"
 
+using namespace std;
+
+// Load definition of a crew member
+void Crew::Load(const DataNode &node)
+{
+	// Set the name of this type of crew member, so we know it has been loaded.
+	if(node.Size() >= 2)
+		name = node.Token(1);
+
+	// Set default values so that we don't have to specify every node.
+	isEscortOnly = false;
+	isFlagshipOnly = false;
+	isPaidWhileParked = false;
+	dailySalary = 100;
+	minimumPerShip = 0;
+	populationPerOccurrence = 0;
+	
+	for(const DataNode &child : node)
+	{
+		if(child.Size() >= 2)
+		{
+			switch(child.Token(0))
+			{
+				case "isEscortOnly" :
+					isEscortOnly = child.Value(1);
+					break;
+				case "isFlagshipOnly" :
+					isFlagshipOnly = child.Value(1);
+					break;
+				case "isPaidWhileParked" :
+					isPaidWhileParked = child.Value(1);
+					break;
+				case "dailySalary" :
+					dailySalary = child.Value(1);
+					break;
+				case "minimumPerShip" :
+					minimumPerShip = child.Value(1);
+					break;
+				case "populationPerOccurrence" :
+					populationPerOccurrence = child.Value(1);
+					break;
+				case "name" :
+					name = child.Value(1);
+					break;
+				default :
+					child.PrintTrace("Skipping unrecognized attribute:");
+			}
+		}
+		else
+			child.PrintTrace("Skipping incomplete attribute:");
+	}
+}
+
 int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
 {
-	int64_t juniorOfficers = 0;
-	int64_t seniorOfficers = 0;
-	int64_t pilots = 0;
-	int64_t totalCrew = 0;
+	const crewDefinitions = GameData::Crew()
 	int64_t totalSalaries = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
 		if(!ship->IsDestroyed()) {
+			for(const shared_ptr<Crew> &crew : crewDefinitions)
+			{
+				int64_t count = ship->RequiredCrew()
+			}
 			// Every ship needs a pilot.
 			pilots += 1;
 			// We need juniorOfficers to manage our regular crew.
@@ -47,12 +101,44 @@ int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Sh
 	return totalSalaries;
 }
 
-const string &Crew::Name() const
+
+
+const bool &isEscortOnly() const
 {
-	return name;
+	return isEscortOnly;
 }
 
-const int64_t &Crew::Value() const
+
+
+const bool &isFlagshipOnly() const
 {
-	return value;
+	return isFlagshipOnly;
+}
+
+
+
+const int64_t &DailySalary() const
+{
+	return DailySalary;
+}
+
+
+
+const int64_t &MinimumPerShip() const
+{
+	return MinimumPerShip;
+}
+
+
+
+const int64_t &PopulationPerOccurrence() const
+{
+	return PopulationPerOccurrence;
+}
+
+
+
+const std::string &Name() const
+{
+	return Name;
 }

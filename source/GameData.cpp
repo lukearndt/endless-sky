@@ -17,6 +17,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Color.h"
 #include "Command.h"
 #include "Conversation.h"
+#include "Crew.h"
 #include "DataFile.h"
 #include "DataNode.h"
 #include "DataWriter.h"
@@ -67,6 +68,7 @@ using namespace std;
 namespace {
 	Set<Color> colors;
 	Set<Conversation> conversations;
+	Set<Crew> crews;
 	Set<Effect> effects;
 	Set<GameEvent> events;
 	Set<Fleet> fleets;
@@ -588,6 +590,13 @@ const Set<Color> &GameData::Colors()
 const Set<Conversation> &GameData::Conversations()
 {
 	return conversations;
+}
+
+
+
+const Set<Crew> &GameData::Crews()
+{
+	return crews;
 }
 
 
