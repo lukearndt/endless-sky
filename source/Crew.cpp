@@ -34,32 +34,22 @@ void Crew::Load(const DataNode &node)
 	{
 		if(child.Size() >= 2)
 		{
-			switch(child.Token(0))
-			{
-				case "isEscortOnly" :
-					isEscortOnly = child.Value(1);
-					break;
-				case "isFlagshipOnly" :
-					isFlagshipOnly = child.Value(1);
-					break;
-				case "isPaidWhileParked" :
-					isPaidWhileParked = child.Value(1);
-					break;
-				case "dailySalary" :
-					dailySalary = child.Value(1);
-					break;
-				case "minimumPerShip" :
-					minimumPerShip = child.Value(1);
-					break;
-				case "populationPerOccurrence" :
-					populationPerOccurrence = child.Value(1);
-					break;
-				case "name" :
-					name = child.Value(1);
-					break;
-				default :
-					child.PrintTrace("Skipping unrecognized attribute:");
-			}
+			if(child.Token(0) == "isEscortOnly")
+				isEscortOnly = child.Value(1);
+			else if(child.Token(0) == "isFlagshipOnly")
+				isFlagshipOnly = child.Value(1);
+			else if(child.Token(0) == "isPaidWhileParked")
+				isPaidWhileParked = child.Value(1);
+			else if(child.Token(0) == "dailySalary")
+				dailySalary = child.Value(1);
+			else if(child.Token(0) == "minimumPerShip")
+				minimumPerShip = child.Value(1);
+			else if(child.Token(0) == "populationPerOccurrence")
+				populationPerOccurrence = child.Value(1);
+			else if(child.Token(0) == "name")
+				name = child.Value(1);
+			else
+				child.PrintTrace("Skipping unrecognized attribute:");
 		}
 		else
 			child.PrintTrace("Skipping incomplete attribute:");

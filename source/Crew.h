@@ -44,5 +44,6 @@ private:
 	int64_t populationPerOccurrence;
 	std::string name;
 	vector<string> shipCategories;
+};
 
 #endif
