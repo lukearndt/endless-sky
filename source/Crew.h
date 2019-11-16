@@ -42,5 +42,6 @@ private:
 	int64_t minimumPerShip;
 	int64_t populationPerOccurrence;
 	std::string name;
+}
 
 #endif
