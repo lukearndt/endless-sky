@@ -94,7 +94,7 @@ public:
 
 	static const Set<Color> &Colors();
 	static const Set<Conversation> &Conversations();
-	static const Set<Crew> &Crews();
+	static const vector<shared_ptr<Crew>> &Crews();
 	static const Set<Effect> &Effects();
 	static const Set<GameEvent> &Events();
 	static const Set<Fleet> &Fleets();

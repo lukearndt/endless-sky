@@ -68,7 +68,7 @@ using namespace std;
 namespace {
 	Set<Color> colors;
 	Set<Conversation> conversations;
-	Set<Crew> crews;
+	vector<shared_ptr<Crew>> crews;
 	Set<Effect> effects;
 	Set<GameEvent> events;
 	Set<Fleet> fleets;
@@ -594,7 +594,7 @@ const Set<Conversation> &GameData::Conversations()
 
 
 
-const Set<Crew> &GameData::Crews()
+const vector<shared_ptr<Crew>> &GameData::Crews()
 {
 	return crews;
 }

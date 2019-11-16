@@ -21,19 +21,21 @@ class Crew
 {
 public:
 	// Calculate one day's salaries for the Player's fleet
-	static int64_t CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships);
+	static int64_t CalculateSalaries(
+		const Ship *flagship,
+		const vector<shared_ptr<Ship>> ships
+	);
 
 	// Load a definition for a crew economics setting.
 	void Load(const DataNode &node);
 	
-	const bool &isOnEscorts() const;
-	const bool &isOnFlagship() const;
-	const bool &isPaidWhileParked() const;
+	const bool &IsOnEscorts() const;
+	const bool &IsOnFlagship() const;
+	const bool &IsPaidWhileParked() const;
 	const int64_t &DailySalary() const;
 	const int64_t &MinimumPerShip() const;
 	const int64_t &PopulationPerOccurrence() const;
 	const std::string &Name() const;
-	const vector<string> &ShipCategories() const; 
 
 private:
 	bool isOnEscorts;
@@ -43,7 +45,6 @@ private:
 	int64_t minimumPerShip;
 	int64_t populationPerOccurrence;
 	std::string name;
-	vector<string> shipCategories;
 };
 
 #endif

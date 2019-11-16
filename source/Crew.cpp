@@ -23,8 +23,8 @@ void Crew::Load(const DataNode &node)
 		name = node.Token(1);
 
 	// Set default values so that we don't have to specify every node.
-	isEscortOnly = false;
-	isFlagshipOnly = false;
+	isOnEscorts = false;
+	isOnFlagship = false;
 	isPaidWhileParked = false;
 	dailySalary = 100;
 	minimumPerShip = 0;
@@ -34,19 +34,19 @@ void Crew::Load(const DataNode &node)
 	{
 		if(child.Size() >= 2)
 		{
-			if(child.Token(0) == "isEscortOnly")
-				isEscortOnly = child.Value(1);
-			else if(child.Token(0) == "isFlagshipOnly")
-				isFlagshipOnly = child.Value(1);
-			else if(child.Token(0) == "isPaidWhileParked")
+			if(child.Token(0) == "On Escorts")
+				isOnEscorts = child.Value(1);
+			else if(child.Token(0) == "On Flagship")
+				isOnFlagship = child.Value(1);
+			else if(child.Token(0) == "Paid While Parked")
 				isPaidWhileParked = child.Value(1);
-			else if(child.Token(0) == "dailySalary")
+			else if(child.Token(0) == "Daily Salary")
 				dailySalary = child.Value(1);
-			else if(child.Token(0) == "minimumPerShip")
+			else if(child.Token(0) == "Minimum Per Ship")
 				minimumPerShip = child.Value(1);
-			else if(child.Token(0) == "populationPerOccurrence")
+			else if(child.Token(0) == "Population Per Occurrence")
 				populationPerOccurrence = child.Value(1);
-			else if(child.Token(0) == "name")
+			else if(child.Token(0) == "Name")
 				name = child.Value(1);
 			else
 				child.PrintTrace("Skipping unrecognized attribute:");
@@ -58,72 +58,100 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
 {
-	const Set<Crew> crews = GameData::Crews();
+	bool payRegularsWhileParked = false;
+	const vector<shared_ptr<Crew>> crews = GameData::Crews();
+	int64_t dailySalaryForRegulars = 100;
 	int64_t totalSalaries = 0;
-	int64_t totalNonRegulars = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
-		if(!ship->IsDestroyed()) {
+		if(!ship->IsDestroyed())
+		{
+			int specialCrew = 0;
+			
 			for(const shared_ptr<Crew> &crew : crews)
 			{
-				ship->BaseAttributes()
-				int64_t count = ship->RequiredCrew()
+				if(crew->Name() == "Regulars")
+				{
+					dailySalaryForRegulars = crew->DailySalary();
+					payRegularsWhileParked = crew->IsPaidWhileParked();
+				}
+				else if (
+					(
+						// Is this the flagship, and does this crew appear on the flagship?
+						(ship->Name() == flagship->Name() && crew->IsOnFlagship())
+						// Is this an escort, and does this crew appear on escorts?
+						|| (ship->Name() != flagship->Name() && crew->IsOnEscorts())
+					)
+					// Do we pay this crew while parked? If not, is the ship active?
+					&& crew->IsPaidWhileParked() || !ship->IsParked()
+				)
+				{
+					int64_t count = 0;
+					// Guard against division by zero
+					if(crew->PopulationPerOccurrence())
+					// Figure out how many of this kind of crew we have, by population
+						ship->Crew() / crew->PopulationPerOccurrence();
+					
+					// Enforce the minimum per ship rule
+					if(count < crew->MinimumPerShip())
+					{
+						// But don't exceed the total number of crew on the ship
+						if(crew->MinimumPerShip() <= ship->Crew())
+							count = crew->MinimumPerShip();
+						else
+							count = ship->Crew();
+					}
+
+					specialCrew += count;
+					totalSalaries += count * crew->DailySalary();
+				}
 			}
+			// Now that we've counted the special crew members, we can pay the regulars
+			if(payRegularsWhileParked || !ship->IsParked())
+				totalSalaries += (ship->Crew() - specialCrew) * dailySalaryForRegulars;
 		}
-
-	// Add any extra crew from the flagship.
-	if(flagship)
-		totalCrew += flagship->Crew() - flagship->RequiredCrew();
-
-	// We don't need a commander for the flagship. We command it directly.
-	totalSalaries += (seniorOfficers - 1) * CREDITS_PER_COMMANDER;
-
-	totalSalaries += juniorOfficers * CREDITS_PER_OFFICER;
-
-	// seniorOfficers and juniorOfficers are not regular crew members.
-	totalSalaries += (totalCrew - seniorOfficers - juniorOfficers) * CREDITS_PER_REGULAR;
 
 	return totalSalaries;
 }
 
 
 
-const bool &isEscortOnly() const
+const bool &Crew::IsOnEscorts() const
 {
-	return isEscortOnly;
+	return isOnEscorts;
 }
 
 
 
-const bool &isFlagshipOnly() const
+const bool &Crew::IsOnFlagship() const
 {
-	return isFlagshipOnly;
+	return isOnFlagship;
 }
 
 
 
-const int64_t &DailySalary() const
+const int64_t &Crew::DailySalary() const
 {
-	return DailySalary;
+	return dailySalary;
 }
 
 
 
-const int64_t &MinimumPerShip() const
+const int64_t &Crew::MinimumPerShip() const
 {
-	return MinimumPerShip;
+	return minimumPerShip;
 }
 
 
 
-const int64_t &PopulationPerOccurrence() const
+const int64_t &Crew::PopulationPerOccurrence() const
 {
-	return PopulationPerOccurrence;
+	return populationPerOccurrence;
 }
 
 
 
-const std::string &Name() const
+const std::string &Crew::Name() const
 {
-	return Name;
+	return name;
 }
