@@ -68,22 +68,17 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
 {
-	const crewDefinitions = GameData::Crew()
+	const Set<Crew> crews = GameData::Crews();
 	int64_t totalSalaries = 0;
+	int64_t totalNonRegulars = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
 		if(!ship->IsDestroyed()) {
-			for(const shared_ptr<Crew> &crew : crewDefinitions)
+			for(const shared_ptr<Crew> &crew : crews)
 			{
+				ship->BaseAttributes()
 				int64_t count = ship->RequiredCrew()
 			}
-			// Every ship needs a pilot.
-			pilots += 1;
-			// We need juniorOfficers to manage our regular crew.
-			// If we ever support hiring more crew for escorts, we should use ship->Crew() for these.
-			juniorOfficers += ship->RequiredCrew() / GameData::Crew().Get("Crew Per Junior Officer").Value();
-			// This is easier than omitting seniorOfficers and juniorOfficers as we go.
-			totalCrew += ship->RequiredCrew();
 		}
 
 	// Add any extra crew from the flagship.
