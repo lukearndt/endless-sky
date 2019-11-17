@@ -56,8 +56,12 @@ void Crew::Load(const DataNode &node)
 	}
 }
 
-int64_t Crew::CalculateSalaries(const vector<shared_ptr<Ship>> ships)
-{
+
+
+int64_t Crew::CalculateSalaries(
+	const vector<shared_ptr<Ship>> ships,
+	const bool includeExtras = true
+) {
 	int64_t totalSalaries = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
@@ -65,30 +69,43 @@ int64_t Crew::CalculateSalaries(const vector<shared_ptr<Ship>> ships)
 		totalSalaries += Crew::SalariesForShip(
 			ship,
 			// Pass in whether or not the current ship is the flagship
-			ship->Name() == ships.front()->Name()
+			ship->Name() == ships.front()->Name(),
+			includeExtras
 		);
 	}
 
 	return totalSalaries;
 }
 
-int64_t Crew::NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const bool isFlagship)
-{
+
+
+int64_t Crew::NumberOnShip(
+	const Crew crew,
+	const shared_ptr<Ship> ship,
+	const bool isFlagship,
+	const bool includeExtras = true
+) {
+	int64_t count = 0;
+
 	// If this is the flagship, check if this kind of crew appears on the flagship.
 	if(isFlagship && !crew.IsOnFlagship())
-		return 0;
+		return count;
 	// If this is an escort, check if this kind of crew appears on escorts.
 	if(!isFlagship && !crew.IsOnEscorts())
-		return 0;
+		return count;
 	
-	// Initialise the count with the minimum per ship, or total crew if lower.
-	int64_t count = min((int)crew.MinimumPerShip(), ship->Crew());
+	const int64_t countableCrewMembers = includeExtras
+		? ship->Crew()
+		: ship->RequiredCrew();
+
+	// Apply the per-ship minimum.
+	 count = min(crew.MinimumPerShip(), countableCrewMembers);
 
 	// Guard against division by zero to prevent the universe from imploding.
 	if(crew.PopulationPerOccurrence())
 	{
 		// Figure out how many of this kind of crew we have, by population.
-		count = max(count, ship->Crew() / crew.PopulationPerOccurrence());
+		count = max(count, countableCrewMembers / crew.PopulationPerOccurrence());
 	}
 
 	return count;
@@ -96,8 +113,11 @@ int64_t Crew::NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const b
 
 
 
-int64_t Crew::SalariesForShip(const shared_ptr<Ship> ship, const bool isFlagship)
-{
+int64_t Crew::SalariesForShip(
+	const shared_ptr<Ship> ship,
+	const bool isFlagship,
+	const bool includeExtras
+) {
 	// We don't need to pay dead people.
 	if(ship->IsDestroyed())
 		return 0;
@@ -116,7 +136,8 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> ship, const bool isFlagship
 		int numberOnShip = Crew::NumberOnShip(
 			crew,
 			ship,
-			isFlagship
+			isFlagship,
+			includeExtras
 		);
 
 		specialCrewMembers += numberOnShip;
@@ -128,7 +149,10 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> ship, const bool isFlagship
 	}
 
 	// Figure out how many regular crew members are left over
-	int64_t defaultCrewMembers = ship->Crew() - specialCrewMembers - isFlagship;
+	int64_t defaultCrewMembers = 
+		includeExtras ? ship->Crew() : ship->RequiredCrew()
+		- specialCrewMembers
+		- isFlagship;
 
 	// Add their salary to the pool
 	// Unless the ship is parked and we don't pay default crew members while parked

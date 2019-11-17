@@ -21,19 +21,30 @@ class Crew
 {
 public:
 	// Calculate one day's salaries for the Player's fleet
-	static int64_t CalculateSalaries(const vector<shared_ptr<Ship>> ships);
+	static int64_t CalculateSalaries(
+		const vector<shared_ptr<Ship>> ships,
+		const bool includeExtras = true
+	);
+
+	// Calculate the total cost of the flagship's extra crew
+	static int64_t CostOfExtraCrew(
+		const Crew crew,
+		const shared_ptr<Ship> ship
+	);
 
 	// Figure out how many of a given crew member are on a ship
 	static int64_t NumberOnShip(
 		const Crew crew,
 		const shared_ptr<Ship> ship,
-		const bool isFlagship
+		const bool isFlagship,
+		const bool includeExtras = true
 	);
 
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(
 		const shared_ptr<Ship> ship,
-		const bool isFlagship
+		const bool isFlagship,
+		const bool includeExtras = true
 	);
 
 	// Load a definition for a crew economics setting.
