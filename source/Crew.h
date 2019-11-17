@@ -27,10 +27,7 @@ public:
 	);
 
 	// Calculate the total cost of the flagship's extra crew
-	static int64_t CostOfExtraCrew(
-		const Crew crew,
-		const shared_ptr<Ship> ship
-	);
+	static int64_t CostOfExtraCrew(const vector<shared_ptr<Ship>> ships);
 
 	// Figure out how many of a given crew member are on a ship
 	static int64_t NumberOnShip(

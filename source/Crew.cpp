@@ -60,7 +60,7 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(
 	const vector<shared_ptr<Ship>> ships,
-	const bool includeExtras = true
+	const bool includeExtras
 ) {
 	int64_t totalSalaries = 0;
 
@@ -68,7 +68,7 @@ int64_t Crew::CalculateSalaries(
 	{
 		totalSalaries += Crew::SalariesForShip(
 			ship,
-			// Pass in whether or not the current ship is the flagship
+			// Determine whether if the current ship is the flagship
 			ship->Name() == ships.front()->Name(),
 			includeExtras
 		);
@@ -79,20 +79,28 @@ int64_t Crew::CalculateSalaries(
 
 
 
+int64_t Crew::CostOfExtraCrew(const vector<shared_ptr<Ship>> ships)
+{
+	// Calculate the salaries with and without extras and return the difference.
+	return Crew::CalculateSalaries(ships, true)
+		- Crew::CalculateSalaries(ships, false);
+}
+
+
+
 int64_t Crew::NumberOnShip(
 	const Crew crew,
 	const shared_ptr<Ship> ship,
 	const bool isFlagship,
-	const bool includeExtras = true
+	const bool includeExtras
 ) {
 	int64_t count = 0;
 
+	// 
 	// If this is the flagship, check if this kind of crew appears on the flagship.
-	if(isFlagship && !crew.IsOnFlagship())
-		return count;
+	if(isFlagship && !crew.IsOnFlagship()) return count;
 	// If this is an escort, check if this kind of crew appears on escorts.
-	if(!isFlagship && !crew.IsOnEscorts())
-		return count;
+	if(!isFlagship && !crew.IsOnEscorts()) return count;
 	
 	const int64_t countableCrewMembers = includeExtras
 		? ship->Crew()
@@ -119,8 +127,7 @@ int64_t Crew::SalariesForShip(
 	const bool includeExtras
 ) {
 	// We don't need to pay dead people.
-	if(ship->IsDestroyed())
-		return 0;
+	if(ship->IsDestroyed()) return 0;
 	
 	const Set<Crew> crews = GameData::Crews();
 	const Crew *defaultCrew = crews.Find("default");
@@ -131,6 +138,9 @@ int64_t Crew::SalariesForShip(
 	// Add up the salaries for all of the special crew members
 	for(const pair<const string, Crew> crewPair : crews)
 	{
+		// Skip the default crew members.
+		if(crewPair.first == "default") continue;
+
 		const Crew crew = crewPair.second;
 		// Figure out how many of this type of crew are on this ship
 		int numberOnShip = Crew::NumberOnShip(
@@ -149,10 +159,11 @@ int64_t Crew::SalariesForShip(
 	}
 
 	// Figure out how many regular crew members are left over
-	int64_t defaultCrewMembers = 
-		includeExtras ? ship->Crew() : ship->RequiredCrew()
-		- specialCrewMembers
-		- isFlagship;
+	int64_t defaultCrewMembers = (
+		includeExtras 
+			? ship->Crew()
+			: ship->RequiredCrew()
+		) - specialCrewMembers - isFlagship;
 
 	// Add their salary to the pool
 	// Unless the ship is parked and we don't pay default crew members while parked
