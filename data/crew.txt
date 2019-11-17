@@ -8,18 +8,22 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-crew "Regulars"
-  "Daily Salary" 100
+crew "default"
+  name "Regulars"
+  "daily salary" 100
 
-crew "Pilots"
-  "Daily Salary" 250
-  "Minimum Per Ship" 1
-  "On Flagship" 0
+crew "pilot"
+  name "Pilot"
+  "daily salary" 250
+  "minimum per ship" 1
+  "on flagship?" 0
 
-crew "Junior Officers"
-  "Daily Salary" 500
-  "Population Per Occurrence" 5
+crew "junior officer"
+  name "Junior Officers"
+  "daily salary" 500
+  "population per occurrence" 5
 
-crew "Senior Officers"
-  "Daily Salary" 2000
-  "Population Per Occurrence" 20
+crew "senior officers"
+  name "Senior Officers"
+  "daily salary" 2000
+  "population per occurrence" 20
