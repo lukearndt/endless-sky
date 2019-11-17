@@ -56,64 +56,88 @@ void Crew::Load(const DataNode &node)
 	}
 }
 
-int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
+int64_t Crew::CalculateSalaries(const vector<shared_ptr<Ship>> ships)
 {
-	bool payDefaultWhileParked = false;
-	const Set<Crew> crews = GameData::Crews();
-	const Crew *defaultCrew = crews.Find("default");
 	int64_t totalSalaries = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
-		if(!ship->IsDestroyed())
-		{
-			int specialCrew = 0;
-			
-			for(const pair<const string, Crew> crewPair : crews)
-			{
-				const Crew crew = crewPair.second;
-				int numberOnShip = Crew::NumberOnShip(
-					crew,
-					ship,
-					ship->Name() == flagship->Name()
-				);
+	{
+		totalSalaries += Crew::SalariesForShip(
+			ship,
+			// Pass in whether or not the current ship is the flagship
+			ship->Name() == ships.front()->Name()
+		);
+	}
 
-				specialCrew += numberOnShip;
-				totalSalaries += numberOnShip * crew.DailySalary();
-			}
-
-			// Now that we've counted the special crew members, we can pay the rest
-			if(payDefaultWhileParked || !ship->IsParked())
-				totalSalaries += (ship->Crew() - specialCrew) * defaultCrew->DailySalary();
-		}
-
-	// Subtract one default crew member salary because we don't need to pay ourselves
-	return totalSalaries - defaultCrew->DailySalary();
+	return totalSalaries;
 }
 
 int64_t Crew::NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const bool isFlagship)
 {
-	// Is this the flagship, and does this crew appear on the flagship?
+	// If this is the flagship, check if this kind of crew appears on the flagship.
 	if(isFlagship && !crew.IsOnFlagship())
 		return 0;
-	// Is this an escort, and does this crew appear on escorts?
+	// If this is an escort, check if this kind of crew appears on escorts.
 	if(!isFlagship && !crew.IsOnEscorts())
 		return 0;
-	// Is the ship parked, and do we pay salary to this crew while parked?
-	if(ship->IsParked() && !crew.IsPaidSalaryWhileParked())
-		return 0;
 	
-	// Initialise the count with the minimum per ship, or total crew if lower
+	// Initialise the count with the minimum per ship, or total crew if lower.
 	int64_t count = min((int)crew.MinimumPerShip(), ship->Crew());
 
-	// Guard against division by zero
+	// Guard against division by zero to prevent the universe from imploding.
 	if(crew.PopulationPerOccurrence())
 	{
-		// Figure out how many of this kind of crew we have, by population
+		// Figure out how many of this kind of crew we have, by population.
 		count = max(count, ship->Crew() / crew.PopulationPerOccurrence());
 	}
 
 	return count;
 }
+
+
+
+int64_t Crew::SalariesForShip(const shared_ptr<Ship> ship, const bool isFlagship)
+{
+	// We don't need to pay dead people.
+	if(ship->IsDestroyed())
+		return 0;
+	
+	const Set<Crew> crews = GameData::Crews();
+	const Crew *defaultCrew = crews.Find("default");
+
+	int64_t salariesForShip = 0;
+	int64_t specialCrewMembers = 0;
+
+	// Add up the salaries for all of the special crew members
+	for(const pair<const string, Crew> crewPair : crews)
+	{
+		const Crew crew = crewPair.second;
+		// Figure out how many of this type of crew are on this ship
+		int numberOnShip = Crew::NumberOnShip(
+			crew,
+			ship,
+			isFlagship
+		);
+
+		specialCrewMembers += numberOnShip;
+
+		// Add their salary to the pool
+		// Unless the ship is parked and we don't pay them while parked
+		if(crew.IsPaidSalaryWhileParked() || !ship->IsParked())
+			salariesForShip += numberOnShip * crew.DailySalary();
+	}
+
+	// Figure out how many regular crew members are left over
+	int64_t defaultCrewMembers = ship->Crew() - specialCrewMembers - isFlagship;
+
+	// Add their salary to the pool
+	// Unless the ship is parked and we don't pay default crew members while parked
+	if(defaultCrew->IsPaidSalaryWhileParked() || !ship->IsParked())
+		salariesForShip += defaultCrewMembers * defaultCrew->DailySalary();
+
+	return salariesForShip;
+}
+
 
 
 const bool &Crew::IsOnEscorts() const

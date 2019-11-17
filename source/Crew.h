@@ -21,11 +21,20 @@ class Crew
 {
 public:
 	// Calculate one day's salaries for the Player's fleet
-	static int64_t CalculateSalaries(
-		const Ship *flagship,
-		const vector<shared_ptr<Ship>> ships
+	static int64_t CalculateSalaries(const vector<shared_ptr<Ship>> ships);
+
+	// Figure out how many of a given crew member are on a ship
+	static int64_t NumberOnShip(
+		const Crew crew,
+		const shared_ptr<Ship> ship,
+		const bool isFlagship
 	);
-	static int64_t NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const bool isFlagship);
+
+	// Calculate one day's salaries for a ship
+	static int64_t SalariesForShip(
+		const shared_ptr<Ship> ship,
+		const bool isFlagship
+	);
 
 	// Load a definition for a crew economics setting.
 	void Load(const DataNode &node);
