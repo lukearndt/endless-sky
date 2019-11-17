@@ -1,0 +1,25 @@
+# Copyright (c) 2019 by Luke Arndt
+#
+# Endless Sky is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# Endless Sky is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+crew "Regulars"
+  "Daily Salary" 100
+
+crew "Pilots"
+  "Daily Salary" 250
+  "Minimum Per Ship" 1
+  "On Flagship" 0
+
+crew "Junior Officers"
+  "Daily Salary" 500
+  "Population Per Occurrence" 5
+
+crew "Senior Officers"
+  "Daily Salary" 2000
+  "Population Per Occurrence" 20
