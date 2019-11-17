@@ -25,6 +25,7 @@ public:
 		const Ship *flagship,
 		const vector<shared_ptr<Ship>> ships
 	);
+	static int64_t NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const bool isFlagship);
 
 	// Load a definition for a crew economics setting.
 	void Load(const DataNode &node);

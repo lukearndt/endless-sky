@@ -34,20 +34,20 @@ void Crew::Load(const DataNode &node)
 	{
 		if(child.Size() >= 2)
 		{
-			if(child.Token(0) == "On Escorts")
+			if(child.Token(0) == "on escorts?")
 				isOnEscorts = child.Value(1);
-			else if(child.Token(0) == "On Flagship")
+			else if(child.Token(0) == "on flagship?")
 				isOnFlagship = child.Value(1);
-			else if(child.Token(0) == "Is Paid Salary While Parked")
+			else if(child.Token(0) == "pay salary while parked?")
 				isPaidSalaryWhileParked = child.Value(1);
-			else if(child.Token(0) == "Daily Salary")
+			else if(child.Token(0) == "daily salary")
 				dailySalary = child.Value(1);
-			else if(child.Token(0) == "Minimum Per Ship")
+			else if(child.Token(0) == "minimum per ship")
 				minimumPerShip = child.Value(1);
-			else if(child.Token(0) == "Population Per Occurrence")
+			else if(child.Token(0) == "population per occurrence")
 				populationPerOccurrence = child.Value(1);
-			else if(child.Token(0) == "Name")
-				name = child.Value(1);
+			else if(child.Token(0) == "name")
+				name = child.Token(1);
 			else
 				child.PrintTrace("Skipping unrecognized attribute:");
 		}
@@ -58,9 +58,9 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Ship>> ships)
 {
-	bool payRegularsWhileParked = false;
-	const vector<shared_ptr<Crew>> crews = GameData::Crews();
-	int64_t dailySalaryForRegulars = 100;
+	bool payDefaultWhileParked = false;
+	const Set<Crew> crews = GameData::Crews();
+	const Crew *defaultCrew = crews.Find("default");
 	int64_t totalSalaries = 0;
 
 	for(const shared_ptr<Ship> &ship : ships)
@@ -68,52 +68,52 @@ int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Sh
 		{
 			int specialCrew = 0;
 			
-			for(const shared_ptr<Crew> &crew : crews)
+			for(const pair<const string, Crew> crewPair : crews)
 			{
-				if(crew->Name() == "Regulars")
-				{
-					dailySalaryForRegulars = crew->DailySalary();
-					payRegularsWhileParked = crew->IsPaidSalaryWhileParked();
-				}
-				else if (
-					(
-						// Is this the flagship, and does this crew appear on the flagship?
-						(ship->Name() == flagship->Name() && crew->IsOnFlagship())
-						// Is this an escort, and does this crew appear on escorts?
-						|| (ship->Name() != flagship->Name() && crew->IsOnEscorts())
-					)
-					// Do we pay this crew while parked? If not, is the ship active?
-					&& (crew->IsPaidSalaryWhileParked() || !ship->IsParked())
-				)
-				{
-					int64_t count = 0;
-					// Guard against division by zero
-					if(crew->PopulationPerOccurrence())
-					// Figure out how many of this kind of crew we have, by population
-						count = ship->Crew() / crew->PopulationPerOccurrence();
-					
-					// Enforce the minimum per ship rule
-					if(count < crew->MinimumPerShip())
-					{
-						// But don't exceed the total number of crew on the ship
-						if(crew->MinimumPerShip() <= ship->Crew())
-							count = crew->MinimumPerShip();
-						else
-							count = ship->Crew();
-					}
+				const Crew crew = crewPair.second;
+				int numberOnShip = Crew::NumberOnShip(
+					crew,
+					ship,
+					ship->Name() == flagship->Name()
+				);
 
-					specialCrew += count;
-					totalSalaries += count * crew->DailySalary();
-				}
+				specialCrew += numberOnShip;
+				totalSalaries += numberOnShip * crew.DailySalary();
 			}
-			// Now that we've counted the special crew members, we can pay the regulars
-			if(payRegularsWhileParked || !ship->IsParked())
-				totalSalaries += (ship->Crew() - specialCrew) * dailySalaryForRegulars;
+
+			// Now that we've counted the special crew members, we can pay the rest
+			if(payDefaultWhileParked || !ship->IsParked())
+				totalSalaries += (ship->Crew() - specialCrew) * defaultCrew->DailySalary();
 		}
 
-	return totalSalaries;
+	// Subtract one default crew member salary because we don't need to pay ourselves
+	return totalSalaries - defaultCrew->DailySalary();
 }
 
+int64_t Crew::NumberOnShip(const Crew crew, const shared_ptr<Ship> ship, const bool isFlagship)
+{
+	// Is this the flagship, and does this crew appear on the flagship?
+	if(isFlagship && !crew.IsOnFlagship())
+		return 0;
+	// Is this an escort, and does this crew appear on escorts?
+	if(!isFlagship && !crew.IsOnEscorts())
+		return 0;
+	// Is the ship parked, and do we pay salary to this crew while parked?
+	if(ship->IsParked() && !crew.IsPaidSalaryWhileParked())
+		return 0;
+	
+	// Initialise the count with the minimum per ship, or total crew if lower
+	int64_t count = min((int)crew.MinimumPerShip(), ship->Crew());
+
+	// Guard against division by zero
+	if(crew.PopulationPerOccurrence())
+	{
+		// Figure out how many of this kind of crew we have, by population
+		count = max(count, ship->Crew() / crew.PopulationPerOccurrence());
+	}
+
+	return count;
+}
 
 
 const bool &Crew::IsOnEscorts() const
@@ -158,7 +158,7 @@ const int64_t &Crew::PopulationPerOccurrence() const
 
 
 
-const std::string &Crew::Name() const
+const string &Crew::Name() const
 {
 	return name;
 }
