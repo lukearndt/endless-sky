@@ -31,7 +31,7 @@ public:
 	
 	const bool &IsOnEscorts() const;
 	const bool &IsOnFlagship() const;
-	const bool &IsPaidWhileParked() const;
+	const bool &IsPaidSalaryWhileParked() const;
 	const int64_t &DailySalary() const;
 	const int64_t &MinimumPerShip() const;
 	const int64_t &PopulationPerOccurrence() const;
@@ -40,7 +40,7 @@ public:
 private:
 	bool isOnEscorts;
 	bool isOnFlagship;
-	bool isPaidWhileParked;
+	bool isPaidSalaryWhileParked;
 	int64_t dailySalary;
 	int64_t minimumPerShip;
 	int64_t populationPerOccurrence;

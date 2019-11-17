@@ -594,7 +594,7 @@ const Set<Conversation> &GameData::Conversations()
 
 
 
-const vector<shared_ptr<Crew>> &GameData::Crews()
+const std::vector<std::shared_ptr<Crew>> &GameData::Crews()
 {
 	return crews;
 }

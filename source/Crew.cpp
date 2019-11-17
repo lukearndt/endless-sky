@@ -23,9 +23,9 @@ void Crew::Load(const DataNode &node)
 		name = node.Token(1);
 
 	// Set default values so that we don't have to specify every node.
-	isOnEscorts = false;
-	isOnFlagship = false;
-	isPaidWhileParked = false;
+	isOnEscorts = true;
+	isOnFlagship = true;
+	isPaidSalaryWhileParked = false;
 	dailySalary = 100;
 	minimumPerShip = 0;
 	populationPerOccurrence = 0;
@@ -38,8 +38,8 @@ void Crew::Load(const DataNode &node)
 				isOnEscorts = child.Value(1);
 			else if(child.Token(0) == "On Flagship")
 				isOnFlagship = child.Value(1);
-			else if(child.Token(0) == "Paid While Parked")
-				isPaidWhileParked = child.Value(1);
+			else if(child.Token(0) == "Is Paid Salary While Parked")
+				isPaidSalaryWhileParked = child.Value(1);
 			else if(child.Token(0) == "Daily Salary")
 				dailySalary = child.Value(1);
 			else if(child.Token(0) == "Minimum Per Ship")
@@ -73,7 +73,7 @@ int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Sh
 				if(crew->Name() == "Regulars")
 				{
 					dailySalaryForRegulars = crew->DailySalary();
-					payRegularsWhileParked = crew->IsPaidWhileParked();
+					payRegularsWhileParked = crew->IsPaidSalaryWhileParked();
 				}
 				else if (
 					(
@@ -83,14 +83,14 @@ int64_t Crew::CalculateSalaries(const Ship *flagship, const vector<shared_ptr<Sh
 						|| (ship->Name() != flagship->Name() && crew->IsOnEscorts())
 					)
 					// Do we pay this crew while parked? If not, is the ship active?
-					&& crew->IsPaidWhileParked() || !ship->IsParked()
+					&& (crew->IsPaidSalaryWhileParked() || !ship->IsParked())
 				)
 				{
 					int64_t count = 0;
 					// Guard against division by zero
 					if(crew->PopulationPerOccurrence())
 					// Figure out how many of this kind of crew we have, by population
-						ship->Crew() / crew->PopulationPerOccurrence();
+						count = ship->Crew() / crew->PopulationPerOccurrence();
 					
 					// Enforce the minimum per ship rule
 					if(count < crew->MinimumPerShip())
@@ -126,6 +126,13 @@ const bool &Crew::IsOnEscorts() const
 const bool &Crew::IsOnFlagship() const
 {
 	return isOnFlagship;
+}
+
+
+
+const bool &Crew::IsPaidSalaryWhileParked() const
+{
+	return isPaidSalaryWhileParked;
 }
 
 
