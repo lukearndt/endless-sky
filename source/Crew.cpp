@@ -36,6 +36,8 @@ void Crew::Load(const DataNode &node)
 		{
 			if(child.Token(0) == "daily salary")
 				dailySalary = child.Value(1);
+			if(child.Token(0) == "profit share")
+				dailySalary = child.Value(1);
 			else if(child.Token(0) == "minimum per ship")
 				minimumPerShip = child.Value(1);
 			else if(child.Token(0) == "population per occurrence")
@@ -184,6 +186,21 @@ int64_t Crew::SalariesForShip(
 
 
 
+int64_t ShareProfits(
+	const std::vector<std::shared_ptr<Ship>> ships,
+	const int64_t grossProfit
+)
+{
+	int64_t totalCrewShares = 0;
+	
+	for(const shared_ptr<Ship> ship : ships)
+	{
+		
+	}
+}
+
+
+
 const bool &Crew::AvoidsEscorts() const
 {
 	return avoidsEscorts;
@@ -194,6 +211,13 @@ const bool &Crew::AvoidsEscorts() const
 const bool &Crew::AvoidsFlagship() const
 {
 	return avoidsFlagship;
+}
+
+
+
+const bool &Crew::IsPaidProfitShareWhileParked() const
+{
+	return isPaidProfitShareWhileParked;
 }
 
 
@@ -222,6 +246,13 @@ const int64_t &Crew::MinimumPerShip() const
 const int64_t &Crew::PopulationPerOccurrence() const
 {
 	return populationPerOccurrence;
+}
+
+
+
+const int64_t &Crew::ProfitShares() const
+{
+	return profitShares;
 }
 
 

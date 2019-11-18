@@ -18,7 +18,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 class Crew
 {
 public:
-	// Calculate one day's salaries for the Player's fleet
+	// Calculate one day's salaries for the player's fleet
 	static int64_t CalculateSalaries(
 		const std::vector<std::shared_ptr<Ship>> ships,
 		const bool includeExtras = true
@@ -37,6 +37,11 @@ public:
 		const bool includeExtras = true
 	);
 
+	// Calculate the number of profit shares for a ship
+	static int64_t ProfitSharesForShip(
+		std::shared_ptr<Ship> ship
+	);
+
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(
 		const std::shared_ptr<Ship> ship,
@@ -44,24 +49,34 @@ public:
 		const bool includeExtras = true
 	);
 
+	// Share profits the fleet. Returns how many credits were distributed.
+	static int64_t ShareProfits(
+		const std::vector<std::shared_ptr<Ship>> ships,
+		const int64_t grossProfit
+	);
+
 	// Load a definition for a crew economics setting.
 	void Load(const DataNode &node);
 	
 	const bool &AvoidsEscorts() const;
 	const bool &AvoidsFlagship() const;
+	const bool &IsPaidProfitShareWhileParked() const;
 	const bool &IsPaidSalaryWhileParked() const;
 	const int64_t &DailySalary() const;
 	const int64_t &MinimumPerShip() const;
 	const int64_t &PopulationPerOccurrence() const;
+	const int64_t &ProfitShares() const;
 	const std::string &Name() const;
 
 private:
 	bool avoidsEscorts;
 	bool avoidsFlagship;
+	bool isPaidProfitShareWhileParked;
 	bool isPaidSalaryWhileParked;
 	int64_t dailySalary;
 	int64_t minimumPerShip;
 	int64_t populationPerOccurrence;
+	int64_t profitShares;
 	std::string name;
 };
 

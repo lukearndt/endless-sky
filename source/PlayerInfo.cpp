@@ -1302,7 +1302,9 @@ bool PlayerInfo::TakeOff(UI *ui)
 			income += cost;
 		}
 	}
-	accounts.AddCredits(income);
+	int64_t grossProfit = income - totalBasis;
+	int64_t distributedProfits = Crew::ShareProfits(ships, grossProfit);
+	accounts.AddCredits(income - distributedProfits);
 	cargo.Clear();
 	stockDepreciation = Depreciation();
 	if(sold)
@@ -1310,11 +1312,19 @@ bool PlayerInfo::TakeOff(UI *ui)
 		// Report how much excess cargo was sold, and what profit you earned.
 		ostringstream out;
 		out << "You sold " << sold << " tons of excess cargo for " << Format::Credits(income) << " credits";
-		if(totalBasis && totalBasis != income)
+		if(grossProfit > 0)
 			out << " (for a profit of " << (income - totalBasis) << " credits).";
 		else
 			out << ".";
 		Messages::Add(out.str());
+		
+		if(distributedProfits > 0)
+		{
+			// Report how many credits you shared among your crew as profit shares.
+			ostringstream profitShareOut;
+			profitShareOut << "You distributed " << Format::Credits(distributedProfits) << " credits among your crew as profit shares.";
+			Messages::Add(profitShareOut.str());
+		}
 	}
 	
 	return true;
