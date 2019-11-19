@@ -1304,7 +1304,7 @@ bool PlayerInfo::TakeOff(UI *ui)
 		}
 	}
 	int64_t grossProfit = income - totalBasis;
-	int64_t sharedProfit = Crew::ShareProfits(ships, grossProfit);
+	int64_t sharedProfit = Crew::ShareProfit(ships, system, grossProfit);
 	accounts.AddCredits(income - sharedProfit);
 	cargo.Clear();
 	stockDepreciation = Depreciation();
@@ -1316,7 +1316,7 @@ bool PlayerInfo::TakeOff(UI *ui)
 		if(grossProfit > 0)
 			out << " (for a profit of " << Format::Credits(grossProfit) << " credits)";
 		if(sharedProfit > 0)
-			out << " and distributed " + Format::Credits(sharedProfit) + " credits of that profit among your crew";
+			out << " and distributed " + Format::Credits(sharedProfit) + " credits among your crew";
 		out << ".";
 		
 		Messages::Add(out.str());

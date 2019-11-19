@@ -136,6 +136,7 @@ int64_t Crew::NumberOnShip(
 
 int64_t Crew::SharesForShip(
 	const std::shared_ptr<Ship> &ship,
+	const bool isFlagship,
 	const bool includeExtras
 )
 {
@@ -225,8 +226,9 @@ int64_t Crew::SalariesForShip(
 
 
 
-int64_t Crew::ShareProfits(
+int64_t Crew::ShareProfit(
 	const std::vector<std::shared_ptr<Ship>> &ships,
+	const System * flagshipSystem,
 	const int64_t grossProfit
 )
 {
@@ -236,7 +238,10 @@ int64_t Crew::ShareProfits(
 	
 	for(const shared_ptr<Ship> &ship : ships)
 	{
-		totalCrewShares += Crew::SharesForShip(ship);
+		totalCrewShares += Crew::SharesForShip(
+			ship,
+			ship->IsSystemFlagship(flagshipSystem)
+		);
 	}
 	
 	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;

@@ -80,7 +80,7 @@ TradingPanel::~TradingPanel()
 		
 		if(sharedProfit > 0)
 		{
-			message += " and distributed " + Format::Credits(sharedProfit) + " credits of that profit among your crew";
+			message += " and distributed " + Format::Credits(sharedProfit) + " credits among your crew";
 		}
 		message += ".";
 			
@@ -250,7 +250,7 @@ bool TradingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, 
 			int64_t grossProfit = amount * price + basis;
 			profit += grossProfit;
 			tonsSold += amount;
-			int64_t profitShare = Crew::ShareProfits(player.Ships(), grossProfit);
+			int64_t profitShare = Crew::ShareProfit(player.Ships(), player.GetSystem(), grossProfit);
 			sharedProfit += profitShare;
 			player.Cargo().Remove(it.name, amount);
 			player.Accounts().AddCredits(amount * price - profitShare);
@@ -267,7 +267,7 @@ bool TradingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, 
 			tonsSold += static_cast<int>(it.second * it.first->Mass());
 			
 			player.AddStock(it.first, it.second);
-			int64_t profitShare = Crew::ShareProfits(player.Ships(), value);
+			int64_t profitShare = Crew::ShareProfit(player.Ships(), player.GetSystem(), value);
 			sharedProfit += profitShare;
 			player.Accounts().AddCredits(value - profitShare);
 			player.Cargo().Remove(it.first, it.second);
@@ -330,7 +330,7 @@ void TradingPanel::Buy(int64_t amount)
 		tonsSold += -amount;
 	}
 	amount = player.Cargo().Add(type, amount);
-	sharedProfit += Crew::ShareProfits(player.Ships(), profit);
+	sharedProfit += Crew::ShareProfit(player.Ships(), player.GetSystem(), profit);
 	player.Accounts().AddCredits(-amount * price - sharedProfit);
 	GameData::AddPurchase(system, type, amount);
 }

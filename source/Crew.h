@@ -44,6 +44,7 @@ public:
 	// Return the total number of profit shares for a ship
 	static int64_t SharesForShip(
 		const std::shared_ptr<Ship> &ship,
+		const bool isFlagship,
 		const bool includeExtras = true
 	);
 
@@ -55,8 +56,9 @@ public:
 	);
 
 	// Share profits the fleet. Returns how many credits were distributed.
-	static int64_t ShareProfits(
+	static int64_t ShareProfit(
 		const std::vector<std::shared_ptr<Ship>> &ships,
+		const System * flagshipSystem,
 		const int64_t grossProfit
 	);
 
