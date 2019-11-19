@@ -62,6 +62,7 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(
 	const vector<shared_ptr<Ship>> ships,
+	const Ship flagship,
 	const bool includeExtras
 )
 {
@@ -72,7 +73,7 @@ int64_t Crew::CalculateSalaries(
 		totalSalaries += Crew::SalariesForShip(
 			ship,
 			// Determine whether if the current ship is the flagship
-			ship->Name() == ships.front()->Name(),
+			ship == flagship,
 			includeExtras
 		);
 	}
@@ -125,6 +126,40 @@ int64_t Crew::NumberOnShip(
 	}
 	
 	return count;
+}
+
+
+int64_t Crew::ProfitSharesForShip(
+	const std::shared_ptr<Ship> ship,
+	const bool isFlagship,
+	const bool includeExtras
+)
+{
+	int64_t totalShares = 0;
+	
+	// Add up the salaries for all of the special crew members
+	for(const pair<const string, Crew>& crewPair : GameData::Crews())
+	{
+		// Skip the default crew members.
+		if(crewPair.first == "default")
+			continue;
+		
+		const Crew crew = crewPair.second;
+		// Figure out how many of this type of crew are on this ship
+		int numberOnShip = Crew::NumberOnShip(
+			crew,
+			ship,
+			isFlagship,
+			includeExtras
+		);
+		
+		// Add their profit shares to the total
+		// Unless the ship is parked and we don't pay them while parked
+		if(crew.IsPaidProfitShareWhileParked() || !ship->IsParked())
+			totalShares += numberOnShip * crew.DailySalary();
+	}
+	
+	return totalShares;
 }
 
 
@@ -195,7 +230,7 @@ int64_t ShareProfits(
 	
 	for(const shared_ptr<Ship> ship : ships)
 	{
-		
+		totalCrewShares += Crew::ProfitSharesForShip(ship, );
 	}
 }
 
