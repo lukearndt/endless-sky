@@ -20,66 +20,64 @@ class Crew
 public:
 	// Calculate one day's salaries for the player's fleet
 	static int64_t CalculateSalaries(
-		const std::vector<std::shared_ptr<Ship>> ships,
-		const Ship flagship,
+		const std::vector<std::shared_ptr<Ship>> &ships,
 		const bool includeExtras = true
 	);
 
 	// Calculate the total salary cost of extra crew
 	static int64_t CostOfExtraCrew(
-		const std::vector<std::shared_ptr<Ship>> ships
+		const std::vector<std::shared_ptr<Ship>> &ships
 	);
 
 	// Figure out how many of a given crew member are on a ship
 	static int64_t NumberOnShip(
-		const Crew crew,
-		const std::shared_ptr<Ship> ship,
-		const bool isFlagship,
+		const Crew &crew,
+		const std::shared_ptr<Ship> &ship,
 		const bool includeExtras = true
 	);
 
 	// Return the total number of profit shares for a ship
-	static int64_t ProfitSharesForShip(
-		const std::shared_ptr<Ship> ship,
-		const bool isFlagship,
+	static int64_t SharesForShip(
+		const std::shared_ptr<Ship> &ship,
 		const bool includeExtras = true
 	);
 
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(
-		const std::shared_ptr<Ship> ship,
-		const bool isFlagship,
+		const std::shared_ptr<Ship> &ship,
 		const bool includeExtras = true
 	);
 
 	// Share profits the fleet. Returns how many credits were distributed.
 	static int64_t ShareProfits(
-		const std::vector<std::shared_ptr<Ship>> ships,
+		const std::vector<std::shared_ptr<Ship>> &ships,
 		const int64_t grossProfit
 	);
 
 	// Load a definition for a crew economics setting.
 	void Load(const DataNode &node);
 	
-	const bool &AvoidsEscorts() const;
-	const bool &AvoidsFlagship() const;
-	const bool &IsPaidProfitShareWhileParked() const;
-	const bool &IsPaidSalaryWhileParked() const;
-	const int64_t &DailySalary() const;
-	const int64_t &MinimumPerShip() const;
-	const int64_t &PopulationPerOccurrence() const;
-	const int64_t &ProfitShares() const;
+	bool AvoidsEscorts() const;
+	bool AvoidsFlagship() const;
+	bool IsPaidProfitShareWhileParked() const;
+	bool IsPaidSalaryWhileParked() const;
+	int64_t MinimumPerShip() const;
+	int64_t PopulationPerMember() const;
+	int64_t Salary() const;
+	int64_t Shares() const;
+	const std::string &Id() const;
 	const std::string &Name() const;
 
 private:
-	bool avoidsEscorts;
-	bool avoidsFlagship;
-	bool isPaidProfitShareWhileParked;
-	bool isPaidSalaryWhileParked;
-	int64_t dailySalary;
-	int64_t minimumPerShip;
-	int64_t populationPerOccurrence;
-	int64_t profitShares;
+	bool avoidsEscorts = false;
+	bool avoidsFlagship = false;
+	bool isPaidProfitShareWhileParked = false;
+	bool isPaidSalaryWhileParked = false;
+	int64_t minimumPerShip = 0;
+	int64_t populationPerMember = 0;
+	int64_t salary = 100;
+	int64_t shares = 0;
+	std::string id;
 	std::string name;
 };
 

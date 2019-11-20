@@ -18,39 +18,38 @@ using namespace std;
 // Load definition of a crew member
 void Crew::Load(const DataNode &node)
 {
-	// Set the name of this crew member so we know that we have loaded it.
+	// Set the id of this crew member so we know that we have loaded it.
 	if(node.Size() >= 2)
-		name = node.Token(1);
-	
-	// Set default values so that we don't have to specify every node.
-	avoidsEscorts = false;
-	avoidsFlagship = false;
-	isPaidSalaryWhileParked = false;
-	dailySalary = 100;
-	minimumPerShip = 0;
-	populationPerOccurrence = 0;
+		id = node.Token(1);
 	
 	for(const DataNode &child : node)
 	{
 		if(child.Size() >= 2)
 		{
-			if(child.Token(0) == "daily salary")
-				dailySalary = child.Value(1);
-			if(child.Token(0) == "profit share")
-				dailySalary = child.Value(1);
-			else if(child.Token(0) == "minimum per ship")
-				minimumPerShip = child.Value(1);
-			else if(child.Token(0) == "population per occurrence")
-				populationPerOccurrence = child.Value(1);
-			else if(child.Token(0) == "name")
+			if(child.Token(0) == "name")
 				name = child.Token(1);
+			// The number of credits paid daily (minimum 0)
+			else if(child.Token(0) == "salary")
+				salary = max((int)child.Value(1), 0);
+			// The number of shares that the crew member has in fleet profits
+			else if(child.Token(0) == "shares")
+				shares = max((int)child.Value(1), 0);
+			// Each valid ship has at least this many of the crew member
+			else if(child.Token(0) == "minimum per ship")
+				minimumPerShip = max((int)child.Value(1), 0);
+			// Every nth crew member on the ship will be this crew member
+			else if(child.Token(0) == "population per member")
+				populationPerMember = max((int)child.Value(1), 0);
 			else
 				child.PrintTrace("Skipping unrecognized attribute:");
 		}
+		// If true, the crew member will not appear on escorts
 		else if(child.Token(0) == "avoids escorts")
 			avoidsEscorts = true;
+		// If true, the crew member will not appear on the flagship
 		else if(child.Token(0) == "avoids flagship")
 			avoidsFlagship = true;
+		// If true, the crew member will receive salary even on a parked ship
 		else if(child.Token(0) == "pay salary while parked")
 			isPaidSalaryWhileParked = true;
 		else
@@ -61,8 +60,7 @@ void Crew::Load(const DataNode &node)
 
 
 int64_t Crew::CalculateSalaries(
-	const vector<shared_ptr<Ship>> ships,
-	const Ship flagship,
+	const vector<shared_ptr<Ship>> &ships,
 	const bool includeExtras
 )
 {
@@ -72,8 +70,6 @@ int64_t Crew::CalculateSalaries(
 	{
 		totalSalaries += Crew::SalariesForShip(
 			ship,
-			// Determine whether if the current ship is the flagship
-			ship == flagship,
 			includeExtras
 		);
 	}
@@ -83,7 +79,9 @@ int64_t Crew::CalculateSalaries(
 
 
 
-int64_t Crew::CostOfExtraCrew(const vector<shared_ptr<Ship>> ships)
+int64_t Crew::CostOfExtraCrew(
+	const vector<shared_ptr<Ship>> &ships
+)
 {
 	// Calculate with and without extras and return the difference.
 	return Crew::CalculateSalaries(ships, true)
@@ -93,19 +91,18 @@ int64_t Crew::CostOfExtraCrew(const vector<shared_ptr<Ship>> ships)
 
 
 int64_t Crew::NumberOnShip(
-	const Crew crew,
-	const shared_ptr<Ship> ship,
-	const bool isFlagship,
+	const Crew &crew,
+	const shared_ptr<Ship> &ship,
 	const bool includeExtras
 )
 {
 	int64_t count = 0;
 	
 	// If this is the flagship, check if this crew avoids the flagship.
-	if(isFlagship && crew.AvoidsFlagship())
+	if(!ship->GetParent() && crew.AvoidsFlagship())
 		return count;
 	// If this is an escort, check if this crew avoids escorts.
-	if(!isFlagship && crew.AvoidsEscorts())
+	if(ship->GetParent() && crew.AvoidsEscorts())
 		return count;
 	
 	const int64_t countableCrewMembers = includeExtras
@@ -116,12 +113,12 @@ int64_t Crew::NumberOnShip(
 	 count = min(crew.MinimumPerShip(), countableCrewMembers);
 	
 	// Prevent division by zero so that the universe doesn't implode.
-	if(crew.PopulationPerOccurrence())
+	if(crew.PopulationPerMember())
 	{
 		// Figure out how many of this kind of crew we have, by population.
 		count = max(
 			count,
-			countableCrewMembers / crew.PopulationPerOccurrence()
+			countableCrewMembers / crew.PopulationPerMember()
 		);
 	}
 	
@@ -129,9 +126,8 @@ int64_t Crew::NumberOnShip(
 }
 
 
-int64_t Crew::ProfitSharesForShip(
-	const std::shared_ptr<Ship> ship,
-	const bool isFlagship,
+int64_t Crew::SharesForShip(
+	const std::shared_ptr<Ship> &ship,
 	const bool includeExtras
 )
 {
@@ -149,14 +145,13 @@ int64_t Crew::ProfitSharesForShip(
 		int numberOnShip = Crew::NumberOnShip(
 			crew,
 			ship,
-			isFlagship,
 			includeExtras
 		);
 		
 		// Add their profit shares to the total
 		// Unless the ship is parked and we don't pay them while parked
 		if(crew.IsPaidProfitShareWhileParked() || !ship->IsParked())
-			totalShares += numberOnShip * crew.DailySalary();
+			totalShares += numberOnShip * crew.Shares();
 	}
 	
 	return totalShares;
@@ -165,8 +160,7 @@ int64_t Crew::ProfitSharesForShip(
 
 
 int64_t Crew::SalariesForShip(
-	const shared_ptr<Ship> ship,
-	const bool isFlagship,
+	const shared_ptr<Ship> &ship,
 	const bool includeExtras
 )
 {
@@ -174,14 +168,11 @@ int64_t Crew::SalariesForShip(
 	if(ship->IsDestroyed())
 		return 0;
 	
-	const Set<Crew> crews = GameData::Crews();
-	const Crew *defaultCrew = crews.Find("default");
-	
 	int64_t salariesForShip = 0;
 	int64_t specialCrewMembers = 0;
 	
 	// Add up the salaries for all of the special crew members
-	for(const pair<const string, Crew>& crewPair : crews)
+	for(const pair<const string, Crew>& crewPair : GameData::Crews())
 	{
 		// Skip the default crew members.
 		if(crewPair.first == "default")
@@ -192,7 +183,6 @@ int64_t Crew::SalariesForShip(
 		int numberOnShip = Crew::NumberOnShip(
 			crew,
 			ship,
-			isFlagship,
 			includeExtras
 		);
 		
@@ -201,7 +191,7 @@ int64_t Crew::SalariesForShip(
 		// Add their salary to the pool
 		// Unless the ship is parked and we don't pay them while parked
 		if(crew.IsPaidSalaryWhileParked() || !ship->IsParked())
-			salariesForShip += numberOnShip * crew.DailySalary();
+			salariesForShip += numberOnShip * crew.Salary();
 	}
 	
 	// Figure out how many regular crew members are left over
@@ -209,12 +199,16 @@ int64_t Crew::SalariesForShip(
 		includeExtras 
 			? ship->Crew()
 			: ship->RequiredCrew()
-		) - specialCrewMembers - isFlagship;
+		) - specialCrewMembers
+		// Subtract 1 if this is the flagship 
+		- !ship->GetParent();
+
+	const Crew *defaultCrew = GameData::Crews().Find("default");
 	
 	// Check if we pay salaries to parked default crew members
 	if(defaultCrew->IsPaidSalaryWhileParked() || !ship->IsParked())
 		// Add the default crew member salaries to the result
-		salariesForShip += defaultCrewMembers * defaultCrew->DailySalary();
+		salariesForShip += defaultCrewMembers * defaultCrew->Salary();
 	
 	return salariesForShip;
 }
@@ -222,7 +216,7 @@ int64_t Crew::SalariesForShip(
 
 
 int64_t ShareProfits(
-	const std::vector<std::shared_ptr<Ship>> ships,
+	const std::vector<std::shared_ptr<Ship>> &ships,
 	const int64_t grossProfit
 )
 {
@@ -230,64 +224,71 @@ int64_t ShareProfits(
 	
 	for(const shared_ptr<Ship> ship : ships)
 	{
-		totalCrewShares += Crew::ProfitSharesForShip(ship, );
+		totalCrewShares += Crew::SharesForShip(ship);
 	}
 }
 
 
 
-const bool &Crew::AvoidsEscorts() const
+bool Crew::AvoidsEscorts() const
 {
 	return avoidsEscorts;
 }
 
 
 
-const bool &Crew::AvoidsFlagship() const
+bool Crew::AvoidsFlagship() const
 {
 	return avoidsFlagship;
 }
 
 
 
-const bool &Crew::IsPaidProfitShareWhileParked() const
+bool Crew::IsPaidProfitShareWhileParked() const
 {
 	return isPaidProfitShareWhileParked;
 }
 
 
 
-const bool &Crew::IsPaidSalaryWhileParked() const
+bool Crew::IsPaidSalaryWhileParked() const
 {
 	return isPaidSalaryWhileParked;
 }
 
 
 
-const int64_t &Crew::DailySalary() const
-{
-	return dailySalary;
-}
-
-
-
-const int64_t &Crew::MinimumPerShip() const
+int64_t Crew::MinimumPerShip() const
 {
 	return minimumPerShip;
 }
 
 
 
-const int64_t &Crew::PopulationPerOccurrence() const
+int64_t Crew::PopulationPerMember() const
 {
-	return populationPerOccurrence;
+	return populationPerMember;
 }
 
 
 
-const int64_t &Crew::ProfitShares() const
+int64_t Crew::Salary() const
 {
-	return profitShares;
+	return salary;
+}
+
+
+
+int64_t Crew::Shares() const
+{
+	return shares;
+}
+
+
+
+const string &Crew::Id() const
+{
+	return id;
 }
 
 
