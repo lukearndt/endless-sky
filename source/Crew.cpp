@@ -219,7 +219,7 @@ int64_t Crew::SalariesForShip(
 
 
 
-int64_t ShareProfits(
+int64_t Crew::ShareProfits(
 	const std::vector<std::shared_ptr<Ship>> &ships,
 	const int64_t grossProfit
 )
@@ -230,6 +230,10 @@ int64_t ShareProfits(
 	{
 		totalCrewShares += Crew::SharesForShip(ship);
 	}
+	
+	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
+	
+	return grossProfit * Crew::CAPTAIN_SHARES / totalFleetShares;
 }
 
 
@@ -258,6 +262,13 @@ int64_t Crew::MinimumPerShip() const
 int64_t Crew::ParkedSalary() const
 {
 	return parkedSalary;
+}
+
+
+
+int64_t Crew::ParkedShares() const
+{
+	return parkedShares;
 }
 
 

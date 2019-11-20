@@ -18,6 +18,8 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 class Crew
 {
 public:
+	static const int64_t CAPTAIN_SHARES = 1000;
+	
 	// Calculate one day's salaries for the player's fleet
 	static int64_t CalculateSalaries(
 		const std::vector<std::shared_ptr<Ship>> &ships,

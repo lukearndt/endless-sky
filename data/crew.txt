@@ -10,20 +10,23 @@
 
 crew "default"
   name "Regulars"
-  salary 100
+  salary 0
 
-# crew "pilot"
-#   name "Pilot"
-#   salary 250
-#   "avoids flagship"
-#   "minimum per ship" 1
-# 
-# crew "junior officer"
-#   name "Junior Officers"
-#   salary 500
-#   "population per member" 5
-# 
-# crew "senior officer"
-#   name "Senior Officers"
-#   salary 2000
-#   "population per member" 20
+crew "pilot"
+  name "Pilot"
+  salary 0
+  shares 200
+  "avoids flagship"
+  "minimum per ship" 1
+
+crew "junior officer"
+  name "Junior Officers"
+  salary 0
+  shares 100
+  "population per member" 5
+
+crew "senior officer"
+  name "Senior Officers"
+  salary 0
+  shares 500
+  "population per member" 20

@@ -1313,7 +1313,7 @@ bool PlayerInfo::TakeOff(UI *ui)
 		ostringstream out;
 		out << "You sold " << sold << " tons of excess cargo for " << Format::Credits(income) << " credits";
 		if(grossProfit > 0)
-			out << " (for a profit of " << (income - totalBasis) << " credits).";
+			out << " (for a profit of " << (grossProfit) << " credits).";
 		else
 			out << ".";
 		Messages::Add(out.str());
