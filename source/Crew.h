@@ -59,9 +59,9 @@ public:
 	
 	bool AvoidsEscorts() const;
 	bool AvoidsFlagship() const;
-	bool IsPaidProfitShareWhileParked() const;
-	bool IsPaidSalaryWhileParked() const;
 	int64_t MinimumPerShip() const;
+	int64_t ParkedSalary() const;
+	int64_t ParkedShares() const;
 	int64_t PopulationPerMember() const;
 	int64_t Salary() const;
 	int64_t Shares() const;
@@ -71,9 +71,9 @@ public:
 private:
 	bool avoidsEscorts = false;
 	bool avoidsFlagship = false;
-	bool isPaidProfitShareWhileParked = false;
-	bool isPaidSalaryWhileParked = false;
 	int64_t minimumPerShip = 0;
+	int64_t parkedSalary = 0;
+	int64_t parkedShares = 0;
 	int64_t populationPerMember = 0;
 	int64_t salary = 100;
 	int64_t shares = 0;

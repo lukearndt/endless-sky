@@ -26,20 +26,27 @@ void Crew::Load(const DataNode &node)
 	{
 		if(child.Size() >= 2)
 		{
+			// The crew members' display name (plural, Title Case)
 			if(child.Token(0) == "name")
 				name = child.Token(1);
-			// The number of credits paid daily (minimum 0)
-			else if(child.Token(0) == "salary")
-				salary = max((int)child.Value(1), 0);
-			// The number of shares that the crew member has in fleet profits
-			else if(child.Token(0) == "shares")
-				shares = max((int)child.Value(1), 0);
 			// Each valid ship has at least this many of the crew member
 			else if(child.Token(0) == "minimum per ship")
 				minimumPerShip = max((int)child.Value(1), 0);
+			// The number of credits paid daily while parked (minimum 0)
+			else if(child.Token(0) == "parked salary")
+				parkedSalary = max((int)child.Value(1), 0);
+			// The crew member's profit shares while parked (minimum 0)
+			else if(child.Token(0) == "parked shares")
+				parkedShares = max((int)child.Value(1), 0);
 			// Every nth crew member on the ship will be this crew member
 			else if(child.Token(0) == "population per member")
 				populationPerMember = max((int)child.Value(1), 0);
+			// The number of credits paid daily (minimum 0)
+			else if(child.Token(0) == "salary")
+				salary = max((int)child.Value(1), 0);
+			// The crew member's profit shares (minimum 0)
+			else if(child.Token(0) == "shares")
+				shares = max((int)child.Value(1), 0);
 			else
 				child.PrintTrace("Skipping unrecognized attribute:");
 		}
@@ -49,9 +56,6 @@ void Crew::Load(const DataNode &node)
 		// If true, the crew member will not appear on the flagship
 		else if(child.Token(0) == "avoids flagship")
 			avoidsFlagship = true;
-		// If true, the crew member will receive salary even on a parked ship
-		else if(child.Token(0) == "pay salary while parked")
-			isPaidSalaryWhileParked = true;
 		else
 			child.PrintTrace("Skipping incomplete attribute:");
 	}
@@ -148,10 +152,10 @@ int64_t Crew::SharesForShip(
 			includeExtras
 		);
 		
-		// Add their profit shares to the total
-		// Unless the ship is parked and we don't pay them while parked
-		if(crew.IsPaidProfitShareWhileParked() || !ship->IsParked())
-			totalShares += numberOnShip * crew.Shares();
+		// Add this type of crew member's shares to the result
+		totalShares += numberOnShip * (ship->IsParked()
+			? crew.ParkedShares()
+			: crew.Shares());
 	}
 	
 	return totalShares;
@@ -188,10 +192,10 @@ int64_t Crew::SalariesForShip(
 		
 		specialCrewMembers += numberOnShip;
 		
-		// Add their salary to the pool
-		// Unless the ship is parked and we don't pay them while parked
-		if(crew.IsPaidSalaryWhileParked() || !ship->IsParked())
-			salariesForShip += numberOnShip * crew.Salary();
+		// Add this type of crew member's salaries to the result
+		salariesForShip += numberOnShip * (ship->IsParked()
+			? crew.ParkedSalary()
+			: crew.Salary());
 	}
 	
 	// Figure out how many regular crew members are left over
@@ -200,15 +204,15 @@ int64_t Crew::SalariesForShip(
 			? ship->Crew()
 			: ship->RequiredCrew()
 		) - specialCrewMembers
-		// Subtract 1 if this is the flagship 
+		// If this is the flagship, subtract 1 for the Captain 
 		- !ship->GetParent();
 
 	const Crew *defaultCrew = GameData::Crews().Find("default");
 	
-	// Check if we pay salaries to parked default crew members
-	if(defaultCrew->IsPaidSalaryWhileParked() || !ship->IsParked())
-		// Add the default crew member salaries to the result
-		salariesForShip += defaultCrewMembers * defaultCrew->Salary();
+	// Add default crew members' salaries to the result
+	salariesForShip += defaultCrewMembers * (ship->IsParked()
+		? defaultCrew->ParkedSalary()
+		: defaultCrew->Salary());
 	
 	return salariesForShip;
 }
@@ -244,23 +248,16 @@ bool Crew::AvoidsFlagship() const
 
 
 
-bool Crew::IsPaidProfitShareWhileParked() const
-{
-	return isPaidProfitShareWhileParked;
-}
-
-
-
-bool Crew::IsPaidSalaryWhileParked() const
-{
-	return isPaidSalaryWhileParked;
-}
-
-
-
 int64_t Crew::MinimumPerShip() const
 {
 	return minimumPerShip;
+}
+
+
+
+int64_t Crew::ParkedSalary() const
+{
+	return parkedSalary;
 }
 
 
