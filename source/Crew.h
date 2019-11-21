@@ -23,14 +23,14 @@ public:
 	// Calculate one day's salaries for the player's fleet
 	static int64_t CalculateSalaries(
 		const std::vector<std::shared_ptr<Ship>> &ships,
-		const System * &flagshipSystem,
+		const Ship * &flagship,
 		const bool includeExtras = true
 	);
 
 	// Calculate the total salary cost of extra crew
 	static int64_t CostOfExtraCrew(
 		const std::vector<std::shared_ptr<Ship>> &ships,
-		const System * &flagshipSystem
+		const Ship * &flagship
 	);
 
 	// Figure out how many of a given crew member are on a ship
