@@ -224,16 +224,18 @@ int64_t Crew::ShareProfits(
 	const int64_t grossProfit
 )
 {
+	if(grossProfit <= 0) return 0;
+	
 	int64_t totalCrewShares = 0;
 	
-	for(const shared_ptr<Ship> ship : ships)
+	for(const shared_ptr<Ship> &ship : ships)
 	{
 		totalCrewShares += Crew::SharesForShip(ship);
 	}
 	
 	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
 	
-	return grossProfit * Crew::CAPTAIN_SHARES / totalFleetShares;
+	return grossProfit * totalCrewShares / totalFleetShares;
 }
 
 
