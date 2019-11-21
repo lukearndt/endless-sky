@@ -65,6 +65,7 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(
 	const vector<shared_ptr<Ship>> &ships,
+	const System * &flagshipSystem,
 	const bool includeExtras
 )
 {
@@ -74,6 +75,7 @@ int64_t Crew::CalculateSalaries(
 	{
 		totalSalaries += Crew::SalariesForShip(
 			ship,
+			ship->IsSystemFlagship(flagshipSystem),
 			includeExtras
 		);
 	}
@@ -84,12 +86,13 @@ int64_t Crew::CalculateSalaries(
 
 
 int64_t Crew::CostOfExtraCrew(
-	const vector<shared_ptr<Ship>> &ships
+	const vector<shared_ptr<Ship>> &ships,
+	const System * &flagshipSystem
 )
 {
 	// Calculate with and without extras and return the difference.
-	return Crew::CalculateSalaries(ships, true)
-		- Crew::CalculateSalaries(ships, false);
+	return Crew::CalculateSalaries(ships, flagshipSystem, true)
+		- Crew::CalculateSalaries(ships, flagshipSystem, false);
 }
 
 
@@ -97,16 +100,17 @@ int64_t Crew::CostOfExtraCrew(
 int64_t Crew::NumberOnShip(
 	const Crew &crew,
 	const shared_ptr<Ship> &ship,
+	const bool isFlagship,
 	const bool includeExtras
 )
 {
 	int64_t count = 0;
 	
 	// If this is the flagship, check if this crew avoids the flagship.
-	if(!ship->GetParent() && crew.AvoidsFlagship())
+	if(isFlagship && crew.AvoidsFlagship())
 		return count;
 	// If this is an escort, check if this crew avoids escorts.
-	if(ship->GetParent() && crew.AvoidsEscorts())
+	if(!isFlagship && crew.AvoidsEscorts())
 		return count;
 	
 	const int64_t countableCrewMembers = includeExtras
@@ -165,6 +169,7 @@ int64_t Crew::SharesForShip(
 
 int64_t Crew::SalariesForShip(
 	const shared_ptr<Ship> &ship,
+	const bool isFlagship,
 	const bool includeExtras
 )
 {
@@ -187,6 +192,7 @@ int64_t Crew::SalariesForShip(
 		int numberOnShip = Crew::NumberOnShip(
 			crew,
 			ship,
+			isFlagship,
 			includeExtras
 		);
 		
@@ -204,8 +210,8 @@ int64_t Crew::SalariesForShip(
 			? ship->Crew()
 			: ship->RequiredCrew()
 		) - specialCrewMembers
-		// If this is the flagship, subtract 1 for the Captain 
-		- !ship->GetParent();
+		// If this is the flagship, one of the crew members is the Captain
+		- isFlagship;
 
 	const Crew *defaultCrew = GameData::Crews().Find("default");
 	
