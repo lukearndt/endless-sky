@@ -228,7 +228,7 @@ int64_t Crew::SalariesForShip(
 
 int64_t Crew::ShareProfit(
 	const std::vector<std::shared_ptr<Ship>> &ships,
-	const System * flagshipSystem,
+	const Ship * flagship,
 	const int64_t grossProfit
 )
 {
@@ -240,7 +240,7 @@ int64_t Crew::ShareProfit(
 	{
 		totalCrewShares += Crew::SharesForShip(
 			ship,
-			ship->IsSystemFlagship(flagshipSystem)
+			ship.get() == flagship
 		);
 	}
 	

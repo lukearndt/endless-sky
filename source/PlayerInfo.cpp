@@ -1304,7 +1304,7 @@ bool PlayerInfo::TakeOff(UI *ui)
 		}
 	}
 	int64_t grossProfit = income - totalBasis;
-	int64_t sharedProfit = Crew::ShareProfit(ships, system, grossProfit);
+	int64_t sharedProfit = Crew::ShareProfit(ships, Flagship(), grossProfit);
 	accounts.AddCredits(income - sharedProfit);
 	cargo.Clear();
 	stockDepreciation = Depreciation();
