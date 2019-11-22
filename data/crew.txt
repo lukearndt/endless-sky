@@ -14,7 +14,7 @@ crew "default"
 # shares 1
 
 # crew "pilot"
-#   name "Pilot"
+#   name "Pilots"
 #   salary 250
 #   shares 20
 #   "avoids flagship"
