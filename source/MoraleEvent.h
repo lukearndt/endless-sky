@@ -14,6 +14,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #define MORALE_EVENT_H_
 
 #include "DataNode.h"
+#include "Ship.h"
 
 class MoraleEvent
 {
@@ -21,9 +22,14 @@ public:
 	// Load a definition for a morale event
 	void Load(const DataNode &node);
 	
+	// Profit has been shared with the crew on the ship
+	// Uses "profit shared on shore leave" or "profit shared" events
+	// MoraleChange is multiplied by sharedProfit and divided by crew count
+	static double ProfitShared(std::shared_ptr<Ship> &ship, const int64_t sharedProfit);
+	
 	double BaseChance() const;
 	double ChancePerMorale() const;
-	double Effect() const;
+	double MoraleChange() const;
 	double Threshold() const;
 	const std::string &Id() const;
 	const std::string &Message() const;
@@ -34,7 +40,7 @@ private:
 	// The chance of an active event increases per point of morale past the threshold
 	double chancePerMorale = 0;
 	// The event changes the ship's morale by this much when it occurs
-	double effect = 0;
+	double moraleChange = 0;
 	// The morale at which an active event becomes possible
 	double threshold = 0;
 	// The id that the morale event is stored against in GameData::Crews()

@@ -13,6 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Crew.h"
 #include "Files.h" 
 #include "GameData.h"
+#include "MoraleEvent.h"
 
 using namespace std;
 
@@ -121,7 +122,7 @@ int64_t Crew::NumberOnShip(const Crew &crew, const shared_ptr<Ship> &ship, const
 
 
 double Crew::SharesForShip(
-	const std::shared_ptr<Ship> &ship,
+	const shared_ptr<Ship> &ship,
 	const bool isFlagship,
 	const bool includeExtras
 )
@@ -215,33 +216,53 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 
 
 int64_t Crew::ShareProfit(
-	const std::vector<std::shared_ptr<Ship>> &ships,
+	vector<shared_ptr<Ship>> &ships,
 	const Ship * flagship,
 	const int64_t grossProfit
 )
 {
 	if(grossProfit <= 0) return 0;
 	
+	// We don't want to keep checking for the flagship once we find it.
 	bool checkIfFlagship = true;
 	bool isFlagship = false;
 	
+	// We don't want to calculate the ships' crew shares more than once,
+	// so let's cache them in an array for the second step of the process.
+	int index = 0;
+	int64_t crewSharesCache [ships.size()];
 	int64_t totalCrewShares = 0;
 	
 	for(const shared_ptr<Ship> &ship : ships)
 	{
+		// Calculate how many shares this ship has in total.
 		if(checkIfFlagship)
 			isFlagship = ship.get() == flagship;
 		
-		totalCrewShares += Crew::SharesForShip(
+		int64_t crewShares = Crew::SharesForShip(
 			ship,
 			ship.get() == flagship
 		);
-		
+
 		if(isFlagship)
 			isFlagship = checkIfFlagship = false;
+		
+		crewSharesCache[index++] = crewShares;
+		index++;
+		totalCrewShares += crewShares;
 	}
 	
+	// Calculate how many shares are in the entire fleet.
 	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
+	
+	for(shared_ptr<Ship> &ship : ships)
+	{
+		// Calculate how much of the profit we're giving to this ship's crew
+		int64_t sharedProfit = grossProfit * crewSharesCache[--index] / totalFleetShares;
+		
+		// Trigger a morale event for the shared profit
+		MoraleEvent::ProfitShared(ship, sharedProfit);
+	}
 	
 	return grossProfit * totalCrewShares / totalFleetShares;
 }

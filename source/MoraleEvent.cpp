@@ -12,6 +12,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "MoraleEvent.h"
 #include "DataNode.h"
+#include "GameData.h"
 
 using namespace std;
 
@@ -26,8 +27,8 @@ void MoraleEvent::Load(const DataNode &node)
 		{
 			if(child.Token(0) == "base chance")
 				baseChance = child.Value(1);
-			else if(child.Token(0) == "effect")
-				effect = child.Value(1);
+			else if(child.Token(0) == "change")
+				moraleChange = child.Value(1);
 			else if(child.Token(0) == "threshold")
 				threshold = child.Value(1);
 			else if(child.Token(0) == "chance per morale")
@@ -40,6 +41,15 @@ void MoraleEvent::Load(const DataNode &node)
 		else
 			child.PrintTrace("Skipping incomplete attribute:");
 	}
+}
+
+double MoraleEvent::ProfitShared(shared_ptr<Ship> &ship, const int64_t sharedProfit)
+{
+	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(ship->IsParked()
+		? "profit shared on shore leave"
+		: "profit shared"
+	);
+	return ship->ChangeMorale(moraleEvent->MoraleChange() * sharedProfit / ship->Crew());
 }
 
 double MoraleEvent::BaseChance() const
