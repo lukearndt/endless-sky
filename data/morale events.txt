@@ -1,0 +1,61 @@
+# Copyright (c) 2019 by Luke Arndt
+#
+# Endless Sky is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# Endless Sky is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+# A crew member has died on another ship in the fleet
+"morale event" "death in fleet"
+  effect -1
+
+# A crew member has died on the ship
+"morale event" "death on ship"
+  effect -10
+
+# A crew member has been hired on another ship in the fleet
+"morale event" "hire in fleet"
+  effect 0
+
+# A crew member has been fired on another ship in the fleet
+"morale event" "fire in fleet"
+  effect -1
+
+# A crew member has been fired on the ship
+"morale event" "fire on ship"
+  effect -10
+
+# A crew member in another ship in the fleet has mutinied
+"morale event" "mutiny in fleet"
+  effect -2
+
+# The ship considers a mutiny
+"morale event" "mutiny on ship"
+  "required morale" -400
+  "chance per morale below threshold" 0.01
+
+# Profit has been shared with the crew on the ship
+# Multiplied by the credits shared and divided by the ship's crew count
+"morale event" "profit shared"
+  effect 0.01
+
+# The captain has failed to pay crew salaries
+"morale event" "salary failure"
+  effect -10
+
+# The captain has paid crew salaries
+"morale event" "salary payment"
+  effect 1
+
+# The captain has paid salaries while the ship is parked
+# Multiplied by the number of crew members that get parked salary
+"morale event" "salary payment on shore leave"
+  effect 1
+
+# The captain has paid salaries while the ship is parked
+# Multiplied by the number of crew members that get parked profit shares
+"morale event" "profit shared on shore leave"
+  effect 10

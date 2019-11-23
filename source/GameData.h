@@ -37,6 +37,7 @@ class ImageSet;
 class Interface;
 class Minable;
 class Mission;
+class MoraleEvent;
 class News;
 class Outfit;
 class Person;
@@ -103,6 +104,7 @@ public:
 	static const Set<Interface> &Interfaces();
 	static const Set<Minable> &Minables();
 	static const Set<Mission> &Missions();
+	static const Set<MoraleEvent> &MoraleEvents();
 	static const Set<Outfit> &Outfits();
 	static const Set<Sale<Outfit>> &Outfitters();
 	static const Set<Person> &Persons();

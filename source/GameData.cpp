@@ -35,6 +35,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "LineShader.h"
 #include "Minable.h"
 #include "Mission.h"
+#include "MoraleEvent.h"
 #include "Music.h"
 #include "News.h"
 #include "Outfit.h"
@@ -77,6 +78,7 @@ namespace {
 	Set<Interface> interfaces;
 	Set<Minable> minables;
 	Set<Mission> missions;
+	Set<MoraleEvent> moraleEvents;
 	Set<Outfit> outfits;
 	Set<Person> persons;
 	Set<Phrase> phrases;
@@ -659,6 +661,14 @@ const Set<Mission> &GameData::Missions()
 
 
 
+
+const Set<MoraleEvent> &GameData::MoraleEvents()
+{
+	return moraleEvents;
+}
+
+
+
 const Set<Outfit> &GameData::Outfits()
 {
 	return outfits;
@@ -950,6 +960,8 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			minables.Get(node.Token(1))->Load(node);
 		else if(key == "mission" && node.Size() >= 2)
 			missions.Get(node.Token(1))->Load(node);
+		else if(key == "morale event" && node.Size() >= 2)
+			moraleEvents.Get(node.Token(1))->Load(node);
 		else if(key == "outfit" && node.Size() >= 2)
 			outfits.Get(node.Token(1))->Load(node);
 		else if(key == "outfitter" && node.Size() >= 2)
