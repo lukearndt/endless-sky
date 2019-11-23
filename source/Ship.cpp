@@ -303,6 +303,8 @@ void Ship::Load(const DataNode &node)
 			shields = child.Value(1);
 		else if(key == "hull" && child.Size() >= 2)
 			hull = child.Value(1);
+		else if(key == "morale" && child.Size() >= 2)
+			morale = child.Value(1);
 		else if(key == "position" && child.Size() >= 3)
 			position = Point(child.Value(1), child.Value(2));
 		else if(key == "system" && child.Size() >= 2)
@@ -629,6 +631,7 @@ void Ship::Save(DataWriter &out) const
 		out.Write("fuel", fuel);
 		out.Write("shields", shields);
 		out.Write("hull", hull);
+		out.Write("morale", morale);
 		out.Write("position", position.X(), position.Y());
 		
 		for(const EnginePoint &point : enginePoints)
@@ -2558,6 +2561,21 @@ void Ship::AddCrew(int count)
 bool Ship::CanBeFlagship() const
 {
 	return !CanBeCarried() && RequiredCrew() && Crew() && !IsDisabled();
+}
+
+
+
+double Ship::Morale() const
+{
+	return morale;
+}
+
+
+
+double Ship::ChangeMorale(double amount)
+{
+	morale =+ amount;
+	return morale;
 }
 
 

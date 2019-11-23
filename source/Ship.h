@@ -282,6 +282,11 @@ public:
 	// Check if this is a ship that can be used as a flagship.
 	bool CanBeFlagship() const;
 	
+	// Access the morale of the ship
+	double Morale() const;
+	// Change the morale of the ship and return the new morale
+	double ChangeMorale(double amount);
+	
 	// Get this ship's movement characteristics.
 	double Mass() const;
 	double TurnRate() const;
@@ -477,6 +482,9 @@ private:
 	int crew = 0;
 	int pilotError = 0;
 	int pilotOkay = 0;
+	
+	// The morale level of the ship
+	double morale = 0;
 	
 	// Current status of this particular ship:
 	const System *currentSystem = nullptr;
