@@ -12,7 +12,9 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "MoraleEvent.h"
 #include "DataNode.h"
+#include "Files.h"
 #include "GameData.h"
+#include "PlayerInfo.h"
 
 using namespace std;
 
@@ -43,13 +45,20 @@ void MoraleEvent::Load(const DataNode &node)
 	}
 }
 
-double MoraleEvent::ProfitShared(shared_ptr<Ship> &ship, const int64_t sharedProfit)
+double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t sharedProfit)
 {
-	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(ship->IsParked()
+	const string moraleEventId = ship->IsParked()
 		? "profit shared on shore leave"
-		: "profit shared"
-	);
-	return ship->ChangeMorale(moraleEvent->MoraleChange() * sharedProfit / ship->Crew());
+		: "profit shared";
+	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(moraleEventId);
+	if(!moraleEvent)
+	{
+		Files::LogError("\nMissing \"morale event\" definition: \"" + moraleEventId + "\"");
+		return 0;
+	}
+
+	double moraleChange = moraleEvent->MoraleChange() * sharedProfit / ship->Crew();
+	return player.ChangeShipMorale(ship.get(), moraleChange);
 }
 
 double MoraleEvent::BaseChance() const
@@ -66,9 +75,9 @@ double MoraleEvent::ChancePerMorale() const
 
 
 
-double MoraleEvent::Effect() const
+double MoraleEvent::MoraleChange() const
 {
-	return effect;
+	return moraleChange;
 }
 
 

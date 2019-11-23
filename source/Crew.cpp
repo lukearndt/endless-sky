@@ -216,8 +216,7 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 
 
 int64_t Crew::ShareProfit(
-	vector<shared_ptr<Ship>> &ships,
-	const Ship * flagship,
+	const PlayerInfo &player,
 	const int64_t grossProfit
 )
 {
@@ -230,18 +229,18 @@ int64_t Crew::ShareProfit(
 	// We don't want to calculate the ships' crew shares more than once,
 	// so let's cache them in an array for the second step of the process.
 	int index = 0;
-	int64_t crewSharesCache [ships.size()];
+	int64_t crewSharesCache [player.Ships().size()];
 	int64_t totalCrewShares = 0;
 	
-	for(const shared_ptr<Ship> &ship : ships)
+	for(const shared_ptr<Ship> &ship : player.Ships())
 	{
 		// Calculate how many shares this ship has in total.
 		if(checkIfFlagship)
-			isFlagship = ship.get() == flagship;
+			isFlagship = ship.get() == player.Flagship();
 		
 		int64_t crewShares = Crew::SharesForShip(
 			ship,
-			ship.get() == flagship
+			isFlagship
 		);
 
 		if(isFlagship)
@@ -255,13 +254,13 @@ int64_t Crew::ShareProfit(
 	// Calculate how many shares are in the entire fleet.
 	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
 	
-	for(shared_ptr<Ship> &ship : ships)
+	for(const shared_ptr<Ship> &ship : player.Ships())
 	{
 		// Calculate how much of the profit we're giving to this ship's crew
 		int64_t sharedProfit = grossProfit * crewSharesCache[--index] / totalFleetShares;
 		
 		// Trigger a morale event for the shared profit
-		MoraleEvent::ProfitShared(ship, sharedProfit);
+		MoraleEvent::ProfitShared(player, ship, sharedProfit);
 	}
 	
 	return grossProfit * totalCrewShares / totalFleetShares;

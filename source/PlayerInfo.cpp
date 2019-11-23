@@ -908,6 +908,19 @@ int PlayerInfo::ReorderShips(const set<int> &fromIndices, int toIndex)
 
 
 
+double PlayerInfo::ChangeShipMorale(const Ship *selected, double moraleChange) const
+{
+	for(auto it = ships.begin(); it != ships.end(); ++it)
+		if(it->get() == selected)
+		{
+			return (*it)->ChangeMorale(moraleChange);
+		}
+	
+	return 0;
+}
+
+
+
 // Find out how attractive the player's fleet is to pirates. Aside from a
 // heavy freighter, no single ship should attract extra pirate attention.
 pair<double, double> PlayerInfo::RaidFleetFactors() const
@@ -1303,7 +1316,7 @@ bool PlayerInfo::TakeOff(UI *ui)
 		}
 	}
 	int64_t grossProfit = income - totalBasis;
-	int64_t sharedProfit = Crew::ShareProfit(ships, Flagship(), grossProfit);
+	int64_t sharedProfit = Crew::ShareProfit(*this, grossProfit);
 	accounts.AddCredits(income - sharedProfit);
 	cargo.Clear();
 	stockDepreciation = Depreciation();

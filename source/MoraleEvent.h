@@ -15,6 +15,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "DataNode.h"
 #include "Ship.h"
+#include "PlayerInfo.h"
 
 class MoraleEvent
 {
@@ -25,7 +26,7 @@ public:
 	// Profit has been shared with the crew on the ship
 	// Uses "profit shared on shore leave" or "profit shared" events
 	// MoraleChange is multiplied by sharedProfit and divided by crew count
-	static double ProfitShared(std::shared_ptr<Ship> &ship, const int64_t sharedProfit);
+	static double ProfitShared(const PlayerInfo &player, const std::shared_ptr<Ship> &ship, const int64_t sharedProfit);
 	
 	double BaseChance() const;
 	double ChancePerMorale() const;
