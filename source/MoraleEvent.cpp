@@ -47,6 +47,8 @@ void MoraleEvent::Load(const DataNode &node)
 
 double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t sharedProfit)
 {
+	Files::LogError("entered ProfitShared");
+	
 	const string moraleEventId = ship->IsParked()
 		? "profit shared on shore leave"
 		: "profit shared";
