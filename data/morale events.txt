@@ -28,14 +28,23 @@
 "morale event" "fire on ship"
   effect -10
 
-# A crew member in another ship in the fleet has mutinied
+# A crew member on another ship in the fleet has mutinied
 "morale event" "mutiny in fleet"
   effect -2
 
-# The ship considers a mutiny
+# The ship considers a mutiny if the ship's morale is below the threshold
 "morale event" "mutiny on ship"
-  "required morale" -400
-  "chance per morale below threshold" 0.01
+  "base chance" 0.1
+  "chance per morale" 0.01
+  message "The {{ship name}} has mutinied against your leadership."
+  threshold -400
+
+# The ship joins a mutiny in progress if the ship's morale is below the threshold
+"morale event" "join mutiny in fleet"
+  "base chance" 0.1
+  "chance per morale" 0.01
+  message "The {{ship name}} has joined the {{triggering ship}} in its mutiny."
+  threshold -400
 
 # Profit has been shared with the crew on the ship
 # Multiplied by the credits shared and divided by the ship's crew count
