@@ -13,7 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #ifndef MORALE_EVENT_H_
 #define MORALE_EVENT_H_
 
-#include "Ship.h"
+#include "DataNode.h"
 
 class MoraleEvent
 {
@@ -21,6 +21,7 @@ public:
 	// Load a definition for a morale event
 	void Load(const DataNode &node);
 	
+	double BaseChance() const;
 	double ChancePerMorale() const;
 	double Effect() const;
 	double Threshold() const;
