@@ -2590,7 +2590,12 @@ double Ship::Morale() const
 double Ship::ChangeMorale(double amount)
 {
 	double newMorale = min(500.0, max(-500.0, morale + amount));
-	Files::LogError("The morale of " + Name() + " has changed by " + to_string(amount) + " from " + to_string(morale) + " to " + to_string(newMorale));
+	Files::LogError(
+		"The morale of " + Name() + 
+		" has changed by " + to_string(amount) + 
+		" from " + to_string(morale) + 
+		" to " + to_string(newMorale)
+	);
 	morale = newMorale;
 	return morale;
 }
@@ -2599,7 +2604,7 @@ double Ship::ChangeMorale(double amount)
 
 string Ship::MoraleDescription() const
 {
-	int moraleIndex = morale / 100 + 5;
+	int moraleIndex = min(9, max(0, (int)morale / 100 + 5));
 	return MORALE_DESCRIPTIONS[moraleIndex];
 }
 

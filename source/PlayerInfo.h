@@ -127,8 +127,12 @@ public:
 	// Change the order of the given ship in the list.
 	void ReorderShip(int fromIndex, int toIndex);
 	int ReorderShips(const std::set<int> &fromIndices, int toIndex);
+	
+	// Modify the morale of every ship in the fleet.
+	void ChangeFleetMorale(double moraleChange) const;
 	// Modify a ship's morale.
 	double ChangeShipMorale(const Ship *selected, double moraleChange) const;
+	
 	// Get the attraction factors of the player's fleet to raid fleets.
 	std::pair<double, double> RaidFleetFactors() const;
 	

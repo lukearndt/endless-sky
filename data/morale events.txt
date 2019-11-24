@@ -8,29 +8,36 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-# A crew member has died on another ship in the fleet
+# A crew member has died on a ship in the fleet
 "morale event" "death in fleet"
   change -1
 
 # A crew member has died on the ship
+# This happens in addition to "death in fleet"
 "morale event" "death on ship"
   change -10
 
-# A crew member has been hired on another ship in the fleet
+# A crew member has been hired on a ship in the fleet
 "morale event" "hire in fleet"
   change 0
 
-# A crew member has been fired on another ship in the fleet
+# A crew member has been hired on a ship in the fleet
+# This happens in addition to "hire in fleet"
+"morale event" "hire on ship"
+  change 0
+
+# A crew member has been fired on a ship in the fleet
 "morale event" "fire in fleet"
+  change -0.1
+
+# A crew member has been fired on the ship; stacks with "fire in fleet"
+# This happens in addition to "fire in fleet"
+"morale event" "fire on ship"
   change -1
 
-# A crew member has been fired on the ship
-"morale event" "fire on ship"
-  change -2
-
-# A crew member on another ship in the fleet has mutinied
+# A crew member on a ship in the fleet has mutinied
 "morale event" "mutiny in fleet"
-  change -3
+  change -0.1
 
 # The ship considers a mutiny if the ship's morale is below the threshold
 "morale event" "mutiny on ship"

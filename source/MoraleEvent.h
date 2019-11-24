@@ -23,6 +23,13 @@ public:
 	// Load a definition for a morale event
 	void Load(const DataNode &node);
 	
+	// One or more crew members have died in the fleet
+	// Uses "death in fleet" and "death on ship" events
+	// "death on fleet" MoraleChange is applied to every ship in the fleet
+	// "death on ship" MoraleChange is applied to the ship where the crew member died
+	// In both cases, MoraleChange is multiplied by how many crew members died
+	static void CrewMemberDeath(const PlayerInfo &player, const std::shared_ptr<Ship> &ship, const int64_t deathCount);
+	
 	// Profit has been shared with the crew on the ship
 	// Uses "profit shared on shore leave" or "profit shared" events
 	// MoraleChange is multiplied by sharedProfit and divided by crew count
@@ -30,7 +37,7 @@ public:
 	
 	// The captain has failed to pay crew salaries
 	// Uses "salary failure" event
-	// MoraleChange is applied to any ship that has crew members that were
+	// MoraleChange is applied to every ship that has crew members that were
 	// supposed to be paid today
 	static void SalaryFailure(const PlayerInfo &player);
 	
@@ -42,6 +49,10 @@ public:
 	const std::string &Message() const;
 
 private:
+	static const MoraleEvent * GetMoraleEvent(std::string moraleEventId);
+	static void DeathInFleet(const PlayerInfo &player, const int64_t deathCount);
+	static double DeathOnShip(const PlayerInfo &player, const std::shared_ptr<Ship> &ship, const int64_t deathCount);
+	
 	// For events that change a ship's morale (eg shared profit):
 	
 	// The event changes the ship's morale by this much when it occurs

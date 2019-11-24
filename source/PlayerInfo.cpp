@@ -913,6 +913,14 @@ int PlayerInfo::ReorderShips(const set<int> &fromIndices, int toIndex)
 
 
 
+void PlayerInfo::ChangeFleetMorale(double moraleChange) const
+{
+	for(auto it = ships.begin(); it != ships.end(); ++it)
+		(*it)->ChangeMorale(moraleChange);
+}
+
+
+
 double PlayerInfo::ChangeShipMorale(const Ship *selected, double moraleChange) const
 {
 	for(auto it = ships.begin(); it != ships.end(); ++it)
