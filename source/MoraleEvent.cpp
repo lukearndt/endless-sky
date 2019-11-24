@@ -58,15 +58,12 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 		return 0;
 	}
 	
-	Files::LogError("Ship: " + ship->Name() + ", Crew(): " + to_string(ship->Crew()) + ", IsParked(): " + to_string(ship->IsParked()));
-	
 	double profitPerCrewMember = sharedProfit / (double)ship->Crew();
 	
-	Files::LogError("profitPerCrewMember: " + to_string(profitPerCrewMember));
-	double moraleChange = moraleEvent->MoraleChange() * profitPerCrewMember;
-	Files::LogError("moraleChange: " + to_string(moraleChange) + ", MoraleChange(): " + to_string(moraleEvent->MoraleChange()));
-	
-	return player.ChangeShipMorale(ship.get(), moraleChange);
+	return player.ChangeShipMorale(
+		ship.get(),
+		moraleEvent->MoraleChange() * profitPerCrewMember
+	);
 }
 
 double MoraleEvent::BaseChance() const

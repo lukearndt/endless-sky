@@ -36,14 +36,26 @@ public:
 	const std::string &Message() const;
 
 private:
-	// The base chance of an active event happening
-	double baseChance = 0;
-	// The chance of an active event increases per point of morale past the threshold
-	double chancePerMorale = 0;
+	// For events that change a ship's morale (eg shared profit):
+	
 	// The event changes the ship's morale by this much when it occurs
 	double moraleChange = 0;
-	// The morale at which an active event becomes possible
+
+
+
+	// For events that occur as a result of morale (eg mutiny):
+	
+	// The base chance of the event occurring
+	double baseChance = 0;
+	// The chance increases per point of morale past the threshold
+	double chancePerMorale = 0;
+	// The morale at which the reactionary event becomes possible
 	double threshold = 0;
+
+
+	
+	// For all morale events:
+	
 	// The id that the morale event is stored against in GameData::Crews()
 	std::string id;
 	// A message to display when the morale event occurs

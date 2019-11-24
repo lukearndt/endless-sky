@@ -2574,7 +2574,7 @@ double Ship::Morale() const
 
 double Ship::ChangeMorale(double amount)
 {
-	morale =+ amount;
+	morale = min(500.0, max(-500.0, morale + amount));
 	return morale;
 }
 

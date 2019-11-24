@@ -16,6 +16,7 @@ crew "default"
 crew "pilot"
   name "Pilots"
   salary 250
+  "parked shares" 20
   shares 20
   "avoids flagship"
   "minimum per ship" 1
