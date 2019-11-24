@@ -10,12 +10,12 @@
 
 # A crew member has died on a ship in the fleet
 "morale event" "death in fleet"
-  change -1
+  change -2
 
 # A crew member has died on the ship
 # This happens in addition to "death in fleet"
 "morale event" "death on ship"
-  change -10
+  change -3
 
 # A crew member has been hired on a ship in the fleet
 "morale event" "hire in fleet"

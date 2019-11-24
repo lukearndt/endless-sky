@@ -1653,6 +1653,13 @@ void PlayerInfo::HandleEvent(const ShipEvent &event, UI *ui)
 	for(Mission &mission : missions)
 		mission.Do(event, *this, ui);
 	
+	// If one of the player's ships was destroyed, emit a Morale Event
+	// The game emits two DESTROY events per ship: the first when hull runs out,
+	// the second when the ship finally explodes. The ShouldBeRemoved() check
+	// prevents us from emitting two Morale Events per ship.
+	if((event.Type() & ShipEvent::DESTROY) && event.TargetGovernment()->IsPlayer() && !event.Target()->ShouldBeRemoved())
+		MoraleEvent::CrewMemberDeath(*this, event.Target(), event.Target()->Crew());
+	
 	// If the player's flagship was destroyed, the player is dead.
 	if((event.Type() & ShipEvent::DESTROY) && !ships.empty() && event.Target().get() == Flagship())
 		Die();
