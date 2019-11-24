@@ -39,6 +39,12 @@ public:
 	// Uses "salary failure" event
 	// MoraleChange is applied to every ship that has crew members that were
 	// supposed to be paid today
+	static void SalaryPaid(const PlayerInfo &player);
+	
+	// The captain has paid crew salaries
+	// Uses "salary failure" event
+	// MoraleChange is applied to every ship that has crew members that were
+	// supposed to be paid today
 	static void SalaryFailure(const PlayerInfo &player);
 	
 	double BaseChance() const;
