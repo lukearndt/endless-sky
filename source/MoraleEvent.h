@@ -43,6 +43,7 @@ public:
 	
 	double BaseChance() const;
 	double ChancePerMorale() const;
+	double IsUndefined() const;
 	double MoraleChange() const;
 	double Threshold() const;
 	const std::string &Id() const;

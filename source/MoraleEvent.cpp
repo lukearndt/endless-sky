@@ -61,7 +61,8 @@ void MoraleEvent::CrewMemberDeath(const PlayerInfo &player, const shared_ptr<Shi
 void MoraleEvent::DeathInFleet(const PlayerInfo &player, const int64_t deathCount)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("death in fleet");
-	if(!moraleEvent->Id()) return;
+	if(moraleEvent->IsUndefined())
+		return;
 	
 	return player.ChangeFleetMorale(moraleEvent->MoraleChange() * deathCount);
 }
@@ -71,7 +72,8 @@ void MoraleEvent::DeathInFleet(const PlayerInfo &player, const int64_t deathCoun
 double MoraleEvent::DeathOnShip(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t deathCount)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("death on ship");
-	if(!moraleEvent->Id()) return ship->Morale();
+	if(moraleEvent->IsUndefined())
+		return ship->Morale();
 	
 	return player.ChangeShipMorale(ship.get(), moraleEvent->MoraleChange() * deathCount);
 }
@@ -84,7 +86,8 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 		? "profit shared on shore leave"
 		: "profit shared"
 	);
-	if(!moraleEvent->Id()) return ship->Morale();
+	if(moraleEvent->IsUndefined())
+		return ship->Morale();
 
 	double profitPerCrewMember = sharedProfit / (double)ship->Crew();
 	
@@ -99,7 +102,7 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 void MoraleEvent::SalaryFailure(const PlayerInfo &player)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("salary failure");
-	if(!moraleEvent->Id())
+	if(moraleEvent->IsUndefined())
 	  return;
 	
 	// We don't want to keep checking for the flagship once we find it.
@@ -157,6 +160,13 @@ double MoraleEvent::ChancePerMorale() const
 double MoraleEvent::MoraleChange() const
 {
 	return moraleChange;
+}
+
+
+
+double MoraleEvent::IsUndefined() const
+{
+	return Id().empty();
 }
 
 
