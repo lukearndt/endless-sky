@@ -56,23 +56,15 @@ void Crew::Load(const DataNode &node)
 
 int64_t Crew::CalculateSalaries(const vector<shared_ptr<Ship>> &ships, const Ship * flagship, const bool includeExtras)
 {
-	bool checkIfFlagship = true;
-	bool isFlagship = false;
 	int64_t totalSalaries = 0;
 	
 	for(const shared_ptr<Ship> &ship : ships)
 	{
-		if(checkIfFlagship)
-			isFlagship = ship.get() == flagship;
-		
 		totalSalaries += Crew::SalariesForShip(
 			ship,
-			isFlagship,
+			ship.get() == flagship,
 			includeExtras
 		);
-		
-		if(isFlagship)
-			isFlagship = checkIfFlagship = false;
 	}
 	
 	return totalSalaries;
@@ -221,10 +213,6 @@ int64_t Crew::ShareProfit(
 {
 	if(grossProfit <= 0) return 0;
 	
-	// We don't want to keep checking for the flagship once we find it.
-	bool checkIfFlagship = true;
-	bool isFlagship = false;
-	
 	// We don't want to calculate the ships' crew shares more than once,
 	// so let's cache them in an array for the second step of the process.
 	int64_t crewSharesCache [player.Ships().size()];
@@ -235,22 +223,13 @@ int64_t Crew::ShareProfit(
 		// Calculate how many shares this ship has in total.
 		const shared_ptr<Ship> &ship = player.Ships()[index];
 		
-		if(checkIfFlagship)
-			isFlagship = ship.get() == player.Flagship();
-		
 		int64_t crewShares = Crew::SharesForShip(
 			ship,
-			isFlagship
+			ship.get() == player.Flagship()
 		);
 
 		crewSharesCache[index] = crewShares;
 		totalCrewShares += crewShares;
-		
-		if(isFlagship)
-		{
-			checkIfFlagship = false;
-			isFlagship = false;
-		}
 	}
 	
 	// Calculate how many shares are in the entire fleet.
