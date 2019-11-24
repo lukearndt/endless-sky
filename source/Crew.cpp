@@ -12,6 +12,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "Crew.h"
 #include "Files.h" 
+#include "Format.h" 
 #include "GameData.h"
 #include "MoraleEvent.h"
 
@@ -228,17 +229,17 @@ int64_t Crew::ShareProfit(
 	
 	// We don't want to calculate the ships' crew shares more than once,
 	// so let's cache them in an array for the second step of the process.
-	int index = 0;
-	Files::LogError("about to crewSharesCache");
+	Files::LogError("\nabout to crewSharesCache");
 	int playerShipCount = player.Ships().size();
 	Files::LogError("playerShipCount: " + to_string(playerShipCount));
 	
 	int64_t crewSharesCache [playerShipCount];
 	int64_t totalCrewShares = 0;
 	
-	for(const shared_ptr<Ship> &ship : player.Ships())
+	for(size_t index = 0; index != player.Ships().size(); ++index)
 	{
 		// Calculate how many shares this ship has in total.
+		const shared_ptr<Ship> &ship = player.Ships()[index];
 		if(checkIfFlagship)
 			isFlagship = ship.get() == player.Flagship();
 		
@@ -250,36 +251,36 @@ int64_t Crew::ShareProfit(
 		if(isFlagship)
 			isFlagship = checkIfFlagship = false;
 		
-		crewSharesCache[index++] = crewShares;
-		index++;
+		crewSharesCache[index] = crewShares;
 		totalCrewShares += crewShares;
 		Files::LogError("crewShares: " + to_string(crewShares) + ", totalCrewShares: " + to_string(totalCrewShares));
 	}
 	Files::LogError("calculated crew shares for all ships");
 	for(const int64_t shares : crewSharesCache)
 	{
-		Files::LogError("crewSharesCache: " + to_string(shares));
-		
+		Files::LogError("crewSharesCache shares in cache: " + to_string(shares));
 	}
+	Files::LogError("end of crewSharesCache");
 	
 	// Calculate how many shares are in the entire fleet.
 	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
 	
-	for(const shared_ptr<Ship> &ship : player.Ships())
+	for(size_t index = 0; index != player.Ships().size(); ++index)
 	{
-		Files::LogError("about to calculate sharedProfit for a ship");
-		
+		Files::LogError("\n");
+		const shared_ptr<Ship> &ship = player.Ships()[index];
 		// Calculate how much of the profit we're giving to this ship's crew
-		int64_t crewShares = crewSharesCache[--index];
+		int64_t crewShares = crewSharesCache[index];
 		Files::LogError("crewShares: " + to_string(crewShares));
 		
 		int64_t sharedProfit = grossProfit * crewShares / totalFleetShares;
-		Files::LogError("calculated sharedProfit for a ship");
+		Files::LogError("sharedProfit: " + Format::Credits(sharedProfit) + " of grossProfit: " + Format::Credits(grossProfit));
 		
 		// Trigger a morale event for the shared profit
+		Files::LogError("ship morale before: " + to_string(ship->Morale()));
 		double returnedMorale = MoraleEvent::ProfitShared(player, ship, sharedProfit);
 		Files::LogError("returnedMorale: " + to_string(returnedMorale));
-		Files::LogError("actual ship morale: " + to_string(ship->Morale()));
+		Files::LogError("ship morale after: " + to_string(ship->Morale()));
 		
 	}
 	

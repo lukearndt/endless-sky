@@ -47,19 +47,25 @@ void MoraleEvent::Load(const DataNode &node)
 
 double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t sharedProfit)
 {
-	Files::LogError("entered ProfitShared");
-	
 	const string moraleEventId = ship->IsParked()
 		? "profit shared on shore leave"
 		: "profit shared";
+	
 	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(moraleEventId);
 	if(!moraleEvent)
 	{
 		Files::LogError("\nMissing \"morale event\" definition: \"" + moraleEventId + "\"");
 		return 0;
 	}
-
-	double moraleChange = moraleEvent->MoraleChange() * sharedProfit / ship->Crew();
+	
+	Files::LogError("Ship: " + ship->Name() + ", Crew(): " + to_string(ship->Crew()) + ", IsParked(): " + to_string(ship->IsParked()));
+	
+	double profitPerCrewMember = sharedProfit / (double)ship->Crew();
+	
+	Files::LogError("profitPerCrewMember: " + to_string(profitPerCrewMember));
+	double moraleChange = moraleEvent->MoraleChange() * profitPerCrewMember;
+	Files::LogError("moraleChange: " + to_string(moraleChange) + ", MoraleChange(): " + to_string(moraleEvent->MoraleChange()));
+	
 	return player.ChangeShipMorale(ship.get(), moraleChange);
 }
 

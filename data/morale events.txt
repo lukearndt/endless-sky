@@ -49,7 +49,8 @@
 # Profit has been shared with the crew on the ship
 # Multiplied by the credits shared and divided by the ship's crew count
 "morale event" "profit shared"
-  change 0.01
+  # 1 morale per 1000 credits, per crew member on the ship
+  change 0.001
 
 # The captain has failed to pay crew salaries
 "morale event" "salary failure"
@@ -57,7 +58,7 @@
 
 # The captain has paid crew salaries
 "morale event" "salary payment"
-  change 1
+  change 0.1
 
 # The captain has paid salaries while the ship is parked
 # Multiplied by the number of crew members that get parked salary
@@ -67,4 +68,5 @@
 # The captain has paid salaries while the ship is parked
 # Multiplied by the credits shared and divided by the ship's crew count
 "morale event" "profit shared on shore leave"
-  change 0.1
+  # 1 morale per 100 credits, per crew member on the ship
+  change 0.01
