@@ -74,6 +74,6 @@
   change 0.1
 
 # The captain has paid salaries while the ship is parked
-# Multiplied by the number of crew members that get parked salary
+# Multiplied by the credits paid and divided by the ship's crew count
 "morale event" "salary payment on shore leave"
-  change 1
+  change 0.01

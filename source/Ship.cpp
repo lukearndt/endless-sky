@@ -2604,7 +2604,7 @@ double Ship::ChangeMorale(double amount)
 
 string Ship::MoraleDescription() const
 {
-	int moraleIndex = min(9, max(0, (int)morale / 100 + 5));
+	int moraleIndex = min(9, max(0, ((int)morale + 500) / 100));
 	return MORALE_DESCRIPTIONS[moraleIndex];
 }
 

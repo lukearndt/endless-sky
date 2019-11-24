@@ -64,9 +64,12 @@ private:
 	// Apply morale change to the ship that crew members died on
 	static double DeathOnShip(const PlayerInfo &player, const std::shared_ptr<Ship> &
 	ship, const int64_t deathCount);
+		
+	// Apply morale change to an active ship for a successful salary payment
+	static double ShipSalaryPaymentActive(const PlayerInfo &player, const std::shared_ptr<Ship> &ship);
 	
-	// Apply morale change to a ship for a successful salary payment
-	static double ShipSalaryPayment(const PlayerInfo &player, const std::shared_ptr<Ship> &ship);
+	// Apply morale change to a parked ship for a successful salary payment
+	static double ShipSalaryPaymentParked(const PlayerInfo &player, const std::shared_ptr<Ship> &ship);
 	
 	// For events that change a ship's morale (eg shared profit):
 	

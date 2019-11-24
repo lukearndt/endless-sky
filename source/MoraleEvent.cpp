@@ -61,7 +61,7 @@ void MoraleEvent::CrewMemberDeath(const PlayerInfo &player, const shared_ptr<Shi
 void MoraleEvent::DeathInFleet(const PlayerInfo &player, const int64_t deathCount)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("death in fleet");
-	if(!moraleEvent)
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 		return;
 	
 	return player.ChangeFleetMorale(moraleEvent->MoraleChange() * deathCount);
@@ -72,7 +72,7 @@ void MoraleEvent::DeathInFleet(const PlayerInfo &player, const int64_t deathCoun
 double MoraleEvent::DeathOnShip(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t deathCount)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("death on ship");
-	if(!moraleEvent)
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 		return ship->Morale();
 	
 	return player.ChangeShipMorale(ship.get(), moraleEvent->MoraleChange() * deathCount);
@@ -86,14 +86,12 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 		? "profit shared on shore leave"
 		: "profit shared"
 	);
-	if(!moraleEvent)
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 		return ship->Morale();
 
-	double profitPerCrewMember = sharedProfit / (double)ship->Crew();
-	
 	return player.ChangeShipMorale(
 		ship.get(),
-		moraleEvent->MoraleChange() * profitPerCrewMember
+		moraleEvent->MoraleChange() * sharedProfit / (double)ship->Crew()
 	);
 }
 
@@ -102,28 +100,18 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 void MoraleEvent::SalaryFailure(const PlayerInfo &player)
 {
 	const MoraleEvent * moraleEvent = GetMoraleEvent("salary failure");
-	if(!moraleEvent)
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 	  return;
-	
-	// We don't want to keep checking for the flagship once we find it.
-	bool checkIfFlagship = true;
-	bool isFlagship = false;
 	
 	for(const shared_ptr<Ship> ship : player.Ships())
 	{
-		if(checkIfFlagship)
-			isFlagship = ship.get() == player.Flagship();
-			
-		int64_t shipSalary = Crew::SalariesForShip(ship, isFlagship);
+		int64_t shipSalary = Crew::SalariesForShip(
+			ship,
+			ship.get() == player.Flagship()
+		);
 		
 		if(shipSalary > 0)
 			player.ChangeShipMorale(ship.get(), moraleEvent->MoraleChange());
-		
-		if(isFlagship)
-		{
-			checkIfFlagship = false;
-			isFlagship = false;
-		}
 	}
 }
 
@@ -132,22 +120,45 @@ void MoraleEvent::SalaryFailure(const PlayerInfo &player)
 void MoraleEvent::SalaryPayment(const PlayerInfo &player)
 {
 	for(const shared_ptr<Ship> &ship : player.Ships())
-		ShipSalaryPayment(player, ship);
+	{
+		if(ship->IsParked())
+			ShipSalaryPaymentParked(player, ship);
+		else
+			ShipSalaryPaymentActive(player, ship);
+	}
 }
 
 
 
-double MoraleEvent::ShipSalaryPayment(const PlayerInfo &player, const shared_ptr<Ship> &ship)
+double MoraleEvent::ShipSalaryPaymentActive(const PlayerInfo &player, const shared_ptr<Ship> &ship)
 {
-	const MoraleEvent * moraleEvent = GetMoraleEvent(ship->IsParked()
-		? "salary payment on shore leave"
-		: "salary payment"
+	const MoraleEvent * moraleEvent = GetMoraleEvent("salary payment");
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
+		return ship->Morale();
+	
+	return player.ChangeShipMorale(ship.get(), moraleEvent->MoraleChange());
+}
+
+
+
+double MoraleEvent::ShipSalaryPaymentParked(const PlayerInfo &player, const shared_ptr<Ship> &ship)
+{
+	const MoraleEvent * moraleEvent = GetMoraleEvent("salary payment on shore leave");
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
+		return ship->Morale();
+	
+	const int64_t salariesPaid = Crew::SalariesForShip(
+		ship,
+		ship.get() == player.Flagship()
 	);
-	if(!moraleEvent)
-		return 0;
 	
-	return 0;
-	
+	if(salariesPaid > 0)
+		return player.ChangeShipMorale(
+			ship.get(),
+			moraleEvent->MoraleChange() * salariesPaid / (double)ship->Crew()
+		);
+	else
+		return ship->Morale();
 }
 
 
@@ -155,7 +166,7 @@ double MoraleEvent::ShipSalaryPayment(const PlayerInfo &player, const shared_ptr
 const MoraleEvent * MoraleEvent::GetMoraleEvent(const std::string &moraleEventId)
 {
 	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(moraleEventId);
-	if(!moraleEvent)
+	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 		Files::LogError("\nMissing \"morale event\" definition: \"" + moraleEventId + "\"");
 	return moraleEvent;
 }

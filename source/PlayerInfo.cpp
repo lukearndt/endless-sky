@@ -579,7 +579,9 @@ void PlayerInfo::IncrementDate()
 	
 	if(stepResult.second)
 		MoraleEvent::SalaryFailure(*this);
-	
+	else
+		MoraleEvent::SalaryPayment(*this);
+		
 	// Reset the reload counters for all your ships.
 	for(const shared_ptr<Ship> &ship : ships)
 		ship->GetArmament().ReloadAll();
