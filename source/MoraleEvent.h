@@ -39,7 +39,7 @@ public:
 	// Uses "salary failure" event
 	// MoraleChange is applied to every ship that has crew members that were
 	// supposed to be paid today
-	static void SalaryPaid(const PlayerInfo &player);
+	static void SalaryPayment(const PlayerInfo &player);
 	
 	// The captain has paid crew salaries
 	// Uses "salary failure" event
@@ -49,16 +49,24 @@ public:
 	
 	double BaseChance() const;
 	double ChancePerMorale() const;
-	double IsUndefined() const;
 	double MoraleChange() const;
 	double Threshold() const;
 	const std::string &Id() const;
 	const std::string &Message() const;
 
 private:
-	static const MoraleEvent * GetMoraleEvent(std::string moraleEventId);
+	// Get a Morale Event from the GameData and log an error if it's missing
+	static const MoraleEvent * GetMoraleEvent(const std::string &moraleEventId);
+	
+	// Apply morale change to the whole fleet in response to crew death
 	static void DeathInFleet(const PlayerInfo &player, const int64_t deathCount);
-	static double DeathOnShip(const PlayerInfo &player, const std::shared_ptr<Ship> &ship, const int64_t deathCount);
+	
+	// Apply morale change to the ship that crew members died on
+	static double DeathOnShip(const PlayerInfo &player, const std::shared_ptr<Ship> &
+	ship, const int64_t deathCount);
+	
+	// Apply morale change to a ship for a successful salary payment
+	static double ShipSalaryPayment(const PlayerInfo &player, const std::shared_ptr<Ship> &ship);
 	
 	// For events that change a ship's morale (eg shared profit):
 	
