@@ -10,7 +10,7 @@
 
 crew "default"
   name "Regulars"
-  salary 100
+  salary 100000
   shares 1
 
 crew "pilot"

@@ -28,6 +28,12 @@ public:
 	// MoraleChange is multiplied by sharedProfit and divided by crew count
 	static double ProfitShared(const PlayerInfo &player, const std::shared_ptr<Ship> &ship, const int64_t sharedProfit);
 	
+	// The captain has failed to pay crew salaries
+	// Uses "salary failure" event
+	// MoraleChange is applied to any ship that has crew members that were
+	// supposed to be paid today
+	static void SalaryFailure(const PlayerInfo &player);
+	
 	double BaseChance() const;
 	double ChancePerMorale() const;
 	double MoraleChange() const;

@@ -11,6 +11,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 */
 
 #include "MoraleEvent.h"
+#include "Crew.h"
 #include "DataNode.h"
 #include "Files.h"
 #include "GameData.h"
@@ -45,6 +46,8 @@ void MoraleEvent::Load(const DataNode &node)
 	}
 }
 
+
+
 double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship> &ship, const int64_t sharedProfit)
 {
 	const string moraleEventId = ship->IsParked()
@@ -65,6 +68,43 @@ double MoraleEvent::ProfitShared(const PlayerInfo &player, const shared_ptr<Ship
 		moraleEvent->MoraleChange() * profitPerCrewMember
 	);
 }
+
+
+
+void MoraleEvent::SalaryFailure(const PlayerInfo &player)
+{
+	const string moraleEventId = "salary failure";
+	
+	const MoraleEvent * moraleEvent = GameData::MoraleEvents().Get(moraleEventId);
+	if(!moraleEvent)
+	{
+		Files::LogError("\nMissing \"morale event\" definition: \"" + moraleEventId + "\"");
+		return;
+	}
+	
+	// We don't want to keep checking for the flagship once we find it.
+	bool checkIfFlagship = true;
+	bool isFlagship = false;
+	
+	for(const shared_ptr<Ship> ship : player.Ships())
+	{
+		if(checkIfFlagship)
+			isFlagship = ship.get() == player.Flagship();
+			
+		int64_t shipSalary = Crew::SalariesForShip(ship, isFlagship);
+		
+		if(shipSalary > 0)
+			player.ChangeShipMorale(ship.get(), moraleEvent->MoraleChange());
+		
+		if(isFlagship)
+		{
+			checkIfFlagship = false;
+			isFlagship = false;
+		}
+	}
+}
+
+
 
 double MoraleEvent::BaseChance() const
 {

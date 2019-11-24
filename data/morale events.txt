@@ -54,7 +54,7 @@
 
 # The captain has failed to pay crew salaries
 "morale event" "salary failure"
-  change -10
+  change 200.0001
 
 # The captain has paid crew salaries
 "morale event" "salary payment"

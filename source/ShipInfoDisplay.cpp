@@ -184,6 +184,8 @@ void ShipInfoDisplay::UpdateAttributes(const Ship &ship, const Depreciation &dep
 		attributeValues.push_back(Format::Number(ship.Fuel() * fuelCapacity)
 			+ " / " + Format::Number(fuelCapacity));
 	attributesHeight += 20;
+	attributeLabels.push_back("crew morale:");
+	attributeValues.push_back(ship.MoraleDescription() + " (" + Format::Number((int)ship.Morale()) + ")");
 	
 	double fullMass = emptyMass + (isGeneric ? attributes.Get("cargo space") : ship.Cargo().Used());
 	isGeneric &= (fullMass != emptyMass);

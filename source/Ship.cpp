@@ -102,6 +102,21 @@ const vector<string> Ship::CATEGORIES = {
 
 
 
+const vector<string> Ship::MORALE_DESCRIPTIONS = {
+	"Mutinous", // -500 to -400
+	"Hostile", // -300 to -200
+	"Angry", // -400 to -300
+	"Upset", // -200 to -100
+	"Concerned", // -100 to 0
+	"Relaxed", // 0 to 100
+	"Content", // 100 to 200
+	"Passionate", // 200 to 300
+	"Joyous", // 300 to 400
+	"Devoted" // 400 to 500
+};
+
+
+
 // Construct and Load() at the same time.
 Ship::Ship(const DataNode &node)
 {
@@ -2574,8 +2589,18 @@ double Ship::Morale() const
 
 double Ship::ChangeMorale(double amount)
 {
-	morale = min(500.0, max(-500.0, morale + amount));
+	double newMorale = min(500.0, max(-500.0, morale + amount));
+	Files::LogError("The morale of " + Name() + " has changed by " + to_string(amount) + " from " + to_string(morale) + " to " + to_string(newMorale));
+	morale = newMorale;
 	return morale;
+}
+
+
+
+string Ship::MoraleDescription() const
+{
+	int moraleIndex = morale / 100 + 5;
+	return MORALE_DESCRIPTIONS[moraleIndex];
 }
 
 

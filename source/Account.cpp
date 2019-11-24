@@ -132,13 +132,14 @@ void Account::PayExtra(int mortgage, int64_t amount)
 
 
 // Step forward one day, and return a string summarizing payments made.
-string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
+pair<string, bool> Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 {
 	ostringstream out;
 	
 	// Keep track of what payments were made and whether any could not be made.
 	salariesOwed += salaries;
 	maintenanceDue += maintenance;
+	bool missedCrewSalaries = false;
 	bool missedPayment = false;
 	
 	// Crew salaries take highest priority.
@@ -152,6 +153,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 			salariesPaid = max<int64_t>(credits, 0);
 			salariesOwed -= salariesPaid;
 			credits -= salariesPaid;
+			missedCrewSalaries = true;
 			missedPayment = true;
 			out << "You could not pay all your crew salaries.";
 		}
@@ -231,7 +233,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	
 	// If you didn't make any payments, no need to continue further.
 	if(!(salariesPaid + maintenancePaid + mortgagesPaid + finesPaid))
-		return out.str();
+		return make_pair(out.str(), missedCrewSalaries);
 	else if(missedPayment)
 		out << " ";
 	
@@ -278,7 +280,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 		if(finesPaid)
 			out << creditString(finesPaid) << " in fines.";
 	}
-	return out.str();
+	return make_pair(out.str(), missedCrewSalaries);
 }
 
 

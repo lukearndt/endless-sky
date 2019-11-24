@@ -25,6 +25,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Hardpoint.h"
 #include "Messages.h"
 #include "Mission.h"
+#include "MoraleEvent.h"
 #include "Outfit.h"
 #include "Person.h"
 #include "Planet.h"
@@ -571,9 +572,13 @@ void PlayerInfo::IncrementDate()
 	
 	// Have the player pay salaries, mortgages, etc. and print a message that
 	// summarizes the payments that were made.
-	string message = accounts.Step(assets, Salaries(), Maintenance());
-	if(!message.empty())
-		Messages::Add(message);
+	pair<string, bool> stepResult = accounts.Step(assets, Salaries(), Maintenance());
+	
+	if(!stepResult.first.empty())
+		Messages::Add(stepResult.first);
+	
+	if(stepResult.second)
+		MoraleEvent::SalaryFailure(*this);
 	
 	// Reset the reload counters for all your ships.
 	for(const shared_ptr<Ship> &ship : ships)

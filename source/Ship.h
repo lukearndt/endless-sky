@@ -55,6 +55,9 @@ public:
 	// These are all the possible category strings for ships.
 	static const std::vector<std::string> CATEGORIES;
 	
+	// These are all the possible morale descriptions for ships.
+	static const std::vector<std::string> MORALE_DESCRIPTIONS;
+	
 	class Bay {
 	public:
 		Bay(double x, double y, bool isFighter) : point(x * .5, y * .5), isFighter(isFighter) {}
@@ -286,6 +289,8 @@ public:
 	double Morale() const;
 	// Change the morale of the ship and return the new morale
 	double ChangeMorale(double amount);
+	// Get a description of the ship's current morale level
+	std::string MoraleDescription() const;
 	
 	// Get this ship's movement characteristics.
 	double Mass() const;

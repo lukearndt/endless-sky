@@ -40,8 +40,10 @@ public:
 	void AddCredits(int64_t value);
 	void PayExtra(int mortgage, int64_t amount);
 	
-	// Step forward one day, and return a string summarizing payments made.
-	std::string Step(int64_t assets, int64_t salaries, int64_t maintenance);
+	// Step forward one day, and return a pair of values:
+	// first: a string summarizing payments made.
+	// second: a boolean reporting if the player missed a crew salary payment
+	std::pair<std::string, bool> Step(int64_t assets, int64_t salaries, int64_t maintenance);
 	
 	// Overdue crew salaries:
 	int64_t SalariesOwed() const;

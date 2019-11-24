@@ -556,11 +556,12 @@ void PlayerInfoPanel::DrawFleet(const Rectangle &bounds)
 	// Table attributes.
 	Table table;
 	table.AddColumn(0, Table::LEFT);
-	table.AddColumn(220, Table::LEFT);
-	table.AddColumn(350, Table::LEFT);
-	table.AddColumn(550, Table::RIGHT);
+	table.AddColumn(200, Table::LEFT);
+	table.AddColumn(330, Table::LEFT);
+	table.AddColumn(480, Table::LEFT);
 	table.AddColumn(610, Table::RIGHT);
-	table.AddColumn(670, Table::RIGHT);
+	table.AddColumn(650, Table::RIGHT);
+	table.AddColumn(690, Table::RIGHT);
 	table.AddColumn(730, Table::RIGHT);
 	table.SetUnderline(0, 730);
 	table.DrawAt(bounds.TopLeft() + Point(10., 8.));
@@ -571,6 +572,7 @@ void PlayerInfoPanel::DrawFleet(const Rectangle &bounds)
 	table.Draw("ship");
 	table.Draw("model");
 	table.Draw("system");
+	table.Draw("morale");
 	table.Draw("shields");
 	table.Draw("hull");
 	table.Draw("fuel");
@@ -607,6 +609,8 @@ void PlayerInfoPanel::DrawFleet(const Rectangle &bounds)
 		
 		const System *system = ship.GetSystem();
 		table.Draw(system ? system->Name() : "");
+		
+		table.Draw(ship.MoraleDescription());
 		
 		string shields = to_string(static_cast<int>(100. * max(0., ship.Shields()))) + "%";
 		table.Draw(shields);
