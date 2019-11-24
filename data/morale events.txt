@@ -43,14 +43,14 @@
 "morale event" "mutiny on ship"
   "base chance" 0.1
   "chance per morale" 0.01
-  message "The {{ship name}} has mutinied against your leadership."
+  message "{{ship name}} has mutinied against your leadership."
   threshold -400
 
 # The ship joins a mutiny in progress if the ship's morale is below the threshold
 "morale event" "join mutiny in fleet"
   "base chance" 0.1
   "chance per morale" 0.01
-  message "The {{ship name}} has joined the {{triggering ship}} in its mutiny."
+  message "{{ship name}} has joined {{triggering ship}} in its mutiny."
   threshold -400
 
 # Profit has been shared with the crew on the ship
