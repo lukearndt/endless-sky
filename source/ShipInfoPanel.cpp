@@ -13,6 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "ShipInfoPanel.h"
 
 #include "Command.h"
+#include "Crew.h"
 #include "Dialog.h"
 #include "Font.h"
 #include "FontSet.h"
@@ -105,6 +106,7 @@ void ShipInfoPanel::Draw()
 	DrawShipStats(interface->GetBox("stats"));
 	DrawOutfits(interface->GetBox("outfits"), cargoBounds);
 	DrawWeapons(interface->GetBox("weapons"));
+	DrawCrew(interface->GetBox("crew"));
 	DrawCargo(cargoBounds);
 	
 	// If the player hovers their mouse over a ship attribute, show its tooltip.
@@ -585,6 +587,36 @@ void ShipInfoPanel::DrawCargo(const Rectangle &bounds)
 		table.DrawAt(Point(bounds.Left(), endY) + Point(10., 8.));
 		table.Draw("passengers:", dim);
 		table.Draw(to_string(cargo.Passengers()), bright);
+	}
+}
+
+
+
+void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
+{
+	Color dim = *GameData::Colors().Get("medium");
+	Color bright = *GameData::Colors().Get("bright");
+	Color backColor = *GameData::Colors().Get("faint");
+	const shared_ptr<Ship> &ship = *shipIt;
+
+	Table table;
+	table.AddColumn(0, Table::LEFT);
+	table.AddColumn(WIDTH - 20, Table::RIGHT);
+	table.SetUnderline(-5, WIDTH - 15);
+	table.DrawAt(bounds.TopLeft() + Point(10., 8.));
+	table.Draw("Crew", bright);
+	table.Advance();
+
+	for(const pair<const string, Crew> &crewPair : GameData::Crews())
+	{
+		const Crew crew = crewPair.second;
+		int64_t numberOnShip = Crew::NumberOnShip(crew, ship, ship.get() == player.Flagship());
+		if(numberOnShip)
+		{
+			table.Draw(crew.Name(), dim);
+			table.Draw(numberOnShip);
+			table.Advance();
+		}
 	}
 }
 
