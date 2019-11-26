@@ -104,9 +104,9 @@ void ShipInfoPanel::Draw()
 	plunderZones.clear();
 	Rectangle cargoBounds = interface->GetBox("cargo");
 	DrawShipStats(interface->GetBox("stats"));
+	DrawCrew(interface->GetBox("crew"));
 	DrawOutfits(interface->GetBox("outfits"), cargoBounds);
 	DrawWeapons(interface->GetBox("weapons"));
-	DrawCrew(interface->GetBox("crew"));
 	DrawCargo(cargoBounds);
 	
 	// If the player hovers their mouse over a ship attribute, show its tooltip.
@@ -594,18 +594,23 @@ void ShipInfoPanel::DrawCargo(const Rectangle &bounds)
 
 void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
 {
-	Color dim = *GameData::Colors().Get("medium");
-	Color bright = *GameData::Colors().Get("bright");
-	Color backColor = *GameData::Colors().Get("faint");
 	const shared_ptr<Ship> &ship = *shipIt;
 
+	// Get standard colors to draw with.
+	const Color &labelColor = *GameData::Colors().Get("medium");
+	const Color &valueColor = *GameData::Colors().Get("bright");
+	
 	Table table;
-	table.AddColumn(0, Table::LEFT);
-	table.AddColumn(WIDTH - 20, Table::RIGHT);
-	table.SetUnderline(-5, WIDTH - 15);
-	table.DrawAt(bounds.TopLeft() + Point(10., 8.));
-	table.Draw("Crew", bright);
+	table.AddColumn(10, Table::LEFT);
+	table.AddColumn(WIDTH - 90, Table::RIGHT);
+	table.AddColumn(WIDTH - 10, Table::RIGHT);
+	table.SetHighlight(0, WIDTH);
+	table.DrawAt(bounds.TopLeft());
+	table.DrawGap(10.);
+	
 	table.Advance();
+	table.Draw("count", labelColor);
+	table.Draw("salaries", labelColor);
 
 	for(const pair<const string, Crew> &crewPair : GameData::Crews())
 	{
@@ -613,9 +618,10 @@ void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
 		int64_t numberOnShip = Crew::NumberOnShip(crew, ship, ship.get() == player.Flagship());
 		if(numberOnShip)
 		{
-			table.Draw(crew.Name(), dim);
-			table.Draw(numberOnShip);
-			table.Advance();
+		// CheckHover(table, tableLabels[i]);
+			table.Draw(crew.Name() + ":", labelColor);
+			table.Draw(numberOnShip, valueColor);
+			table.Draw(crew.Salary() * numberOnShip, valueColor);
 		}
 	}
 }

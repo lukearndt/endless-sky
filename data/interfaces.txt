@@ -907,6 +907,8 @@ interface "info panel"
 		from -250 30 to 250 280
 	box "cargo"
 		from 250 -290 to 500 280
+	box "crew"
+		from 250 105 to 500 280
 	
 	visible if "ship tab"
 	button R
