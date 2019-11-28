@@ -89,14 +89,23 @@ vector<pair<int64_t, string>> Crew::FleetSummary(const PlayerInfo &player)
 {
 	vector<pair<int64_t, string>> fleetSummary;
 	
-	// Count up the total number of crew. Start at -1 because of the player.
-	int64_t totalCrew = -1;
-	for(const shared_ptr<Ship> &ship : player.Ships())
-		totalCrew += ship->Crew();
-	fleetSummary.push_back(make_pair(totalCrew, "total crew"));
-	
 	// Add the total crew salaries to the fleet summary
 	fleetSummary.push_back(make_pair(CalculateSalaries(player.Ships(), player.Flagship()), "crew salaries"));
+
+	// Count up the total number of crew. Start at -1 because of the player.
+	double totalCrewShares = 0.0;
+	for(const shared_ptr<Ship> &ship : player.Ships())
+		totalCrewShares += SharesForShip(ship, ship.get() == player.Flagship());
+	
+	// Add the total crew shares to the fleet summary
+	fleetSummary.push_back(make_pair((int64_t)totalCrewShares, "crew shares"));
+	
+	// Add the player's shares to the fleet summary
+	fleetSummary.push_back(make_pair(CAPTAIN_SHARES, "your shares"));
+	
+	// Add the current profit share % to the fleet summary
+	fleetSummary.push_back(make_pair((int64_t)(totalCrewShares / (CAPTAIN_SHARES + totalCrewShares) * 100), "profit share %"));
+	
 	
 	return fleetSummary;
 }
