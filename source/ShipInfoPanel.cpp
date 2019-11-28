@@ -602,18 +602,18 @@ void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
 	
 	Table table;
 	table.AddColumn(10, Table::LEFT);
-	table.AddColumn(WIDTH - 90, Table::RIGHT);
+	table.AddColumn(WIDTH - 80, Table::RIGHT);
 	table.AddColumn(WIDTH - 10, Table::RIGHT);
 	table.SetHighlight(0, WIDTH);
 	table.DrawAt(bounds.TopLeft());
 	table.DrawGap(10.);
 	
 	table.Advance();
-	table.Draw("count", labelColor);
+	table.Draw("shares", labelColor);
 	table.Draw("salaries", labelColor);
 
-	int64_t totalCrew = 0;
 	int64_t totalSalaries = 0;
+	int64_t totalShares = 0;
 	
 	for(const pair<const string, int64_t> &crewEntry : Crew::ShipManifest(ship, ship.get() == player.Flagship()))
 	{
@@ -621,15 +621,18 @@ void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
 		
 		// CheckHover(table, tableLabels[i]);
 		table.Draw(crew->Name() + ":", labelColor);
-		totalCrew += crewEntry.second;
-		table.Draw(crewEntry.second, valueColor);
+		
+		int64_t shares = (ship->IsParked() ? crew->ParkedShares() : crew->Shares()) * crewEntry.second;
+		totalShares += shares;
+		table.Draw(shares, valueColor);
+		
 		int64_t salaries = (ship->IsParked() ? crew->ParkedSalary() : crew->Salary()) * crewEntry.second;
 		totalSalaries += salaries;
 		table.Draw(Format::Credits(salaries), valueColor);
 	}
 	
 	table.Draw("Total:", labelColor);
-	table.Draw(totalCrew, valueColor);
+	table.Draw(totalShares, valueColor);
 	table.Draw(Format::Credits(totalSalaries), valueColor);
 }
 
