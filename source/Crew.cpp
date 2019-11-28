@@ -11,7 +11,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 */
 
 #include "Crew.h"
-#include "Files.h" 
+#include "Files.h"
 #include "GameData.h"
 #include "MoraleEvent.h"
 
@@ -20,7 +20,10 @@ using namespace std;
 void Crew::Load(const DataNode &node)
 {
 	if(node.Size() >= 2)
+	{
 		id = node.Token(1);
+		name = id;
+	}
 	
 	for(const DataNode &child : node)
 	{
@@ -28,14 +31,15 @@ void Crew::Load(const DataNode &node)
 		{
 			if(child.Token(0) == "name")
 				name = child.Token(1);
-			else if(child.Token(0) == "minimum per ship")
-				minimumPerShip = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "parked salary")
 				parkedSalary = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "parked shares")
 				parkedShares = max((int)child.Value(1), 0);
-			else if(child.Token(0) == "population per member")
-				populationPerMember = max((int)child.Value(1), 0);
+			else if(child.Token(0) == "place at")
+				for(int crewNumber = 1; crewNumber < child.Size(); ++crewNumber)
+					placeAt.push_back(max((int)child.Value(crewNumber), 0));
+			else if(child.Token(0) == "ship population per member")
+				shipPopulationPerMember = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "salary")
 				salary = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "shares")
@@ -57,7 +61,7 @@ void Crew::Load(const DataNode &node)
 int64_t Crew::CalculateSalaries(const vector<shared_ptr<Ship>> &ships, const Ship * flagship, const bool includeExtras)
 {
 	int64_t totalSalaries = 0;
-	
+
 	for(const shared_ptr<Ship> &ship : ships)
 	{
 		totalSalaries += Crew::SalariesForShip(
@@ -94,54 +98,23 @@ int64_t Crew::NumberOnShip(const Crew &crew, const shared_ptr<Ship> &ship, const
 		? ship->Crew()
 		: ship->RequiredCrew();
 	
-	// Apply the per-ship minimum.
-	 int64_t count = min(crew.MinimumPerShip(), countableCrewMembers);
-	
+	int64_t numberOnShip = 0;
+	// Total up the placed crew members within the ship's countable crew
+	for(int64_t crewNumber : crew.PlaceAt())
+		if(crewNumber <= countableCrewMembers)
+			++numberOnShip;
+		
 	// Prevent division by zero so that the universe doesn't implode.
-	if(crew.PopulationPerMember())
+	if(crew.ShipPopulationPerMember())
 	{
 		// Figure out how many of this kind of crew we have, by population.
-		count = max(
-			count,
-			countableCrewMembers / crew.PopulationPerMember()
+		numberOnShip = max(
+			numberOnShip,
+			countableCrewMembers / crew.ShipPopulationPerMember()
 		);
 	}
 	
-	return count;
-}
-
-
-double Crew::SharesForShip(
-	const shared_ptr<Ship> &ship,
-	const bool isFlagship,
-	const bool includeExtras
-)
-{
-	int64_t totalShares = 0;
-	
-	// Add up the salaries for all of the special crew members
-	for(const pair<const string, Crew>& crewPair : GameData::Crews())
-	{
-		// Skip the default crew members.
-		if(crewPair.first == "default")
-			continue;
-		
-		const Crew crew = crewPair.second;
-		// Figure out how many of this type of crew are on this ship
-		int numberOnShip = Crew::NumberOnShip(
-			crew,
-			ship,
-			isFlagship,
-			includeExtras
-		);
-		
-		// Add this type of crew member's shares to the result
-		totalShares += numberOnShip * (ship->IsParked()
-			? crew.ParkedShares()
-			: crew.Shares());
-	}
-	
-	return totalShares;
+	return numberOnShip;
 }
 
 
@@ -152,16 +125,66 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 	if(ship->IsDestroyed())
 		return 0;
 	
+	// Build a manifest of all of the crew members on the ship
+	const map<const string, int64_t> manifest = ShipManifest(ship, isFlagship, includeExtras);
+	
+	// Sum up all of the crew's salaries
+	// For performance, check if the ship is parked once, not every loop
 	int64_t salariesForShip = 0;
-	int64_t specialCrewMembers = 0;
+	if(ship->IsParked())
+		for(pair<const string, int64_t> entry : manifest)
+			salariesForShip += GameData::Crews().Get(entry.first)->ParkedSalary() * entry.second;
+	else
+		for(pair<const string, int64_t> entry : manifest)
+			salariesForShip += GameData::Crews().Get(entry.first)->Salary() * entry.second;
+	
+	return salariesForShip;
+}
+
+
+
+double Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
+{
+	// We don't need to pay dead people.
+	if(ship->IsDestroyed())
+		return 0;
+	
+	// Build a manifest of all of the crew members on the ship
+	const map<const string, int64_t> manifest = ShipManifest(ship, isFlagship, includeExtras);
+
+	int64_t sharesForShip = 0;
+	// Sum up all of the crew's shares
+	// For performance, check if the ship is parked once, not every loop
+	if(ship->IsParked())
+		for(pair<const string, int64_t> entry : manifest)
+			sharesForShip += GameData::Crews().Get(entry.first)->ParkedShares() * entry.second;
+	else
+		for(pair<const string, int64_t> entry : manifest)
+			sharesForShip += GameData::Crews().Get(entry.first)->Shares() * entry.second;
+	
+	return sharesForShip;
+}
+
+
+
+const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship, bool isFlagship, bool includeExtras)
+{
+	int64_t crewAccountedFor = 0;
+	// A crew ID, the number on the ship, and their individual salary amount
+	tuple<string, int64_t, int64_t> cheapestCrew;
+	// Map of a crew ID to the crew type paired with the number on the ship
+	map<const string, int64_t> manifest;
+	
+	// Check that we have crew data before proceeding
+	if(GameData::Crews().size() < 1)
+	{
+		Files::LogError("Error: could not find any crew member definitions in the data files.");
+		return manifest;
+	}
 	
 	// Add up the salaries for all of the special crew members
 	for(const pair<const string, Crew> &crewPair : GameData::Crews())
 	{
-		// Skip the default crew members.
-		if(crewPair.first == "default")
-			continue;
-		
 		const Crew crew = crewPair.second;
 		// Figure out how many of this type of crew are on this ship
 		int numberOnShip = Crew::NumberOnShip(
@@ -171,37 +194,30 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 			includeExtras
 		);
 		
-		specialCrewMembers += numberOnShip;
+		// Add the crew members to the manifest
+		manifest[crew.Id()] = numberOnShip;
 		
-		// Add this type of crew member's salaries to the result
-		salariesForShip += numberOnShip * (ship->IsParked()
-			? crew.ParkedSalary()
-			: crew.Salary());
+		// Add the crew members to the total so far
+		crewAccountedFor += numberOnShip;
+		
+		// If this is the cheapest crew type so far, keep track of it
+		// Use non-parked salaries so that crew are consistent
+		if(get<0>(cheapestCrew).empty() || crew.Salary() < get<2>(cheapestCrew))
+			cheapestCrew = make_tuple(crew.Id(), numberOnShip, crew.Salary());
 	}
 	
-	// Figure out how many regular crew members are left over
-	int64_t defaultCrewMembers = (
-		includeExtras 
+	// Figure out how many crew members we still need to account for
+	int64_t remainingCrewMembers = (includeExtras
 			? ship->Crew()
 			: ship->RequiredCrew()
-		) - specialCrewMembers
-		// If this is the flagship, one of the crew members is the Captain
+		) - crewAccountedFor
+		// If this is the flagship, one of the crew members is the player
 		- isFlagship;
-
-	const Crew *defaultCrew = GameData::Crews().Find("default");
 	
-	if(!defaultCrew)
-	{
-		defaultCrew = new Crew();
-		Files::LogError("\nWarning: No default crew member defined in data files");
-	}
+	// Fill out the ranks with the cheapest type of crew member
+	manifest[get<0>(cheapestCrew)] = get<1>(cheapestCrew) + remainingCrewMembers;
 	
-	// Add default crew members' salaries to the result
-	salariesForShip += defaultCrewMembers * (ship->IsParked()
-		? defaultCrew->ParkedSalary()
-		: defaultCrew->Salary());
-	
-	return salariesForShip;
+	return manifest;
 }
 
 
@@ -264,16 +280,16 @@ bool Crew::AvoidsFlagship() const
 
 
 
-double Crew::Shares() const
+double Crew::ParkedShares() const
 {
-	return shares;
+	return parkedShares;
 }
 
 
 
-int64_t Crew::MinimumPerShip() const
+double Crew::Shares() const
 {
-	return minimumPerShip;
+	return shares;
 }
 
 
@@ -285,23 +301,16 @@ int64_t Crew::ParkedSalary() const
 
 
 
-int64_t Crew::ParkedShares() const
-{
-	return parkedShares;
-}
-
-
-
-int64_t Crew::PopulationPerMember() const
-{
-	return populationPerMember;
-}
-
-
-
 int64_t Crew::Salary() const
 {
 	return salary;
+}
+
+
+
+int64_t Crew::ShipPopulationPerMember() const
+{
+	return shipPopulationPerMember;
 }
 
 
@@ -316,4 +325,11 @@ const string &Crew::Id() const
 const string &Crew::Name() const
 {
 	return name;
+}
+
+
+
+const vector<int64_t> &Crew::PlaceAt() const
+{
+	return placeAt;
 }
