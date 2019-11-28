@@ -118,35 +118,6 @@ int64_t Crew::NumberOnShip(const Crew &crew, const shared_ptr<Ship> &ship, const
 }
 
 
-double Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
-{
-	int64_t totalShares = 0;
-	
-	// Add up the salaries for all of the special crew members
-	for(const pair<const string, Crew>& crewPair : GameData::Crews())
-	{
-		// Skip the default crew members.
-		if(crewPair.first == "default")
-			continue;
-		
-		const Crew crew = crewPair.second;
-		// Figure out how many of this type of crew are on this ship
-		int numberOnShip = Crew::NumberOnShip(
-			crew,
-			ship,
-			includeExtras
-		);
-		
-		// Add this type of crew member's shares to the result
-		totalShares += numberOnShip * (ship->IsParked()
-			? crew.ParkedShares()
-			: crew.Shares());
-	}
-	
-	return totalShares;
-}
-
-
 
 int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
 {
@@ -166,8 +137,32 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 	else
 		for(pair<const string, int64_t> entry : manifest)
 			salariesForShip += GameData::Crews().Get(entry.first)->Salary() * entry.second;
-		
+	
 	return salariesForShip;
+}
+
+
+
+double Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
+{
+	// We don't need to pay dead people.
+	if(ship->IsDestroyed())
+		return 0;
+	
+	// Build a manifest of all of the crew members on the ship
+	const map<const string, int64_t> manifest = ShipManifest(ship, isFlagship, includeExtras);
+
+	int64_t sharesForShip = 0;
+	// Sum up all of the crew's shares
+	// For performance, check if the ship is parked once, not every loop
+	if(ship->IsParked())
+		for(pair<const string, int64_t> entry : manifest)
+			sharesForShip += GameData::Crews().Get(entry.first)->ParkedShares() * entry.second;
+	else
+		for(pair<const string, int64_t> entry : manifest)
+			sharesForShip += GameData::Crews().Get(entry.first)->Shares() * entry.second;
+	
+	return sharesForShip;
 }
 
 
