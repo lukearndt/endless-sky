@@ -146,6 +146,7 @@
 		A9D40D1A195DFAA60086EE52 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9D40D19195DFAA60086EE52 /* OpenGL.framework */; };
 		B5DDA6942001B7F600DBA76A /* News.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DDA6922001B7F600DBA76A /* News.cpp */; };
 		C962AF25238149B300777764 /* Crew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C962AF24238149B300777764 /* Crew.cpp */; };
+		C9E09543238FD02400924E9D /* MoraleEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C9E09541238FD02400924E9D /* MoraleEvent.cpp */; };
 		DF8D57E11FC25842001525DA /* Dictionary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF8D57DF1FC25842001525DA /* Dictionary.cpp */; };
 		DF8D57E51FC25889001525DA /* Visual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF8D57E21FC25889001525DA /* Visual.cpp */; };
 		DFAAE2A61FD4A25C0072C0A8 /* BatchDrawList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFAAE2A21FD4A25C0072C0A8 /* BatchDrawList.cpp */; };
@@ -435,6 +436,8 @@
 		B5DDA6932001B7F600DBA76A /* News.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = News.h; path = source/News.h; sourceTree = "<group>"; };
 		C962AF23238149A800777764 /* Crew.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Crew.h; path = source/Crew.h; sourceTree = "<group>"; };
 		C962AF24238149B300777764 /* Crew.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Crew.cpp; path = source/Crew.cpp; sourceTree = "<group>"; };
+		C9E09541238FD02400924E9D /* MoraleEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MoraleEvent.cpp; path = source/MoraleEvent.cpp; sourceTree = "<group>"; };
+		C9E09542238FD02400924E9D /* MoraleEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MoraleEvent.h; path = source/MoraleEvent.h; sourceTree = "<group>"; };
 		DF8D57DF1FC25842001525DA /* Dictionary.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Dictionary.cpp; path = source/Dictionary.cpp; sourceTree = "<group>"; };
 		DF8D57E01FC25842001525DA /* Dictionary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Dictionary.h; path = source/Dictionary.h; sourceTree = "<group>"; };
 		DF8D57E21FC25889001525DA /* Visual.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Visual.cpp; path = source/Visual.cpp; sourceTree = "<group>"; };
@@ -613,6 +616,8 @@
 				A968633F1AE6FD0C004FE1FE /* MissionAction.h */,
 				A96863401AE6FD0C004FE1FE /* MissionPanel.cpp */,
 				A96863411AE6FD0C004FE1FE /* MissionPanel.h */,
+				C9E09541238FD02400924E9D /* MoraleEvent.cpp */,
+				C9E09542238FD02400924E9D /* MoraleEvent.h */,
 				A96863421AE6FD0C004FE1FE /* Mortgage.cpp */,
 				A96863431AE6FD0C004FE1FE /* Mortgage.h */,
 				A9BDFB521E00B8AA00A6B27E /* Music.cpp */,
@@ -828,6 +833,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				Base,
 			);
 			mainGroup = A9CC52601950C9F6004E4E22;
@@ -895,6 +901,7 @@
 				A96863A61AE6FD0E004FE1FE /* Audio.cpp in Sources */,
 				A96863A21AE6FD0E004FE1FE /* Angle.cpp in Sources */,
 				A966A5AB1B964E6300DFF69C /* Person.cpp in Sources */,
+				C9E09543238FD02400924E9D /* MoraleEvent.cpp in Sources */,
 				A96863FE1AE6FD0E004FE1FE /* StartConditions.cpp in Sources */,
 				A96863A71AE6FD0E004FE1FE /* BankPanel.cpp in Sources */,
 				A96863DA1AE6FD0E004FE1FE /* Mortgage.cpp in Sources */,
