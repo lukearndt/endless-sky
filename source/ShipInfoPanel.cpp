@@ -612,18 +612,25 @@ void ShipInfoPanel::DrawCrew(const Rectangle &bounds)
 	table.Draw("count", labelColor);
 	table.Draw("salaries", labelColor);
 
-	for(const pair<const string, Crew> &crewPair : GameData::Crews())
+	int64_t totalCrew = 0;
+	int64_t totalSalaries = 0;
+	
+	for(const pair<const string, int64_t> &crewEntry : Crew::ShipManifest(ship, ship.get() == player.Flagship()))
 	{
-		const Crew crew = crewPair.second;
-		int64_t numberOnShip = Crew::NumberOnShip(crew, ship, ship.get() == player.Flagship());
-		if(numberOnShip)
-		{
+		const Crew * crew = GameData::Crews().Get(crewEntry.first);
+		
 		// CheckHover(table, tableLabels[i]);
-			table.Draw(crew.Name() + ":", labelColor);
-			table.Draw(numberOnShip, valueColor);
-			table.Draw(crew.Salary() * numberOnShip, valueColor);
-		}
+		table.Draw(crew->Name() + ":", labelColor);
+		totalCrew += crewEntry.second;
+		table.Draw(crewEntry.second, valueColor);
+		int64_t salaries = (ship->IsParked() ? crew->ParkedSalary() : crew->Salary()) * crewEntry.second;
+		totalSalaries += salaries;
+		table.Draw(Format::Credits(salaries), valueColor);
 	}
+	
+	table.Draw("Total:", labelColor);
+	table.Draw(totalCrew, valueColor);
+	table.Draw(Format::Credits(totalSalaries), valueColor);
 }
 
 
