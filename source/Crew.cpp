@@ -103,7 +103,7 @@ int64_t Crew::NumberOnShip(const Crew &crew, const shared_ptr<Ship> &ship, const
 	for(int64_t crewNumber : crew.PlaceAt())
 		if(crewNumber <= countableCrewMembers)
 			++count;
-		
+	
 	// Prevent division by zero so that the universe doesn't implode.
 	if(crew.ShipPopulationPerMember())
 	{
