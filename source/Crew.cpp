@@ -13,6 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Crew.h"
 #include "Files.h"
 #include "GameData.h"
+#include "PlayerInfo.h"
 
 using namespace std;
 
@@ -80,6 +81,24 @@ int64_t Crew::CostOfExtraCrew(const vector<shared_ptr<Ship>> &ships, const Ship 
 	// Calculate with and without extras and return the difference.
 	return Crew::CalculateSalaries(ships, flagship, true)
 		- Crew::CalculateSalaries(ships, flagship, false);
+}
+
+
+
+vector<pair<int64_t, string>> Crew::FleetSummary(const PlayerInfo &player)
+{
+	vector<pair<int64_t, string>> fleetSummary;
+	
+	// Count up the total number of crew. Start at -1 because of the player.
+	int64_t totalCrew = -1;
+	for(const shared_ptr<Ship> &ship : player.Ships())
+		totalCrew += ship->Crew();
+	fleetSummary.push_back(make_pair(totalCrew, "total crew"));
+	
+	// Add the total crew salaries to the fleet summary
+	fleetSummary.push_back(make_pair(CalculateSalaries(player.Ships(), player.Flagship()), "crew salaries"));
+	
+	return fleetSummary;
 }
 
 

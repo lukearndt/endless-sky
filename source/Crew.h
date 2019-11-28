@@ -26,6 +26,9 @@ public:
 	// Calculate the total cost of the flagship's extra crew
 	static int64_t CostOfExtraCrew(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship);
 
+	// Generate a fleet summary for display
+	static std::vector<std::pair<int64_t, std::string>> FleetSummary(const PlayerInfo &player);
+	
 	// Figure out how many of a given crew member are on a ship
 	static int64_t NumberOnShip(const Crew &crew, const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
