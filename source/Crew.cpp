@@ -121,36 +121,36 @@ vector<pair<int64_t, string>> Crew::FleetSummary(const PlayerInfo &player)
 
 
 int64_t Crew::NumberOnShip(const Crew &crew, const shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
-{
-	int64_t count = 0;
-	
+{	
 	// If this is the flagship, check if this crew avoids the flagship.
 	if(isFlagship && crew.AvoidsFlagship())
-		return count;
+		return 0;
 	// If this is an escort, check if this crew avoids escorts.
 	if(!isFlagship && crew.AvoidsEscorts())
-		return count;
+		return 0;
 	
 	const int64_t countableCrewMembers = includeExtras
 		? ship->Crew()
 		: ship->RequiredCrew();
+
+	int64_t numberOnShip = 0;
 	
 	// Total up the placed crew members within the ship's countable crew
 	for(int64_t crewNumber : crew.PlaceAt())
 		if(crewNumber <= countableCrewMembers)
-			++count;
+			++numberOnShip;
 	
 	// Prevent division by zero so that the universe doesn't implode.
 	if(crew.ShipPopulationPerMember())
 	{
 		// Figure out how many of this kind of crew we have, by population.
-		count = max(
-			count,
+		numberOnShip = max(
+			numberOnShip,
 			countableCrewMembers / crew.ShipPopulationPerMember()
 		);
 	}
 	
-	return count;
+	return numberOnShip;
 }
 
 
@@ -237,8 +237,15 @@ const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship
 		crewAccountedFor += numberOnShip;
 		
 		// If this is the cheapest crew type so far, keep track of it
+		// Disqualify the player because there should be only one of those
 		// Use non-parked salaries so that crew are consistent
-		if(get<0>(cheapestCrew).empty() || crew.Salary() < get<2>(cheapestCrew))
+		if(
+			crew.Id() != "player" &&
+			(
+				get<0>(cheapestCrew).empty() ||
+				crew.Salary() < get<2>(cheapestCrew)
+			)
+		)
 			cheapestCrew = make_tuple(crew.Id(), numberOnShip, crew.Salary());
 	}
 	
