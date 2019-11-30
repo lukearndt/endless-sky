@@ -224,30 +224,29 @@ const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship
 
 int64_t Crew::ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const int64_t grossProfit)
 {
-	if(grossProfit <= 0) return 0;
+	if(grossProfit <= 0)
+		return 0;
 	
-	bool checkIfFlagship = true;
-	bool isFlagship = false;
+	const Crew * playerCrew = GameData::Crews().Get("player");
+	if(!playerCrew || playerCrew->Shares() == 0)
+		return 0;
 	
-	int64_t totalCrewShares = 0;
+	int64_t totalFleetShares = 0;
 	
 	for(const shared_ptr<Ship> &ship : ships)
 	{
-		if(checkIfFlagship)
-			isFlagship = ship.get() == flagship;
-		
-		totalCrewShares += Crew::SharesForShip(
+		totalFleetShares += Crew::SharesForShip(
 			ship,
 			ship.get() == flagship
 		);
-		
-		if(isFlagship)
-			isFlagship = checkIfFlagship = false;
 	}
 	
-	double totalFleetShares = PLAYER_SHARES + totalCrewShares;
+	// If the player is the sole shareholder, return 0 directly.
+	// This prevents floating point rounding from reporting profit shares
+	// when there shouldn't be any.
+	if(playerCrew->Shares() == totalFleetShares) return 0;
 	
-	return grossProfit * totalCrewShares / totalFleetShares;
+	return grossProfit * playerCrew->Shares() / (double)totalFleetShares;
 }
 
 
@@ -273,13 +272,6 @@ double Crew::ParkedShares() const
 
 
 
-double Crew::Shares() const
-{
-	return shares;
-}
-
-
-
 int64_t Crew::ParkedSalary() const
 {
 	return parkedSalary;
@@ -290,6 +282,13 @@ int64_t Crew::ParkedSalary() const
 int64_t Crew::Salary() const
 {
 	return salary;
+}
+
+
+
+int64_t Crew::Shares() const
+{
+	return shares;
 }
 
 

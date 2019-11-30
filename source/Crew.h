@@ -18,8 +18,6 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 class Crew
 {
 public:
-	const static int64_t PLAYER_SHARES = 1000;
-	
 	// Calculate one day's salaries for the Player's fleet
 	static int64_t CalculateSalaries(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const bool includeExtras = true);
 	
@@ -47,9 +45,9 @@ public:
 	bool AvoidsEscorts() const;
 	bool AvoidsFlagship() const;
 	double ParkedShares() const;
-	double Shares() const;
 	int64_t ParkedSalary() const;
 	int64_t Salary() const;
+	int64_t Shares() const;
 	int64_t ShipPopulationPerMember() const;
 	const std::string &Id() const;
 	const std::string &Name() const;
@@ -62,12 +60,12 @@ private:
 	bool avoidsFlagship = false;
 	// The crew member's profit shares while parked (minimum 0)
 	double parkedShares = 0;
-	// The crew member's shares in the fleet, for profit sharing (minimum 0)
-	double shares = 0;
 	// The number of credits paid daily while parked (minimum 0)
 	int64_t parkedSalary = 0;
 	// The number of credits paid daily (minimum 0)
 	int64_t salary = 100;
+	// The crew member's shares in the fleet's profits (minimum 0)
+	int64_t shares = 0;
 	// Every nth crew member on the ship will be this crew member
 	int64_t shipPopulationPerMember = 0;
 	// The id that the crew member is stored against in GameData::Crews()
