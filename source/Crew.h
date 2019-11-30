@@ -28,7 +28,7 @@ public:
 	static int64_t NumberOnShip(const Crew &crew, const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
 	// Return the total number of profit shares for a ship
-	static double SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
+	static int64_t SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
@@ -44,8 +44,8 @@ public:
 	
 	bool AvoidsEscorts() const;
 	bool AvoidsFlagship() const;
-	double ParkedShares() const;
 	int64_t ParkedSalary() const;
+	int64_t ParkedShares() const;
 	int64_t Salary() const;
 	int64_t Shares() const;
 	int64_t ShipPopulationPerMember() const;
@@ -58,10 +58,10 @@ private:
 	bool avoidsEscorts = false;
 	// If true, the crew member will not appear on the flagship
 	bool avoidsFlagship = false;
-	// The crew member's profit shares while parked (minimum 0)
-	double parkedShares = 0;
 	// The number of credits paid daily while parked (minimum 0)
 	int64_t parkedSalary = 0;
+	// The crew member's profit shares while parked (minimum 0)
+	int64_t parkedShares = 0;
 	// The number of credits paid daily (minimum 0)
 	int64_t salary = 100;
 	// The crew member's shares in the fleet's profits (minimum 0)

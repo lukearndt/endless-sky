@@ -143,7 +143,7 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 
 
 
-double Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
+int64_t Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
 {
 	// We don't need to pay dead people.
 	if(ship->IsDestroyed())
@@ -242,11 +242,22 @@ int64_t Crew::ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const
 	}
 	
 	// If the player is the sole shareholder, return 0 directly.
-	// This prevents floating point rounding from reporting profit shares
-	// when there shouldn't be any.
-	if(playerCrew->Shares() == totalFleetShares) return 0;
-	
-	return grossProfit * playerCrew->Shares() / (double)totalFleetShares;
+	// This prevents us from sharing a small amount of profit due to
+	// floating point rounding issues.
+	if(playerCrew->Shares() == totalFleetShares)
+	{
+		Files::LogError(
+		"You are the sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
+		", totalFleetShares: " + to_string(totalFleetShares)
+	);
+		return 0;
+	}
+	Files::LogError(
+		"Not sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
+		", totalFleetShares: " + to_string(totalFleetShares)
+	);
+	int64_t totalCrewShares = totalFleetShares - playerCrew->Shares();
+	return grossProfit * totalCrewShares / (double)totalFleetShares;
 }
 
 
@@ -265,16 +276,16 @@ bool Crew::AvoidsFlagship() const
 
 
 
-double Crew::ParkedShares() const
+int64_t Crew::ParkedSalary() const
 {
-	return parkedShares;
+	return parkedSalary;
 }
 
 
 
-int64_t Crew::ParkedSalary() const
+int64_t Crew::ParkedShares() const
 {
-	return parkedSalary;
+	return parkedShares;
 }
 
 
