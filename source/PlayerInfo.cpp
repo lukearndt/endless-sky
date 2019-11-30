@@ -14,6 +14,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "Audio.h"
 #include "ConversationPanel.h"
+#include "Crew.h"
 #include "DataFile.h"
 #include "DataWriter.h"
 #include "Dialog.h"
@@ -668,21 +669,7 @@ Account &PlayerInfo::Accounts()
 // Calculate how much the player pays in daily salaries.
 int64_t PlayerInfo::Salaries() const
 {
-	// Don't count extra crew on anything but the flagship.
-	int64_t crew = 0;
-	const Ship *flagship = Flagship();
-	if(flagship)
-		crew = flagship->Crew() - flagship->RequiredCrew();
-	
-	// A ship that is "parked" remains on a planet and requires no salaries.
-	for(const shared_ptr<Ship> &ship : ships)
-		if(!ship->IsParked() && !ship->IsDestroyed())
-			crew += ship->RequiredCrew();
-	if(!crew)
-		return 0;
-	
-	// Every crew member except the player receives 100 credits per day.
-	return 100 * (crew - 1);
+	return Crew::CalculateSalaries(ships, Flagship());
 }
 
 
@@ -1315,7 +1302,9 @@ bool PlayerInfo::TakeOff(UI *ui)
 			income += cost;
 		}
 	}
-	accounts.AddCredits(income);
+	int64_t grossProfit = income - totalBasis;
+	int64_t sharedProfit = Crew::ShareProfit(ships, Flagship(), grossProfit);
+	accounts.AddCredits(income - sharedProfit);
 	cargo.Clear();
 	stockDepreciation = Depreciation();
 	if(sold)
@@ -1323,10 +1312,12 @@ bool PlayerInfo::TakeOff(UI *ui)
 		// Report how much excess cargo was sold, and what profit you earned.
 		ostringstream out;
 		out << "You sold " << sold << " tons of excess cargo for " << Format::Credits(income) << " credits";
-		if(totalBasis && totalBasis != income)
-			out << " (for a profit of " << (income - totalBasis) << " credits).";
-		else
-			out << ".";
+		if(grossProfit > 0)
+			out << " (for a profit of " << Format::Credits(grossProfit) << " credits)";
+		if(sharedProfit > 0)
+			out << " and distributed " + Format::Credits(sharedProfit) + " credits among your crew";
+		out << ".";
+		
 		Messages::Add(out.str());
 	}
 	
