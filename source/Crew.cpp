@@ -222,11 +222,7 @@ const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship
 
 
 
-int64_t Crew::ShareProfit(
-	const std::vector<std::shared_ptr<Ship>> &ships,
-	const Ship * flagship,
-	const int64_t grossProfit
-)
+int64_t Crew::ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const int64_t grossProfit)
 {
 	if(grossProfit <= 0) return 0;
 	
@@ -249,7 +245,7 @@ int64_t Crew::ShareProfit(
 			isFlagship = checkIfFlagship = false;
 	}
 	
-	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
+	double totalFleetShares = PLAYER_SHARES + totalCrewShares;
 	
 	return grossProfit * totalCrewShares / totalFleetShares;
 }

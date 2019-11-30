@@ -18,7 +18,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 class Crew
 {
 public:
-	const static int64_t CAPTAIN_SHARES = 1000;
+	const static int64_t PLAYER_SHARES = 1000;
 	
 	// Calculate one day's salaries for the Player's fleet
 	static int64_t CalculateSalaries(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const bool includeExtras = true);
@@ -30,21 +30,13 @@ public:
 	static int64_t NumberOnShip(const Crew &crew, const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
 	// Return the total number of profit shares for a ship
-	static double SharesForShip(
-		const std::shared_ptr<Ship> &ship,
-		const bool isFlagship,
-		const bool includeExtras = true
-	);
+	static double SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
 
 	// Share profits the fleet. Returns how many credits were distributed.
-	static int64_t ShareProfit(
-		const std::vector<std::shared_ptr<Ship>> &ships,
-		const Ship * flagship,
-		const int64_t grossProfit
-	);
+	static int64_t ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const int64_t grossProfit);
 	
 	// List the crew members on a ship, and how many there are of each type
 	static const std::map<const std::string, int64_t> ShipManifest(const std::shared_ptr<Ship> &ship, bool isFlagship, bool includeExtras = true);
