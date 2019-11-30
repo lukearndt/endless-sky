@@ -92,21 +92,29 @@ vector<pair<int64_t, string>> Crew::FleetSummary(const PlayerInfo &player)
 	// Add the total crew salaries to the fleet summary
 	fleetSummary.push_back(make_pair(CalculateSalaries(player.Ships(), player.Flagship()), "crew salaries"));
 
-	// Count up the total number of crew. Start at -1 because of the player.
-	double totalCrewShares = 0.0;
+	const Crew * playerCrew = GameData::Crews().Get("player");
+	if(!playerCrew || playerCrew->Shares() <= 0)
+	{
+		Files::LogError("Missing player shares entry in crew data definitions; cannot use profit sharing");
+		return fleetSummary;
+	}
+
+	// Total the shares of each ship in the fleet
+	int64_t totalFleetShares = 0;
 	for(const shared_ptr<Ship> &ship : player.Ships())
-		totalCrewShares += SharesForShip(ship, ship.get() == player.Flagship());
+		totalFleetShares += SharesForShip(ship, ship.get() == player.Flagship());
+	
+	int64_t totalCrewShares = totalFleetShares - playerCrew->Shares();
 	
 	// Add the total crew shares to the fleet summary
-	fleetSummary.push_back(make_pair((int64_t)totalCrewShares, "crew shares"));
+	fleetSummary.push_back(make_pair(totalCrewShares, "crew shares"));
 	
 	// Add the player's shares to the fleet summary
-	fleetSummary.push_back(make_pair(CAPTAIN_SHARES, "your shares"));
-	
+	fleetSummary.push_back(make_pair(playerCrew->Shares(), "your shares"));
+
 	// Add the current profit share % to the fleet summary
-	fleetSummary.push_back(make_pair((int64_t)(totalCrewShares / (CAPTAIN_SHARES + totalCrewShares) * 100), "profit share %"));
-	
-	
+	fleetSummary.push_back(make_pair(totalCrewShares * 100 / totalFleetShares, "profit share %"));
+
 	return fleetSummary;
 }
 
@@ -171,7 +179,7 @@ int64_t Crew::SalariesForShip(const shared_ptr<Ship> &ship, const bool isFlagshi
 
 
 
-double Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
+int64_t Crew::SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras)
 {
 	// We don't need to pay dead people.
 	if(ship->IsDestroyed())
@@ -250,36 +258,42 @@ const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship
 
 
 
-int64_t Crew::ShareProfit(
-	const std::vector<std::shared_ptr<Ship>> &ships,
-	const Ship * flagship,
-	const int64_t grossProfit
-)
+int64_t Crew::ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const int64_t grossProfit)
 {
-	if(grossProfit <= 0) return 0;
+	if(grossProfit <= 0)
+		return 0;
 	
-	bool checkIfFlagship = true;
-	bool isFlagship = false;
+	const Crew * playerCrew = GameData::Crews().Get("player");
+	if(!playerCrew || playerCrew->Shares() == 0)
+		return 0;
 	
-	int64_t totalCrewShares = 0;
+	int64_t totalFleetShares = 0;
 	
 	for(const shared_ptr<Ship> &ship : ships)
 	{
-		if(checkIfFlagship)
-			isFlagship = ship.get() == flagship;
-		
-		totalCrewShares += Crew::SharesForShip(
+		totalFleetShares += Crew::SharesForShip(
 			ship,
 			ship.get() == flagship
 		);
-		
-		if(isFlagship)
-			isFlagship = checkIfFlagship = false;
 	}
 	
-	double totalFleetShares = Crew::CAPTAIN_SHARES + totalCrewShares;
-	
-	return grossProfit * totalCrewShares / totalFleetShares;
+	// If the player is the sole shareholder, return 0 directly.
+	// This prevents us from sharing a small amount of profit due to
+	// floating point rounding issues.
+	if(playerCrew->Shares() == totalFleetShares)
+	{
+		Files::LogError(
+		"You are the sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
+		", totalFleetShares: " + to_string(totalFleetShares)
+	);
+		return 0;
+	}
+	Files::LogError(
+		"Not sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
+		", totalFleetShares: " + to_string(totalFleetShares)
+	);
+	int64_t totalCrewShares = totalFleetShares - playerCrew->Shares();
+	return grossProfit * totalCrewShares / (double)totalFleetShares;
 }
 
 
@@ -298,20 +312,6 @@ bool Crew::AvoidsFlagship() const
 
 
 
-double Crew::ParkedShares() const
-{
-	return parkedShares;
-}
-
-
-
-double Crew::Shares() const
-{
-	return shares;
-}
-
-
-
 int64_t Crew::ParkedSalary() const
 {
 	return parkedSalary;
@@ -319,9 +319,23 @@ int64_t Crew::ParkedSalary() const
 
 
 
+int64_t Crew::ParkedShares() const
+{
+	return parkedShares;
+}
+
+
+
 int64_t Crew::Salary() const
 {
 	return salary;
+}
+
+
+
+int64_t Crew::Shares() const
+{
+	return shares;
 }
 
 
