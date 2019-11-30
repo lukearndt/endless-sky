@@ -230,8 +230,9 @@ const map<const string, int64_t> Crew::ShipManifest(const shared_ptr<Ship> &ship
 			includeExtras
 		);
 		
-		// Add the crew members to the manifest
-		manifest[crew.Id()] = numberOnShip;
+		// Add the crew members to the manifest if there are any on the ship
+		if(numberOnShip)
+			manifest[crew.Id()] = numberOnShip;
 		
 		// Add the crew members to the total so far
 		crewAccountedFor += numberOnShip;

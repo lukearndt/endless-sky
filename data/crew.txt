@@ -20,7 +20,7 @@ crew "regular"
   shares 1
 
 crew "pilot"
-  name "Pilots"
+  name "Pilot"
   salary 250
   shares 20
   "avoids flagship"

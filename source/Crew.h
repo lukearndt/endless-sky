@@ -66,7 +66,7 @@ private:
 	// The crew member's profit shares while parked (minimum 0)
 	int64_t parkedShares = 0;
 	// The number of credits paid daily (minimum 0)
-	int64_t salary = 100;
+	int64_t salary = 0;
 	// The crew member's shares in the fleet's profits (minimum 0)
 	int64_t shares = 0;
 	// Every nth crew member on the ship will be this crew member
