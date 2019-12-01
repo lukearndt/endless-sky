@@ -18,45 +18,39 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 class Crew
 {
 public:
-	const static int64_t CAPTAIN_SHARES = 1000;
-	
 	// Calculate one day's salaries for the Player's fleet
 	static int64_t CalculateSalaries(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship, const bool includeExtras = true);
 	
 	// Calculate the total cost of the flagship's extra crew
 	static int64_t CostOfExtraCrew(const std::vector<std::shared_ptr<Ship>> &ships, const Ship * flagship);
 
+	// Generate a fleet summary for display
+	static std::vector<std::pair<int64_t, std::string>> FleetSummary(const PlayerInfo &player);
+	
 	// Figure out how many of a given crew member are on a ship
 	static int64_t NumberOnShip(const Crew &crew, const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
-
+	
 	// Return the total number of profit shares for a ship
-	static double SharesForShip(
-		const std::shared_ptr<Ship> &ship,
-		const bool isFlagship,
-		const bool includeExtras = true
-	);
-
+	static int64_t SharesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
+	
 	// Calculate one day's salaries for a ship
 	static int64_t SalariesForShip(const std::shared_ptr<Ship> &ship, const bool isFlagship, const bool includeExtras = true);
-
+	
 	// Share profits the fleet. Returns how many credits were distributed.
-	static int64_t ShareProfit(
-		const PlayerInfo &player,
-		const int64_t grossProfit
-	);
+	static int64_t ShareProfit(const PlayerInfo &player, const int64_t grossProfit);
 	
 	// List the crew members on a ship, and how many there are of each type
 	static const std::map<const std::string, int64_t> ShipManifest(const std::shared_ptr<Ship> &ship, bool isFlagship, bool includeExtras = true);
-
+	
 	// Load a definition for a crew member.
 	void Load(const DataNode &node);
 	
 	bool AvoidsEscorts() const;
 	bool AvoidsFlagship() const;
-	double ParkedShares() const;
-	double Shares() const;
 	int64_t ParkedSalary() const;
+	int64_t ParkedShares() const;
 	int64_t Salary() const;
+	int64_t Shares() const;
 	int64_t ShipPopulationPerMember() const;
 	const std::string &Id() const;
 	const std::string &Name() const;
@@ -67,14 +61,14 @@ private:
 	bool avoidsEscorts = false;
 	// If true, the crew member will not appear on the flagship
 	bool avoidsFlagship = false;
-	// The crew member's profit shares while parked (minimum 0)
-	double parkedShares = 0;
-	// The crew member's shares in the fleet, for profit sharing (minimum 0)
-	double shares = 0;
 	// The number of credits paid daily while parked (minimum 0)
 	int64_t parkedSalary = 0;
+	// The crew member's profit shares while parked (minimum 0)
+	int64_t parkedShares = 0;
 	// The number of credits paid daily (minimum 0)
-	int64_t salary = 100;
+	int64_t salary = 0;
+	// The crew member's shares in the fleet's profits (minimum 0)
+	int64_t shares = 0;
 	// Every nth crew member on the ship will be this crew member
 	int64_t shipPopulationPerMember = 0;
 	// The id that the crew member is stored against in GameData::Crews()
