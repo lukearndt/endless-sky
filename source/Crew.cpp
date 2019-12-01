@@ -289,17 +289,7 @@ int64_t Crew::ShareProfit(const std::vector<std::shared_ptr<Ship>> &ships, const
 	// This prevents us from sharing a small amount of profit due to
 	// floating point rounding issues.
 	if(playerCrew->Shares() == totalFleetShares)
-	{
-		Files::LogError(
-		"You are the sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
-		", totalFleetShares: " + to_string(totalFleetShares)
-	);
 		return 0;
-	}
-	Files::LogError(
-		"Not sole shareholder. playerCrew->Shares(): " + to_string(playerCrew->Shares()) +
-		", totalFleetShares: " + to_string(totalFleetShares)
-	);
 	int64_t totalCrewShares = totalFleetShares - playerCrew->Shares();
 	return grossProfit * totalCrewShares / (double)totalFleetShares;
 }
