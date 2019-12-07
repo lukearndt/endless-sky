@@ -103,7 +103,7 @@ void MoraleEvent::SalaryFailure(const PlayerInfo &player)
 	if(!moraleEvent || moraleEvent->MoraleChange() == 0)
 	  return;
 	
-	for(const shared_ptr<Ship> ship : player.Ships())
+	for(const shared_ptr<Ship> &ship : player.Ships())
 	{
 		int64_t shipSalary = Crew::SalariesForShip(
 			ship,

@@ -81,9 +81,11 @@ private:
 	// For events that occur as a result of morale (eg mutiny):
 	
 	// The base chance of the event occurring
-	double baseChance = 0;
+	double baseChance = 1.0;
 	// The chance increases per point of morale past the threshold
 	double chancePerMorale = 0;
+	// The magnitude of the effect per point of morale past the threshold
+	double strengthPerMorale = 0;
 	// The morale at which the reactionary event becomes possible
 	double threshold = 0;
 

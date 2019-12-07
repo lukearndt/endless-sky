@@ -77,3 +77,8 @@
 # Multiplied by the credits paid and divided by the ship's crew count
 "morale event" "salary payment on shore leave"
   change 0.01
+
+# The damage a ship takes is multiplied damage if the ship's morale is above the threshold
+"morale event" "ship damage reduction"
+  "strength per morale" 0.001
+  threshold 0

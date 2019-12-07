@@ -2657,6 +2657,11 @@ int Ship::TakeDamage(const Projectile &projectile, bool isBlast)
 	int type = 0;
 	
 	double damageScaling = 1.;
+	
+	// Apply damage scaling according to the ship's morale
+	double moraleDamageMultiplier = GameData::MoraleEvents().Get("ship damage multiplier"). * morale;
+	
+	
 	const Weapon &weapon = projectile.GetWeapon();
 	if(isBlast && weapon.IsDamageScaled())
 	{
