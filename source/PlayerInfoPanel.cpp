@@ -17,6 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "text/alignment.hpp"
 #include "Command.h"
+#include "Crew.h"
 #include "text/Font.h"
 #include "text/FontSet.h"
 #include "text/Format.h"
@@ -615,7 +616,7 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 
 	// Determine the player's combat rating.
 	int combatExperience = player.Conditions().Get("combat rating");
-	int combatLevel = log(max<int64_t>(1, combatExperience));
+	int combatLevel = player.CombatLevel();
 	string combatRating = GameData::Rating("combat", combatLevel);
 	if(!combatRating.empty())
 	{
@@ -660,19 +661,67 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 		table.DrawTruncatedPair("fleet: " + deterrenceRating, dim,
 			"(-" + Format::Decimal(deterrenceLevel, 1) + ")", dim, Truncate::MIDDLE, false);
 	}
+
+	Crew::FleetAnalysis fleetAnalysis(player.Ships(), player.Flagship(), player.CombatLevel(), player.Licenses().size());
+
 	// Other special information:
-	vector<pair<int64_t, string>> salary;
+	vector<pair<int64_t, string>> dailyIncome;
+	int64_t dailyIncomeTotal = 0;
+
+	// Add the player's daily income from salaries.
 	for(const auto &it : player.Accounts().SalariesIncome())
-		salary.emplace_back(it.second, it.first);
-	sort(salary.begin(), salary.end(), std::greater<>());
-	DrawList(salary, table, "salary:", 4);
+	{
+		dailyIncome.emplace_back(it.second, it.first);
+		dailyIncomeTotal += it.second;
+	}
 
-	vector<pair<int64_t, string>> tribute;
-	for(const auto &it : player.GetTribute())
-		tribute.emplace_back(it.second, it.first->TrueName());
-	sort(tribute.begin(), tribute.end(), std::greater<>());
-	DrawList(tribute, table, "tribute:", 4);
+	// Add the player's daily income from tribute.
+	int64_t tributeCount = player.GetTribute().size();
+	if(tributeCount > 0)
+	{
+		int64_t tributeTotal = player.GetTributeTotal();
+		// If the player has multiple tribute sources, display a summary entry.
+		if(tributeCount > 1)
+		{
+			dailyIncome.emplace_back(tributeTotal, "tribute (" + to_string(tributeCount) + " planets)");
+			dailyIncomeTotal += tributeTotal;
+		}
+		else // Display the single tribute source.
+		{
+			dailyIncome.emplace_back(tributeTotal, "tribute (" + player.GetTribute().begin()->first->TrueName() + ")");
+			dailyIncomeTotal += tributeTotal;
+		}
+	}
 
+	// Add the player's daily expenses from crew salaries.
+	dailyIncome.emplace_back(-fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual), "crew salaries");
+	dailyIncomeTotal -= fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual);
+
+	sort(dailyIncome.begin(), dailyIncome.end(), std::greater<>());
+	dailyIncome.emplace_back(dailyIncomeTotal, "total");
+	DrawList(dailyIncome, table, "daily income and expenses:");
+
+
+	// Display the fleet's profit sharing requirements.
+	vector<pair<int64_t, string>> profitSharing;
+
+
+	profitSharing.emplace_back(fleetAnalysis.playerShares, "your shares");
+	profitSharing.emplace_back(fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual), "crew shares");
+
+	int64_t deathShares = player.Accounts().DeathSharesAccrued();
+	if(deathShares > 0)
+		profitSharing.emplace_back(deathShares, "today's death shares");
+
+	profitSharing.emplace_back(
+		fleetAnalysis.playerShares * 100 /
+		(fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual) + fleetAnalysis.playerShares + deathShares),
+		"your share of profits (%)"
+	);
+	DrawList(profitSharing, table, "profit sharing:", 4);
+
+
+	// Display the player's licenses.
 	int maxRows = static_cast<int>(250. - 30. - table.GetPoint().Y()) / 20;
 	vector<pair<int64_t, string>> licenses;
 	for(const auto &it : player.Licenses())

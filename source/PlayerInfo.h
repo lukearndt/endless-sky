@@ -81,11 +81,13 @@ public:
 	// Make a new player.
 	void New(const StartConditions &start);
 	// Load an existing player.
-	void Load(const std::string &path);
+	void Load(const std::string &path, bool isReload = false);
 	// Load the most recently saved player. If no save could be loaded, returns false.
 	bool LoadRecent();
 	// Save this player (using the Identifier() as the file name).
 	void Save() const;
+	// Apply a game reload fee if the player has set one.
+	void ApplyGameReloadFee();
 
 	// Get the root filename used for this player's saved game files. (If there
 	// are multiple pilots with the same name it may have a digit appended.)
@@ -139,8 +141,6 @@ public:
 	// Access the player's accounting information.
 	const Account &Accounts() const;
 	Account &Accounts();
-	// Calculate the daily salaries for crew, not counting crew on "parked" ships.
-	int64_t Salaries() const;
 	// Calculate the daily maintenance cost and generated income for all ships and in cargo outfits.
 	FleetBalance MaintenanceAndReturns() const;
 
@@ -149,6 +149,9 @@ public:
 	void RemoveLicense(const std::string &name);
 	bool HasLicense(const std::string &name) const;
 	const std::set<std::string> &Licenses() const;
+
+	// Access the player's combat level, based on experience.
+	int CombatLevel() const;
 
 	// Access the flagship (the first ship in the list). This returns null if
 	// the player does not have any ships that can be a flagship.

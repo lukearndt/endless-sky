@@ -22,6 +22,9 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Command.h"
 #include "ConditionsStore.h"
 #include "Conversation.h"
+#include "Crew.h"
+#include "CrewMember.h"
+#include "CrewSetting.h"
 #include "DataNode.h"
 #include "DataWriter.h"
 #include "Effect.h"
@@ -76,6 +79,8 @@ using namespace std;
 
 namespace {
 	UniverseObjects objects;
+	Set<CrewMember> defaultCrewMembers;
+	Set<CrewSetting> defaultCrewSettings;
 	Set<Fleet> defaultFleets;
 	Set<Government> defaultGovernments;
 	Set<Planet> defaultPlanets;
@@ -236,6 +241,8 @@ shared_future<void> GameData::BeginLoad(TaskQueue &queue, bool onlyLoadData, boo
 void GameData::FinishLoading()
 {
 	// Store the current state, to revert back to later.
+	defaultCrewMembers = objects.crewMembers;
+	defaultCrewSettings = objects.crewSettings;
 	defaultFleets = objects.fleets;
 	defaultGovernments = objects.governments;
 	defaultPlanets = objects.planets;
@@ -574,6 +581,20 @@ const Set<Color> &GameData::Colors()
 const Set<Conversation> &GameData::Conversations()
 {
 	return objects.conversations;
+}
+
+
+
+const Set<CrewMember> &GameData::CrewMembers()
+{
+	return objects.crewMembers;
+}
+
+
+
+const Set<CrewSetting> &GameData::CrewSettings()
+{
+	return objects.crewSettings;
 }
 
 

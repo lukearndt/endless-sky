@@ -16,6 +16,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "HiringPanel.h"
 
 #include "Command.h"
+#include "Crew.h"
 #include "GameData.h"
 #include "Information.h"
 #include "Interface.h"
@@ -49,53 +50,44 @@ void HiringPanel::Draw()
 	const Interface *hiring = GameData::Interfaces().Get("hiring");
 	info.ClearConditions();
 
-	int flagshipBunks = 0;
-	int flagshipRequired = 0;
-	int flagshipExtra = 0;
-	int flagshipUnused = 0;
+	// Analyse the player's fleet and generate a report.
+	Crew::FleetAnalysis analysis(player.Ships(), flagship, player.CombatLevel(), player.Licenses().size());
+	PlayerInfo::FleetBalance fleetBalance = player.MaintenanceAndReturns();
 
-	if(flagship)
-	{
-		flagshipBunks = flagship->Attributes().Get("bunks");
-		flagshipRequired = flagship->RequiredCrew();
-		flagshipExtra = flagship->Crew() - flagshipRequired;
-		flagshipUnused = flagshipBunks - flagship->Crew();
-	}
+	info.SetString("flagship bunks", to_string(analysis.flagshipBunkAnalysis->total));
+	info.SetString("flagship required", to_string(analysis.flagshipBunkAnalysis->requiredCrew));
+	info.SetString("flagship extra", to_string(analysis.flagshipBunkAnalysis->extraCrew));
+	info.SetString("flagship unused", to_string(analysis.flagshipBunkAnalysis->empty));
 
-	info.SetString("flagship bunks", to_string(flagshipBunks));
-	info.SetString("flagship required", to_string(flagshipRequired));
-	info.SetString("flagship extra", to_string(flagshipExtra));
-	info.SetString("flagship unused", to_string(flagshipUnused));
+	info.SetString("fleet bunks", to_string(analysis.fleetBunkAnalysis->total));
+	info.SetString("fleet required", to_string(analysis.fleetBunkAnalysis->requiredCrew));
+	info.SetString("fleet unused", to_string(analysis.fleetBunkAnalysis->empty));
+	info.SetString("passengers", to_string(analysis.fleetBunkAnalysis->passengers));
 
-	// Sum up the statistics for all your ships. You still pay the crew of
-	// disabled or out-of-system ships, but any parked ships have no crew costs.
-	int fleetBunks = 0;
-	int fleetRequired = 0;
-	for(const shared_ptr<Ship> &ship : player.Ships())
-		if(!ship->IsParked())
-		{
-			fleetBunks += static_cast<int>(ship->Attributes().Get("bunks"));
-			fleetRequired += ship->RequiredCrew();
-		}
-	int passengers = player.Cargo().Passengers();
-	int fleetUnused = fleetBunks - fleetRequired - flagshipExtra;
-	info.SetString("fleet bunks", to_string(fleetBunks));
-	info.SetString("fleet required", to_string(fleetRequired));
-	info.SetString("fleet unused", to_string(fleetUnused));
-	info.SetString("passengers", to_string(passengers));
+	info.SetString("salary required", to_string(analysis.salaryReport->at(Crew::ReportDimension::Required)));
+	info.SetString("shares required", to_string(analysis.sharesReport->at(Crew::ReportDimension::Required)));
+	info.SetString("salary extra", to_string(analysis.salaryReport->at(Crew::ReportDimension::Extra)));
+	info.SetString("shares extra", to_string(analysis.sharesReport->at(Crew::ReportDimension::Extra)));
 
-	static const int DAILY_SALARY = 100;
-	int salary = DAILY_SALARY * (fleetRequired - (flagship ? 1 : 0));
-	int extraSalary = DAILY_SALARY * flagshipExtra;
-	info.SetString("salary required", to_string(salary));
-	info.SetString("salary extra", to_string(extraSalary));
+	info.SetString("your share of profits", to_string(analysis.profitPlayerPercentage) + "%");
+	info.SetString("player profit percentage", to_string(analysis.profitPlayerPercentage) + "% of fleet profits");
+	info.SetString("player daily income", to_string(
+		player.GetTributeTotal() + player.Accounts().SalariesIncomeTotal()
+		+ fleetBalance.assetsReturns - fleetBalance.maintenanceCosts
+	));
+	info.SetString("player shares", to_string(analysis.playerShares));
 
 	int modifier = Modifier();
 	if(modifier > 1)
 		info.SetString("modifier", "x " + to_string(modifier));
+	else
+		info.SetString("modifier", "");
 
-	maxFire = max(flagshipExtra, 0);
-	maxHire = max(min(flagshipUnused, fleetUnused - passengers), 0);
+	maxFire = max(analysis.flagshipBunkAnalysis->extraCrew, (int64_t)0);
+	maxHire = max(min(
+		analysis.flagshipBunkAnalysis->empty,
+		analysis.fleetBunkAnalysis->empty - analysis.fleetBunkAnalysis->passengers
+	), (int64_t)0);
 
 	if(maxHire)
 		info.SetCondition("can hire");

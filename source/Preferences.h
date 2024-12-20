@@ -102,6 +102,48 @@ public:
 		BOTH
 	};
 
+	enum class CrewSalaries : int_fast8_t {
+		OFF = 0,
+		ON,
+		CONVERTED
+	};
+
+	enum class ProfitSharing : int_fast8_t {
+		OFF = 0,
+		ON,
+		CONVERTED
+	};
+
+	enum class DeathPayments : int_fast8_t {
+		OFF = 0,
+		BENEFITS_ONLY,
+		SHARES_ONLY,
+		BOTH
+	};
+
+	enum class RankedCrewMembers : int_fast8_t {
+		OFF = 0,
+		ON,
+		MARINES_ONLY
+	};
+
+	enum class ParkedShipCrew : int_fast8_t {
+		OFF = 0,
+		ON,
+		SALARY_ONLY,
+		SHARES_ONLY
+	};
+
+	enum class GameReloadFeeType : int_fast8_t {
+		OFF = 0,
+		GROSS_WORTH,
+		NET_WORTH,
+		ACTIVE_WORTH,
+		TOTAL_FLEET,
+		ACTIVE_FLEET,
+		GROSS_CREDITS,
+		NET_CREDITS
+	};
 
 public:
 	static void Load();
@@ -186,5 +228,44 @@ public:
 	static bool DisplayVisualAlert();
 	static bool DoAlertHelper(AlertIndicator toDo);
 
+	// Difficulty settings
+
+	// Game reload fee type setting, either "off", "net worth", "fleet worth", or "credits".
+	static void ToggleGameReloadFeeType();
+	static GameReloadFeeType GetGameReloadFeeType();
+	static const std::string &GameReloadFeeTypeSetting();
+
+	// Game reload fee percentage setting.
+	static int ChangeGameReloadFeePercentage(int increments);
+	static void SetGameReloadFeePercentage(int percentage);
+	static int GetGameReloadFeePercentage();
+	static int GameReloadFeePercentageSetting();
+
+	// Crew salaries setting, either "off", "on", or "converted".
+	static void ToggleCrewSalaries();
+	static CrewSalaries GetCrewSalaries();
+	static const std::string &CrewSalariesSetting();
+
+	// Profit sharing setting, either "off", "on", or "converted".
+	static void ToggleProfitSharing();
+	static ProfitSharing GetProfitSharing();
+	static const std::string &ProfitSharingSetting();
+
+	// Death benefits setting, either "off", "on", "benefits only", or "shares only".
+	static void ToggleDeathPayments();
+	static DeathPayments GetDeathPayments();
+	static const std::string &DeathPaymentsSetting();
+
+	// Ranked crew members setting, either "off", "on", or "marines only".
+	static void ToggleRankedCrewMembers();
+	static RankedCrewMembers GetRankedCrewMembers();
+	static const std::string &RankedCrewMembersSetting();
+
+	// Parked ship crew setting, either "off", "on", "salary only", or "shares only"
+	static void ToggleParkedShipCrew();
+	static ParkedShipCrew GetParkedShipCrew();
+	static const std::string &ParkedShipCrewSetting();
+
+	// Get the number of previous saves to keep.
 	static int GetPreviousSaveCount();
 };

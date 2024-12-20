@@ -18,6 +18,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "AI.h"
 #include "audio/Audio.h"
 #include "ConversationPanel.h"
+#include "Crew.h"
 #include "DataFile.h"
 #include "DataWriter.h"
 #include "Dialog.h"
@@ -198,7 +199,7 @@ void PlayerInfo::New(const StartConditions &start)
 
 
 // Load player information from a saved game file.
-void PlayerInfo::Load(const string &path)
+void PlayerInfo::Load(const string &path, bool isReload)
 {
 	// Make sure any previously loaded data is cleared.
 	Clear();
@@ -465,6 +466,11 @@ void PlayerInfo::Load(const string &path)
 	// will count as non-depreciated.
 	if(!depreciation.IsLoaded())
 		depreciation.Init(ships, date.DaysSinceEpoch());
+
+	// Apply the game reload fee if the player has chosen to have one,
+	// and the player is reloading the game instead of resuming it normally.
+	if(isReload)
+		ApplyGameReloadFee();
 }
 
 
@@ -530,13 +536,96 @@ void PlayerInfo::Save() const
 
 
 
+// Apply a game reload fee if the player has set one.
+void PlayerInfo::ApplyGameReloadFee()
+{
+	Preferences::GameReloadFeeType feeType = Preferences::GetGameReloadFeeType();
+	int feePercentage = Preferences::GetGameReloadFeePercentage();
+
+	// If the fee percentage is zero, do nothing.
+	if(feePercentage == 0)
+		return;
+
+	int64_t assetGroupValue = 0;
+
+	switch(feeType)
+	{
+		case Preferences::GameReloadFeeType::OFF :
+			return;
+		case Preferences::GameReloadFeeType::GROSS_WORTH :
+			assetGroupValue = Accounts().Credits();
+			for(const shared_ptr<Ship> &ship : Ships())
+				assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
+			break;
+		case Preferences::GameReloadFeeType::NET_WORTH :
+			assetGroupValue = Accounts().NetWorth();
+			break;
+		case Preferences::GameReloadFeeType::ACTIVE_WORTH :
+			assetGroupValue = Accounts().Credits();
+			for(const shared_ptr<Ship> &ship : Ships())
+				if(!ship->IsParked())
+					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
+			break;
+		case Preferences::GameReloadFeeType::TOTAL_FLEET :
+			for(const shared_ptr<Ship> &ship : Ships())
+				assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
+			break;
+		case Preferences::GameReloadFeeType::ACTIVE_FLEET :
+			for(const shared_ptr<Ship> &ship : Ships())
+				if(!ship->IsParked())
+					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
+			break;
+		case Preferences::GameReloadFeeType::GROSS_CREDITS :
+			assetGroupValue = Accounts().Credits();
+			break;
+		case Preferences::GameReloadFeeType::NET_CREDITS :
+			assetGroupValue = Accounts().Credits()
+				- Accounts().TotalDebt()
+				- Accounts().CrewSalariesOwed()
+				- Accounts().MaintenanceDue()
+				- Accounts().SharedProfitsOwed()
+				- Accounts().DeathBenefitsOwed();
+			break;
+	}
+
+	// Calculate the fee based on the percentage of the asset group value.
+	int64_t fee = assetGroupValue * feePercentage / 100;
+
+	// Do not apply a fee if it would be zero or negative.
+	if(fee <= 0)
+		return;
+
+	string feeMessage = "You incurred a game reload fee of "
+		+ Format::Number(feePercentage) + "% of your " + Preferences::GameReloadFeeTypeSetting()
+		+ ", for a total of " + Format::Credits(fee) + " credits.";
+
+	// Attempt to pay the fee from the player's current credits. If the player
+	// does not have enough credits, add the rest as a mortgage.
+	if(Accounts().Credits() >= fee)
+		Accounts().AddCredits(-fee);
+	else
+	{
+		int64_t mortgage = fee - Accounts().Credits();
+		feeMessage += " " + Format::Credits(Accounts().Credits())
+			+ " has been paid, and the remaining " + Format::Credits(mortgage)
+			+ " has been applied as a mortgage.";
+		Accounts().AddMortgage(fee - Accounts().Credits());
+		Accounts().AddCredits(-Accounts().Credits());
+	}
+
+	Messages::Add(feeMessage, Messages::Importance::Highest);
+}
+
+
+
 // Get the base file name for the player, without the ".txt" extension. This
 // will usually be "<first> <last>", but may be different if multiple players
 // exist with the same name, in which case a number is appended.
 string PlayerInfo::Identifier() const
 {
 	string name = Files::Name(filePath);
-	return (name.length() < 4) ? "" : name.substr(0, name.length() - 4);
+	return (name.length() < 4) ? "" : name.substr(0, name.length()
+		- 4);
 }
 
 
@@ -788,9 +877,18 @@ void PlayerInfo::IncrementDate()
 	for(const shared_ptr<Ship> &ship : ships)
 		assets += ship->Cargo().Value(system);
 
+	// Calculate the salaries and profit share ratio for the player's fleet.
+	const Crew::FleetAnalysis fleetAnalysis(ships, Flagship(), CombatLevel(), Licenses().size());
+
 	// Have the player pay salaries, mortgages, etc. and print a message that
 	// summarizes the payments that were made.
-	string message = accounts.Step(assets, Salaries(), b.maintenanceCosts);
+	string message = accounts.Step(
+		assets,
+		fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual),
+		b.maintenanceCosts,
+		fleetAnalysis.playerShares,
+		fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual)
+	);
 	if(!message.empty())
 		Messages::Add(message, Messages::Importance::High);
 
@@ -914,28 +1012,6 @@ Account &PlayerInfo::Accounts()
 
 
 
-// Calculate how much the player pays in daily salaries.
-int64_t PlayerInfo::Salaries() const
-{
-	// Don't count extra crew on anything but the flagship.
-	int64_t crew = 0;
-	const Ship *flagship = Flagship();
-	if(flagship)
-		crew = flagship->Crew() - flagship->RequiredCrew();
-
-	// A ship that is "parked" remains on a planet and requires no salaries.
-	for(const shared_ptr<Ship> &ship : ships)
-		if(!ship->IsParked() && !ship->IsDestroyed())
-			crew += ship->RequiredCrew();
-	if(!crew)
-		return 0;
-
-	// Every crew member except the player receives 100 credits per day.
-	return 100 * (crew - 1);
-}
-
-
-
 // Calculate the daily maintenance cost and generated income for all ships and in cargo outfits.
 PlayerInfo::FleetBalance PlayerInfo::MaintenanceAndReturns() const
 {
@@ -996,6 +1072,13 @@ bool PlayerInfo::HasLicense(const string &name) const
 const set<string> &PlayerInfo::Licenses() const
 {
 	return licenses;
+}
+
+
+
+int PlayerInfo::CombatLevel() const
+{
+	return log(max<int>(1, Conditions().Get("combat rating")));
 }
 
 
@@ -1535,6 +1618,10 @@ void PlayerInfo::Land(UI *ui)
 			// Also, the ship and everything in it should be removed from your
 			// depreciation records. Transfer it to a throw-away record:
 			Depreciation().Buy(**it, date.DaysSinceEpoch(), &depreciation);
+
+			// Pay death benefits for each crew member that was on the ship.
+			Crew::ShipAnalysis analysis(*it, false);
+			accounts.AddDeathBenefits(analysis.deathBenefits);
 
 			ForgetGiftedShip(*it->get());
 			it = ships.erase(it);
@@ -2346,6 +2433,41 @@ void PlayerInfo::HandleEvent(const ShipEvent &event, UI *ui)
 	// If the player's flagship was destroyed, the player is dead.
 	if((event.Type() & ShipEvent::DESTROY) && !ships.empty() && event.Target().get() == Flagship())
 		Die();
+	// If one of the player's escorts was destroyed, trigger immediate consequences.
+	else if((event.Type() & ShipEvent::DESTROY) && event.Target() && event.Target()->IsYours())
+	{
+		ostringstream out;
+
+		shared_ptr<Ship> ship = event.Target();
+
+		out << "Your " << ship->DisplayModelName() << " \"" << ship->Name() << "\" has been destroyed";
+
+		if(ship->Crew() > 0)
+		{
+			Crew::ShipAnalysis shipAnalysis(ship, false);
+			Crew::CasualtyAnalysis casualtyAnalysis(shipAnalysis, ship);
+
+			if(casualtyAnalysis.casualtyCount)
+				out << ", killing " + Format::Number(casualtyAnalysis.casualtyCount) + " crew members";
+			if(casualtyAnalysis.deathBenefits || casualtyAnalysis.deathShares)
+				out << ". You owe their estates ";
+			if(casualtyAnalysis.deathBenefits)
+			{
+				out << Format::Credits(casualtyAnalysis.deathBenefits) + " credits in death benefits";
+				Accounts().AddDeathBenefits(casualtyAnalysis.deathBenefits);
+				if (casualtyAnalysis.deathShares)
+					out << ", and ";
+			}
+			if(casualtyAnalysis.deathShares)
+			{
+				out << Format::Number(casualtyAnalysis.deathShares) + " extra shares in today's profits (if any)";
+				Accounts().AddDeathShares(casualtyAnalysis.deathShares);
+			}
+		}
+
+		out << ".";
+		Messages::Add(out.str(), Messages::Importance::Highest);
+	}
 }
 
 
@@ -3272,6 +3394,10 @@ void PlayerInfo::RegisterDerivedConditions()
 	auto &&unpaidMaintenanceProvider = conditions.GetProviderNamed("unpaid maintenance");
 	unpaidMaintenanceProvider.SetGetFunction([this](const string &name) {
 		return min(limit, accounts.MaintenanceDue()); });
+
+	auto &&unpaidSharedProfitsProvider = conditions.GetProviderNamed("unpaid shared profits");
+	unpaidSharedProfitsProvider.SetGetFunction([this](const string &name) {
+		return min(limit, accounts.SharedProfitsOwed()); });
 
 	auto &&creditScoreProvider = conditions.GetProviderNamed("credit score");
 	creditScoreProvider.SetGetFunction([this](const string &name) {

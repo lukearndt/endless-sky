@@ -134,7 +134,7 @@ tip "cloaking energy:"
 
 tip "cloaking fuel:"
 	`Fuel consumed per second when cloaked.`
-	
+
 tip "cloaking heat:"
 	`Heat generated per second when cloaked.`
 
@@ -224,7 +224,7 @@ tip "disruption resistance heat:"
 
 tip "drag:"
 	`Limits the maximum speed of a ship.`
-	
+
 tip "drag reduction:"
 	`Reduces drag. If you add more than one outfit with this attribute, each additional one is less effective: a total value of 1 results in a 1 percent reduction in drag, while a total value of 11 only results in a 10 percent reduction.`
 
@@ -236,7 +236,7 @@ tip "energy capacity:"
 
 tip "energy consumption:"
 	`Energy consumed per second while in flight.`
-	
+
 tip "energy generation:"
 	`Energy generated per second. If your ship has weapons other than beam weapons, you will probably also need batteries to store energy in.`
 
@@ -263,13 +263,13 @@ tip "fuel capacity:"
 
 tip "fuel consumption:"
 	`Fuel consumed per second when in flight.`
-	
+
 tip "fuel energy:"
 	`Energy produced per second when consuming fuel.`
-	
+
 tip "fuel generation:"
 	`Fuel generated per second.`
-	
+
 tip "fuel heat:"
 	`Heat produced per second when consuming fuel.`
 
@@ -341,16 +341,16 @@ tip "repair delay:"
 
 tip "disabled repair delay:"
 	`The number of seconds it takes for hull repairs to begin after being disabled.`
-	
+
 tip "disabled recovery time:"
 	`The number of seconds it takes for a disabled ship to repair itself.`
-	
+
 tip "disabled recovery energy:"
 	`The energy cost required for a disabled ship to repair itself.`
 
 tip "disabled recovery fuel:"
 	`The fuel cost required for a disabled ship to repair itself.`
-	
+
 tip "disabled recovery heat:"
 	`The heat applied when a disabled ship repairs itself.`
 
@@ -374,7 +374,7 @@ tip "disabled recovery corrosion:"
 
 tip "disabled recovery leak:"
 	`The leak damage applied when a disabled ship repairs itself.`
-	
+
 tip "disabled recovery burning:"
 	`The burning damage applied when a disabled ship repairs itself.`
 
@@ -398,7 +398,7 @@ tip "illegal:"
 
 tip "income:"
 	`Amount of credits received per day when you own this outfit, even if it is not in active use.`
-	
+
 tip "inertia reduction:"
 	`Reduces effective ship mass. If you add more than one outfit with this attribute, each additional one is less effective: a total value of 1 results in a 1 percent reduction in inertia, while a total value of 11 only results in a 10 percent reduction.`
 
@@ -1452,7 +1452,7 @@ tip "Rehire extra crew when lost"
 
 tip "Automatically unpark flagship"
 	`Automatically unpark a ship dragged to the first position in the ship list, and make it your flagship.`
-	
+
 tip "Deadline blink by distance"
 	`For rush missions, subtract the distance to the destination from the deadline to determine how fast to blink the map marker.`
 
@@ -1467,6 +1467,55 @@ tip "Show stored outfits on map"
 
 tip "System map sends move orders"
 	`Right-click on a location in the system mini-map on the galaxy map to send your escorts to that location in the selected system.`
+
+tip "Game reload fee type"
+	`If enabled, you take a financial loss each time you reload the game during a play session. The fee does not occur when you switch pilots or resume the game after closing it.`
+	`When you're able to reload the game whenever you want, it can be very tempting to rewind time as soon as you encounter a setback. This encourages odd gameplay like trying dozens of times to capture a powerful ship, or running a freight empire with no protection. Knowing that you will eventually succeed if you reload enough times can make your victories less satisfying.`
+	`That said, sometimes you die or fail a story mission. When that happens, you have to reload or it's game over. In that scenario, it's nice to have a reasonable middle ground.`
+	`Each option determines what the game reload fee is a percentage of:`
+	`Gross worth: total fleet + gross credits. The most difficult option.`
+	`Net worth: total fleet + net credits.`
+	`Active worth: active fleet + gross credits. The recommended option.`
+	`Total fleet: the value of your fleet.`
+	`Active fleet: the value of your fleet, excluding any parked ships.`
+	`Gross credits: your total credits.`
+	`Net credits: your total credits, minus any mortgages or other debts.`
+
+tip `Game reload fee %`
+	`This setting lets you choose the percentage value of the game reload fee. The actual amount will be a percentage value of the assets selected by the "game reload fee type" setting.`
+	`You can use the mouse wheel to increase or decrease the value more quickly.`
+	`If you just want to motivate yourself not to abuse the reload button, try a fee of 2-5% of your active worth or 50% of your credits.`
+	`For a tough but fair challenge, consider a fee of 5-10% of your active worth or 100% of your gross credits.`
+	`If you're after a punishing semi-rogue-like experience, you could use something wild like 50-100% of your active worth or fleet.`
+
+tip "Crew salaries"
+	`You need to pay each crew member a salary at the start of every day. This adds a passive ongoing cost to your fleet so that you need to factor time into your money-making activities.`
+	`Salaries help to balance out the relative power of heavy ships that require more crew members. They also motivate you to keep your overall fleet smaller, which helps keep combat at a reasonable difficulty.`
+	`Converted mode turns off crew salaries and converts each crew member's salary into an appropriate number of additional shares.`
+
+tip "Profit sharing"
+	`At the start of each day, your net worth is compared with the previous day. If you make a profit, a percentage of it is shared with your crew based on their shares.`
+	`You gain additional shares in the fleet as you increase your combat rating and acquire licenses through story progress.`
+	`Profit sharing slows down your advancement as you accumulate more power, without punishing you for the time that you spend travelling or idle.`
+	`It also motivates you not to acquire power simply by adding more and more ships to your fleet, which improves game performance and helps make the story appropriately challenging.`
+	`Converted mode turns off profit sharing and converts each crew member's shares into an appropriately higher salary.`
+
+tip "Death payments"
+	`When a crew member is killed in action, you have to compensate their estates. This is a form of mandatory life insurance that creates an incentive for fleet captains to take proper care of their crew.`
+	`Small ship pilots and marines receive higher than normal death payments because of their risky professions. In gameplay terms, this balances out the wildly lucrative practice of capturing enemy ships.`
+	`Death benefits are fixed payments based on the crew member's salary.`
+	`Death shares are extra shares in any profit that the fleet earns on the day of the crew member's death.`
+
+tip "Ranked crew members"
+	`Crew members are placed within a command structure. Every ship has a ranking crew member determined by its category, and a staff of supporting officers based on its crew count. Regular crew members are cheap, but ranked crew members can be expensive.`
+	`This makes fleet manangement more nuanced, since each ship category has a different cost profile. For example, small and medium sized warships become more appealing because they don't need high ranking officers to command them.`
+	`If this setting is turned off, every crew member has the same basic rank. This makes the game significantly less challenging.`
+	`Marines only mode disables the command structure, but extra flagship crew are still recruited as marines. These boarding troops are better paid than regular crew members and incur significantly higher death payments. Use this variant if you want to simplify the game but keep ship captures balanced.`
+
+tip "Parked ship crew"
+	`Parked ships require a few crew members for maintenance, security, and basic management. The parked crew are much cheaper than those required by an active ship.`
+	`Salary only prevents parked crew members from having a share in fleet profits.`
+	`Shares only prevents parked crew members from requiring a daily salary.`
 
 tip "Always underline shortcuts"
 	`Always underline the shortcut key for any buttons. Holding the alt key in any panel will also underline the button shortcut keys if this setting is off.`

@@ -15,6 +15,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Crew.h"
 #include "Panel.h"
 
 #include "CaptureOdds.h"
@@ -61,6 +62,9 @@ private:
 	// Handle the keyboard scrolling and selection in the panel list.
 	void DoKeyboardNavigation(const SDL_Keycode key);
 
+	// Build a list of casualties from the boarding action and trigger any
+	// consequences that result from them, such as death benefits and death shares.
+	void ResolveCasualties();
 
 private:
 	// This class represents one item in the list of outfits you can plunder.
@@ -131,4 +135,14 @@ private:
 
 	// Whether or not the ship can be captured.
 	bool canCapture = false;
+
+	// Over the course of the boaring action, you may lose crew members.
+	// We need to keep track of them and enforce death benefits and death shares.
+	// This is the crew manifest at the start of the boarding action.
+	Crew::ShipAnalysis shipAnalysisBefore;
+
+	// If you lose crew members during boarding and then give up, we still
+	// need to trigger consequences for the lost crew members. We use this
+	// flag when we close the panel to check if we need to do that.
+	bool hasUnresolvedCasualties = false;
 };

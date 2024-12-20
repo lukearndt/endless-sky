@@ -17,6 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "text/alignment.hpp"
 #include "Color.h"
+#include "Crew.h"
 #include "Command.h"
 #include "Dialog.h"
 #include "text/DisplayText.h"
@@ -108,7 +109,8 @@ void BankPanel::Draw()
 	int64_t totalPayment = otherPayment;
 
 	// Check if salaries need to be drawn.
-	int64_t salaries = player.Salaries();
+	Crew::FleetAnalysis fleetAnalysis(player.Ships(), player.Flagship(), player.CombatLevel(), player.Licenses().size());
+	int64_t salaries = fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual);
 	int64_t crewSalariesOwed = player.Accounts().CrewSalariesOwed();
 	int64_t salariesIncome = player.Accounts().SalariesIncomeTotal();
 	int64_t tributeIncome = player.GetTributeTotal();
@@ -304,6 +306,7 @@ bool BankPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, boo
 		}
 		player.Accounts().PaySalaries(player.Accounts().CrewSalariesOwed());
 		player.Accounts().PayMaintenance(player.Accounts().MaintenanceDue());
+		player.Accounts().PaySharedProfits(player.Accounts().SharedProfitsOwed());
 		qualify = player.Accounts().Prequalify();
 	}
 	else

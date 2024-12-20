@@ -70,6 +70,12 @@ target_sources(EndlessSkyLib PRIVATE
 	ConversationPanel.h
 	CoreStartData.cpp
 	CoreStartData.h
+	Crew.cpp
+	Crew.h
+	CrewMember.cpp
+	CrewMember.h
+	CrewSetting.cpp
+	CrewSetting.h
 	DamageDealt.h
 	DamageProfile.cpp
 	DamageProfile.h

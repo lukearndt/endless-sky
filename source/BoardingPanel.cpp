@@ -17,6 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "text/alignment.hpp"
 #include "CargoHold.h"
+#include "Crew.h"
 #include "Depreciation.h"
 #include "Dialog.h"
 #include "text/DisplayText.h"
@@ -28,6 +29,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Government.h"
 #include "Information.h"
 #include "Interface.h"
+#include "Messages.h"
 #include "PlayerInfo.h"
 #include "Preferences.h"
 #include "Random.h"
@@ -60,7 +62,7 @@ namespace {
 // Constructor.
 BoardingPanel::BoardingPanel(PlayerInfo &player, const shared_ptr<Ship> &victim)
 	: player(player), you(player.FlagshipPtr()), victim(victim),
-	attackOdds(*you, *victim), defenseOdds(*victim, *you)
+	attackOdds(*you, *victim), defenseOdds(*victim, *you), shipAnalysisBefore(player.FlagshipPtr(), true)
 {
 	// The escape key should close this panel rather than bringing up the main menu.
 	SetInterruptible(false);
@@ -229,6 +231,8 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 		// When closing the panel, mark the player dead if their ship was captured.
 		if(playerDied)
 			player.Die();
+		else // Resolve any casualties that occurred during the boarding action.
+			ResolveCasualties();
 		GetUI()->Pop(this);
 	}
 	else if(playerDied)
@@ -343,6 +347,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 						if(Random::Real() * total >= yourAttackPower)
 						{
 							++yourCasualties;
+							hasUnresolvedCasualties = true;
 							you->AddCrew(-1);
 							if(you->Crew() <= 1)
 								break;
@@ -366,6 +371,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 						if(Random::Real() * total >= yourDefensePower)
 						{
 							++yourCasualties;
+							hasUnresolvedCasualties = true;
 							you->AddCrew(-1);
 							if(!you->Crew())
 								break;
@@ -409,6 +415,12 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 			{
 				messages.push_back("You have succeeded in capturing this ship.");
 				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->CrewValue());
+
+				// We need to resolve any casualties before we transfer crew members
+				// to the other ship. Otherwise, we won't be able to tally them correctly.
+				ResolveCasualties();
+
+				// Transfer the crew and fuel from the captured ship to your ship.
 				int crewTransferred = victim->WasCaptured(you);
 				if(crewTransferred > 0)
 				{
@@ -564,6 +576,38 @@ void BoardingPanel::DoKeyboardNavigation(const SDL_Keycode key)
 	double minimumScroll = max(0., 20. * selected - 200.);
 	double maximumScroll = 20. * selected;
 	scroll = max(minimumScroll, min(maximumScroll, scroll));
+}
+
+
+// Build a list of casualties from the boarding action and trigger any
+// consequences that result from them, such as death benefits and death shares.
+void BoardingPanel::ResolveCasualties()
+{
+	if(!hasUnresolvedCasualties)
+		return;
+
+	Crew::CasualtyAnalysis casualtyAnalysis(shipAnalysisBefore, you);
+
+	ostringstream out;
+	out << "During the boarding action, " << Format::Number(casualtyAnalysis.casualtyCount) << " of your crew members were killed.";
+	if(casualtyAnalysis.deathBenefits || casualtyAnalysis.deathShares)
+		out << " You owe their estates ";
+	if(casualtyAnalysis.deathBenefits)
+	{
+		out << Format::Credits(casualtyAnalysis.deathBenefits) << " credits in death benefits";
+		player.Accounts().AddDeathBenefits(casualtyAnalysis.deathBenefits);
+
+		if(casualtyAnalysis.deathShares)
+			out << ", and ";
+	}
+	if(casualtyAnalysis.deathShares)
+	{
+		out << Format::Number(casualtyAnalysis.deathShares) << " extra shares in today's profits (if any).";
+		player.Accounts().AddDeathShares(casualtyAnalysis.deathShares);
+	}
+	Messages::Add(out.str(), Messages::Importance::Highest);
+
+	hasUnresolvedCasualties = false;
 }
 
 

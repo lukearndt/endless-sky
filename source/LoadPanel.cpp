@@ -25,6 +25,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "FillShader.h"
 #include "text/Font.h"
 #include "text/FontSet.h"
+#include "text/Format.h"
 #include "GameData.h"
 #include "Information.h"
 #include "Interface.h"
@@ -312,9 +313,9 @@ bool LoadPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, boo
 		// Is the selected file a snapshot or the pilot's main file?
 		string fileName = selectedFile.substr(selectedFile.rfind('/') + 1);
 		if(fileName == selectedPilot + ".txt")
-			LoadCallback();
+			ConfirmGameLoadFeeCallback();
 		else
-			GetUI()->Push(new Dialog(this, &LoadPanel::LoadCallback,
+			GetUI()->Push(new Dialog(this, &LoadPanel::ConfirmGameLoadFeeCallback,
 				"If you load this snapshot, it will overwrite your current game. "
 				"Any progress will be lost, unless you have saved other snapshots. "
 				"Are you sure you want to do that?"));
@@ -605,7 +606,7 @@ void LoadPanel::LoadCallback()
 	gamePanels.Reset();
 	gamePanels.CanSave(true);
 
-	player.Load(loadedInfo.Path());
+	player.Load(loadedInfo.Path(), true);
 
 	// Scale any new masks that might have been added by the newly loaded save file.
 	GameData::GetMaskManager().ScaleMasks();
@@ -616,6 +617,23 @@ void LoadPanel::LoadCallback()
 	// another step to actually place it. So, take two steps to avoid a flicker.
 	gamePanels.StepAll();
 	gamePanels.StepAll();
+}
+
+
+
+void LoadPanel::ConfirmGameLoadFeeCallback()
+{
+	// Check if the player has chosen to have a fee for reloading.
+	// If so, show a dialog asking if they want to pay it.
+	Preferences::GameReloadFeeType gameReloadFeeType = Preferences::GetGameReloadFeeType();
+	int gameReloadFeePercentage = Preferences::GetGameReloadFeePercentage();
+
+	if(gameReloadFeeType != Preferences::GameReloadFeeType::OFF && gameReloadFeePercentage > 0)
+		GetUI()->Push(new Dialog(this, &LoadPanel::LoadCallback,
+			"Reloading the game will cost you " + to_string(gameReloadFeePercentage)
+				+ "% of your " + Preferences::GameReloadFeeTypeSetting() + ", as you specified in the difficulty settings. Do you want to proceed?"));
+	else
+		LoadCallback();
 }
 
 

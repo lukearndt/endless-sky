@@ -42,7 +42,7 @@ public:
 	void PayExtra(int mortgage, int64_t amount);
 
 	// Step forward one day, and return a string summarizing payments made.
-	std::string Step(int64_t assets, int64_t salaries, int64_t maintenance);
+	std::string Step(int64_t assets, int64_t salaries, int64_t maintenance, int64_t playerShares, int64_t crewShares);
 
 	// Structural income.
 	const std::map<std::string, int64_t> &SalariesIncome() const;
@@ -52,9 +52,21 @@ public:
 	// Overdue crew salaries:
 	int64_t CrewSalariesOwed() const;
 	void PaySalaries(int64_t amount);
+	// Overdue death benefits:
+	void AddDeathBenefits(int64_t amount);
+	int64_t DeathBenefitsOwed() const;
+	void PayDeathBenefits(int64_t amount);
 	// Overdue maintenance costs:
 	int64_t MaintenanceDue() const;
 	void PayMaintenance(int64_t amount);
+	// Overdue profit owed to the fleet's non-player shareholders:
+	int64_t SharedProfitsOwed() const;
+	void PaySharedProfits(int64_t amount);
+
+	// Call this whenever crew members die to add their death shares to the
+	// profit sharing liability for the day.
+	int64_t DeathSharesAccrued() const;
+	void AddDeathShares(int64_t amount);
 
 	// Liabilities:
 	const std::vector<Mortgage> &Mortgages() const;
@@ -73,6 +85,7 @@ public:
 
 
 private:
+	int64_t CalculateNetWorth(int64_t assets) const;
 	int64_t YearlyRevenue() const;
 
 
@@ -80,10 +93,12 @@ private:
 	int64_t credits = 0;
 	// Regular income from salaries paid to the player.
 	std::map<std::string, int64_t> salariesIncome;
-	// If back salaries and maintenance cannot be paid, they pile up rather
-	// than being ignored.
+	// If back salaries, maintenance, or shared profits cannot be paid,
+	// they pile up rather than being ignored.
 	int64_t crewSalariesOwed = 0;
+	int64_t deathBenefitsOwed = 0;
 	int64_t maintenanceDue = 0;
+	int64_t sharedProfitsOwed = 0;
 	// Your credit score determines the interest rate on your mortgages.
 	int creditScore = 400;
 
@@ -92,4 +107,12 @@ private:
 	// History of the player's net worth. This is used to calculate your average
 	// daily income, which is used to calculate how big a mortgage you can afford.
 	std::vector<int64_t> history;
+
+	// A snapshot of the crew shares at the start of the day. Used during Step()
+	// to calculate the profit share ratio for the day.
+	int64_t crewSharesSnapshot = 0;
+
+	// Death shares accrued during the day. Used during Step() to calculate the
+	// profit share ratio for the day.
+	int64_t deathSharesAccrued = 0;
 };

@@ -35,8 +35,12 @@ help "disabled"
 	`If the ship that disabled you is still hanging around, you might need to hail them first and bribe them to leave you alone.`
 
 help "hiring"
-	`Hiring extra crew is only helpful if you plan on capturing enemy ships. Each crew member other than yourself is paid 100 credits per day. Larger ships require more than one crew member, but you will automatically hire the minimum number of crew when you buy those ships.`
-	`Crew members take up space that can otherwise be used for passengers.`
+	`Hiring extra crew is only helpful if you plan on capturing enemy ships. Each crew member other than yourself is paid a salary and profit share based on their rank. Larger ships require more than one crew member, but you will automatically hire the minimum number of crew when you buy those ships. Crew members take up space that can otherwise be used for passengers.`
+	`Each of your escorts has a ranking officer based on its category, with heavier ships requiring higher rank officers to command them. Ships also need a command structure of other officers based on their category and total crew count. You can see a summary of each ship's crew in the shipyard, outfitter, and ship info panel.`
+	`At the start of each day, your fleet's profit or loss is calculated based on your net worth. If you make a profit, you need to share a percentage of it with your fleet's crew. If you make a loss, it can reduce any outstanding profit sharing debt that you owe.`
+	`When your crew members die, you need to pay death benefits to their estates based on their rank. They also receive a higher share of any profits earned that day. Small ship pilots and the marines that you hire for boarding operations receive especially high death benefits and death shares, which is why they're willing to risk their lives in such a dangerous profession.`
+	`If you would prefer a different gameplay experience, you can enable or disable each of these features in the Difficulty section of the Settings menu.`
+
 
 help "jobs"
 	`Taking on jobs is a safe way to earn money. Special missions are offered in the Spaceport; more mundane jobs are posted on the Job Board. Most special missions are only offered once: if you turn one down, it will not be offered to you again.`
@@ -92,6 +96,9 @@ help "map advanced danger"
 
 help "multiple ships"
 	`Now that you have more than one ship, while landed on a planet you can reorder the ships in your fleet by clicking and dragging them in the shipyard, outfitter, or player info panel. Ships can also be sorted by clicking on the column headers in the player info panel. You will use the first ship in the list as your flagship. In the player info panel (accessed with <View player info>) you can also "park" a ship on a planet if you want to travel somewhere without it coming with you.`
+	`Each ship requires a crew, which will be hired automatically. You need to pay each crew member a salary and share a portion of your fleet's profits with them, based on their rank. Heavier ships require higher rank officers to crew them, making them more expensive to operate than lighter vessels.`
+	`You can keep a higher percentage of your fleet's profit by avoiding unnecessary escorts, and by earning more shares in the fleet. Your personal shares increase with your combat rank, and each time you gain a license.`
+	`If you would prefer a different gameplay experience, you can enable or disable various crew features in the Difficulty section of the Settings menu.`
 
 help "ship info"
 	`The ship info tab lets you view detailed information about ships in your fleet at any time. This includes any information you could see at a shipyard or outfitter, as well as the cargo and passengers distributed among each ship.`

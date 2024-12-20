@@ -30,6 +30,8 @@ class CategoryList;
 class Color;
 class ConditionsStore;
 class Conversation;
+class CrewMember;
+class CrewSetting;
 class DataNode;
 class DataWriter;
 class Date;
@@ -117,6 +119,8 @@ public:
 
 	static const Set<Color> &Colors();
 	static const Set<Conversation> &Conversations();
+	static const Set<CrewMember> &CrewMembers();
+	static const Set<CrewSetting> &CrewSettings();
 	static const Set<Effect> &Effects();
 	static const Set<GameEvent> &Events();
 	static const Set<Fleet> &Fleets();

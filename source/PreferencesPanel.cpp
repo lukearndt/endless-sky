@@ -23,6 +23,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "FillShader.h"
 #include "text/Font.h"
 #include "text/FontSet.h"
+#include "text/Format.h"
 #include "GameData.h"
 #include "Information.h"
 #include "Interface.h"
@@ -80,6 +81,13 @@ namespace {
 	const string EXTENDED_JUMP_EFFECTS = "Extended jump effects";
 	const string ALERT_INDICATOR = "Alert indicator";
 	const string HUD_SHIP_OUTLINES = "Ship outlines in HUD";
+	const string GAME_RELOAD_FEE_TYPE = "Game reload fee type";
+	const string GAME_RELOAD_FEE_PERCENTAGE = "Game reload fee %";
+	const string CREW_SALARIES = "Crew salaries";
+	const string PROFIT_SHARING = "Profit sharing";
+	const string DEATH_PAYMENTS = "Death payments";
+	const string RANKED_CREW_MEMBERS = "Ranked crew members";
+	const string PARKED_SHIP_CREW = "Parked ship crew";
 
 	// How many pages of controls and settings there are.
 	const int CONTROLS_PAGE_COUNT = 2;
@@ -361,6 +369,13 @@ bool PreferencesPanel::Scroll(double dx, double dy)
 			else
 				speed = min(60, speed + 10);
 			Preferences::SetScrollSpeed(speed);
+		}
+		else if(hoverItem == GAME_RELOAD_FEE_PERCENTAGE)
+		{
+			if(dy < 0.)
+				Preferences::ChangeGameReloadFeePercentage(-1);
+			else
+				Preferences::ChangeGameReloadFeePercentage(1);
 		}
 		return true;
 	}
@@ -687,6 +702,15 @@ void PreferencesPanel::DrawSettings()
 		"Show stored outfits on map",
 		"System map sends move orders",
 		"\t",
+		"Difficulty",
+		GAME_RELOAD_FEE_TYPE,
+		GAME_RELOAD_FEE_PERCENTAGE,
+		CREW_SALARIES,
+		PROFIT_SHARING,
+		DEATH_PAYMENTS,
+		RANKED_CREW_MEMBERS,
+		PARKED_SHIP_CREW,
+		"",
 		"Other",
 		"Always underline shortcuts",
 		REACTIVATE_HELP,
@@ -902,6 +926,41 @@ void PreferencesPanel::DrawSettings()
 		{
 			isOn = Preferences::GetAlertIndicator() != Preferences::AlertIndicator::NONE;
 			text = Preferences::AlertSetting();
+		}
+		else if(setting == CREW_SALARIES)
+		{
+			isOn = Preferences::GetCrewSalaries() != Preferences::CrewSalaries::OFF;
+			text = Preferences::CrewSalariesSetting();
+		}
+		else if(setting == PROFIT_SHARING)
+		{
+			isOn = Preferences::GetProfitSharing() != Preferences::ProfitSharing::OFF;
+			text = Preferences::ProfitSharingSetting();
+		}
+		else if(setting == DEATH_PAYMENTS)
+		{
+			isOn = Preferences::GetDeathPayments() != Preferences::DeathPayments::OFF;
+			text = Preferences::DeathPaymentsSetting();
+		}
+		else if(setting == RANKED_CREW_MEMBERS)
+		{
+			isOn = Preferences::GetRankedCrewMembers() != Preferences::RankedCrewMembers::OFF;
+			text = Preferences::RankedCrewMembersSetting();
+		}
+		else if(setting == PARKED_SHIP_CREW)
+		{
+			isOn = Preferences::GetParkedShipCrew() != Preferences::ParkedShipCrew::OFF;
+			text = Preferences::ParkedShipCrewSetting();
+		}
+		else if(setting == GAME_RELOAD_FEE_TYPE)
+		{
+			isOn = Preferences::GetGameReloadFeeType() != Preferences::GameReloadFeeType::OFF;
+			text = Preferences::GameReloadFeeTypeSetting();
+		}
+		else if(setting == GAME_RELOAD_FEE_PERCENTAGE)
+		{
+			isOn = Preferences::GetGameReloadFeeType() != Preferences::GameReloadFeeType::OFF && Preferences::GetGameReloadFeePercentage() > 0;
+			text = Format::Number(Preferences::GameReloadFeePercentageSetting());
 		}
 		else
 			text = isOn ? "on" : "off";
@@ -1243,6 +1302,21 @@ void PreferencesPanel::HandleSettingsString(const string &str, Point cursorPosit
 		Preferences::ToggleDateFormat();
 	else if(str == ALERT_INDICATOR)
 		Preferences::ToggleAlert();
+	// Difficulty settings
+	else if(str == CREW_SALARIES)
+		Preferences::ToggleCrewSalaries();
+	else if(str == PROFIT_SHARING)
+		Preferences::ToggleProfitSharing();
+	else if(str == DEATH_PAYMENTS)
+		Preferences::ToggleDeathPayments();
+	else if(str == RANKED_CREW_MEMBERS)
+		Preferences::ToggleRankedCrewMembers();
+	else if(str == PARKED_SHIP_CREW)
+		Preferences::ToggleParkedShipCrew();
+	else if(str == GAME_RELOAD_FEE_TYPE)
+		Preferences::ToggleGameReloadFeeType();
+	else if(str == GAME_RELOAD_FEE_PERCENTAGE)
+		Preferences::ChangeGameReloadFeePercentage(1);
 	// All other options are handled by just toggling the boolean state.
 	else
 		Preferences::Set(str, !Preferences::Has(str));

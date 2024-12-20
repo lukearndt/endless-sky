@@ -152,6 +152,10 @@ void UniverseObjects::Change(const DataNode &node)
 		systems.Get(node.Token(1))->Load(node, planets);
 	else if(node.Token(0) == "news" && node.Size() >= 2)
 		news.Get(node.Token(1))->Load(node);
+	else if(node.Token(0) == "crew member" && node.Size() >= 2)
+		crewMembers.Get(node.Token(1))->Load(node);
+	else if(node.Token(0) == "crew setting" && node.Size() >= 2)
+		crewSettings.Get(node.Token(1))->Load(node);
 	else if(node.Token(0) == "link" && node.Size() >= 3)
 		systems.Get(node.Token(1))->Link(systems.Get(node.Token(2)));
 	else if(node.Token(0) == "unlink" && node.Size() >= 3)
@@ -334,6 +338,10 @@ void UniverseObjects::LoadFile(const string &path, bool debugMode)
 				node.Value(2), node.Value(3), node.Value(4), node.Size() >= 6 ? node.Value(5) : 1.);
 		else if(key == "conversation" && node.Size() >= 2)
 			conversations.Get(node.Token(1))->Load(node);
+		else if(key == "crew member" && node.Size() >= 2)
+			crewMembers.Get(node.Token(1))->Load(node);
+		else if(key == "crew setting" && node.Size() >= 2)
+			crewSettings.Get(node.Token(1))->Load(node);
 		else if(key == "effect" && node.Size() >= 2)
 			effects.Get(node.Token(1))->Load(node);
 		else if(key == "event" && node.Size() >= 2)

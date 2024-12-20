@@ -18,6 +18,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Panel.h"
 
 #include "ClickZone.h"
+#include "Crew.h"
 #include "InfoPanelState.h"
 #include "Point.h"
 #include "ShipInfoDisplay.h"
@@ -63,6 +64,7 @@ private:
 
 	// Draw the ship tab (and its subsections).
 	void DrawShipStats(const Rectangle &bounds);
+	Point DrawCrewManifest(const Point &topLeft, const std::shared_ptr<Crew::ShipAnalysis> shipAnalysis);
 	void DrawOutfits(const Rectangle &bounds, Rectangle &cargoBounds);
 	void DrawWeapons(const Rectangle &bounds);
 	void DrawCargo(const Rectangle &bounds);
@@ -82,6 +84,9 @@ private:
 	PlayerInfo &player;
 	// This is the currently selected ship.
 	std::vector<std::shared_ptr<Ship>>::const_iterator shipIt;
+
+	// Analysis of the fleet's crew.
+	std::shared_ptr<Crew::FleetAnalysis> fleetAnalysis;
 
 	// Information about the currently selected ship.
 	ShipInfoDisplay infoDisplay;

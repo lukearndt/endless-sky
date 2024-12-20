@@ -173,8 +173,11 @@ double ShipyardPanel::DrawDetails(const Point &center)
 		}
 
 		const Point attributesPoint(startPoint.X(), startPoint.Y() + descriptionOffset);
-		const Point outfitsPoint(startPoint.X(), attributesPoint.Y() + shipInfo.AttributesHeight());
+		const Point crewManifestPoint(startPoint.X(), attributesPoint.Y() + shipInfo.AttributesHeight());
+		const Point outfitsPoint(startPoint.X(), crewManifestPoint.Y() + shipInfo.CrewManifestHeight());
+
 		shipInfo.DrawAttributes(attributesPoint);
+		shipInfo.DrawCrewManifest(crewManifestPoint);
 		shipInfo.DrawOutfits(outfitsPoint);
 
 		heightOffset = outfitsPoint.Y() + shipInfo.OutfitsHeight();

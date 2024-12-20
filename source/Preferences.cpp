@@ -143,6 +143,36 @@ namespace {
 	const vector<string> ALERT_INDICATOR_SETTING = {"off", "audio", "visual", "both"};
 	int alertIndicatorIndex = 3;
 
+	// Start of difficulty settings
+
+	const vector<string> GAME_RELOAD_FEE_TYPE_SETTING = {
+		"off", "gross worth", "net worth", "active worth",
+		"total fleet", "active fleet", "gross credits", "net credits"
+	};
+	int gameReloadFeeTypeIndex = 3; // Default to "active worth" as it's the recommended option.
+
+	const int GAME_RELOAD_FEE_PERCENTAGE_MIN = 0;
+	const int GAME_RELOAD_FEE_PERCENTAGE_MAX = 100;
+	const int GAME_RELOAD_FEE_PERCENTAGE_INCREMENT = 1;
+	int gameReloadFeePercentage = 0;
+
+	const vector<string> CREW_SALARIES_SETTING = {"off", "on", "converted"};
+	int crewSalariesIndex = 1;
+
+	const vector<string> PROFIT_SHARING_SETTING = {"off", "on", "converted"};
+	int profitSharingIndex = 1;
+
+	const vector<string> DEATH_PAYMENTS_SETTING = {"off", "on", "benefits only", "shares only"};
+	int deathPaymentsIndex = 1;
+
+	const vector<string> RANKED_CREW_MEMBERS_SETTING = {"off", "on", "marines only"};
+	int rankedCrewMembersIndex = 1;
+
+	const vector<string> PARKED_SHIP_CREW_SETTING = {"off", "on", "salary only", "shares only"};
+	int parkedShipCrewIndex = 1;
+
+	// End of difficulty settings
+
 	int previousSaveCount = 3;
 }
 
@@ -218,6 +248,25 @@ void Preferences::Load()
 			dateFormatIndex = max<int>(0, min<int>(node.Value(1), DATEFMT_OPTIONS.size() - 1));
 		else if(node.Token(0) == "alert indicator")
 			alertIndicatorIndex = max<int>(0, min<int>(node.Value(1), ALERT_INDICATOR_SETTING.size() - 1));
+		// Start of difficulty settings
+		else if(node.Token(0) == "Game reload fee type")
+			gameReloadFeeTypeIndex = max<int>(0, min<int>(node.Value(1), GAME_RELOAD_FEE_TYPE_SETTING.size() - 1));
+		else if(node.Token(0) == "Game reload fee percentage")
+			gameReloadFeePercentage = max<int>(
+				GAME_RELOAD_FEE_PERCENTAGE_MIN,
+				min<int>(node.Value(1), GAME_RELOAD_FEE_PERCENTAGE_MAX)
+			);
+		else if(node.Token(0) == "Crew salaries")
+			crewSalariesIndex = max<int>(0, min<int>(node.Value(1), CREW_SALARIES_SETTING.size() - 1));
+		else if(node.Token(0) == "Profit sharing")
+			profitSharingIndex = max<int>(0, min<int>(node.Value(1), PROFIT_SHARING_SETTING.size() - 1));
+		else if(node.Token(0) == "Death payments")
+			deathPaymentsIndex = max<int>(0, min<int>(node.Value(1), DEATH_PAYMENTS_SETTING.size() - 1));
+		else if(node.Token(0) == "Ranked crew members")
+			rankedCrewMembersIndex = max<int>(0, min<int>(node.Value(1), RANKED_CREW_MEMBERS_SETTING.size() - 1));
+		else if(node.Token(0) == "Parked ship crew")
+			parkedShipCrewIndex = max<int>(0, min<int>(node.Value(1), PARKED_SHIP_CREW_SETTING.size() - 1));
+		// End of difficulty settings
 		else if(node.Token(0) == "previous saves" && node.Size() >= 2)
 			previousSaveCount = max<int>(3, node.Value(1));
 		else if(node.Token(0) == "alt-mouse turning")
@@ -284,6 +333,13 @@ void Preferences::Save()
 	out.Write("Extended jump effects", extendedJumpEffectIndex);
 	out.Write("alert indicator", alertIndicatorIndex);
 	out.Write("previous saves", previousSaveCount);
+	out.Write("Game reload fee type", gameReloadFeeTypeIndex);
+	out.Write("Game reload fee percentage", gameReloadFeePercentage);
+	out.Write("Crew salaries", crewSalariesIndex);
+	out.Write("Profit sharing", profitSharingIndex);
+	out.Write("Death payments", deathPaymentsIndex);
+	out.Write("Ranked crew members", rankedCrewMembersIndex);
+	out.Write("Parked ship crew", parkedShipCrewIndex);
 
 	for(const auto &it : settings)
 		out.Write(it.first, it.second);
@@ -723,6 +779,196 @@ bool Preferences::DoAlertHelper(Preferences::AlertIndicator toDo)
 		return true;
 	return false;
 }
+
+
+
+// Start of difficulty settings
+
+
+
+// Game reload fee type setting, either "off", "net worth", "fleet worth", or "credits".
+void Preferences::ToggleGameReloadFeeType()
+{
+	gameReloadFeeTypeIndex = (gameReloadFeeTypeIndex + 1) % GAME_RELOAD_FEE_TYPE_SETTING.size();
+}
+
+
+
+Preferences::GameReloadFeeType Preferences::GetGameReloadFeeType()
+{
+	return static_cast<GameReloadFeeType>(gameReloadFeeTypeIndex);
+}
+
+
+
+const string &Preferences::GameReloadFeeTypeSetting()
+{
+	return GAME_RELOAD_FEE_TYPE_SETTING[gameReloadFeeTypeIndex];
+}
+
+
+
+// Game reload fee percentage setting.
+
+/*
+ * Changes the game reload fee percentage by the given number of increments.
+ * If raised above the maximum, wraps around to the minimum.
+ * If lowered below the minimum, wraps around to the maximum.
+ *
+ * @param increments The number of increments to change the game reload fee percentage by. If negative, decreases the percentage.
+ * @return The new game reload fee percentage.
+ */
+int Preferences::ChangeGameReloadFeePercentage(int increments)
+{
+	int change = increments * GAME_RELOAD_FEE_PERCENTAGE_INCREMENT;
+
+	int newPercentage = gameReloadFeePercentage + change;
+
+	if(newPercentage > GAME_RELOAD_FEE_PERCENTAGE_MAX)
+		gameReloadFeePercentage = GAME_RELOAD_FEE_PERCENTAGE_MIN;
+	else if(newPercentage < GAME_RELOAD_FEE_PERCENTAGE_MIN)
+		gameReloadFeePercentage = GAME_RELOAD_FEE_PERCENTAGE_MAX;
+	else
+		gameReloadFeePercentage += change;
+
+	return gameReloadFeePercentage;
+}
+
+
+
+void Preferences::SetGameReloadFeePercentage(int percentage)
+{
+	gameReloadFeePercentage = percentage;
+}
+
+
+
+int Preferences::GetGameReloadFeePercentage()
+{
+	return gameReloadFeePercentage;
+}
+
+
+
+int Preferences::GameReloadFeePercentageSetting()
+{
+	return gameReloadFeePercentage;
+}
+
+
+
+// Crew salaries setting, either "off", "on", or "converted".
+void Preferences::ToggleCrewSalaries()
+{
+	crewSalariesIndex = (crewSalariesIndex + 1) % CREW_SALARIES_SETTING.size();
+}
+
+
+
+Preferences::CrewSalaries Preferences::GetCrewSalaries()
+{
+	return static_cast<CrewSalaries>(crewSalariesIndex);
+}
+
+
+
+const string &Preferences::CrewSalariesSetting()
+{
+	return CREW_SALARIES_SETTING[crewSalariesIndex];
+}
+
+
+
+
+// Profit sharing setting, either "off", "on", or "converted".
+void Preferences::ToggleProfitSharing()
+{
+	profitSharingIndex = (profitSharingIndex + 1) % PROFIT_SHARING_SETTING.size();
+}
+
+
+
+Preferences::ProfitSharing Preferences::GetProfitSharing()
+{
+	return static_cast<ProfitSharing>(profitSharingIndex);
+}
+
+
+
+const string &Preferences::ProfitSharingSetting()
+{
+	return PROFIT_SHARING_SETTING[profitSharingIndex];
+}
+
+
+
+// Death payments setting, either "off", "on", "benefits only", or "shares only".
+void Preferences::ToggleDeathPayments()
+{
+	deathPaymentsIndex = (deathPaymentsIndex + 1) % DEATH_PAYMENTS_SETTING.size();
+}
+
+
+
+Preferences::DeathPayments Preferences::GetDeathPayments()
+{
+	return static_cast<DeathPayments>(deathPaymentsIndex);
+}
+
+
+
+const string &Preferences::DeathPaymentsSetting()
+{
+	return DEATH_PAYMENTS_SETTING[deathPaymentsIndex];
+}
+
+
+
+// Ranked crew members setting, either "off", "on", or "marines only".
+void Preferences::ToggleRankedCrewMembers()
+{
+	rankedCrewMembersIndex = (rankedCrewMembersIndex + 1) % RANKED_CREW_MEMBERS_SETTING.size();
+}
+
+
+
+Preferences::RankedCrewMembers Preferences::GetRankedCrewMembers()
+{
+	return static_cast<RankedCrewMembers>(rankedCrewMembersIndex);
+}
+
+
+
+const string &Preferences::RankedCrewMembersSetting()
+{
+	return RANKED_CREW_MEMBERS_SETTING[rankedCrewMembersIndex];
+}
+
+
+
+// Parked ship crew setting, either "off", "on", "salary only", or "shares only".
+void Preferences::ToggleParkedShipCrew()
+{
+	parkedShipCrewIndex = (parkedShipCrewIndex + 1) % PARKED_SHIP_CREW_SETTING.size();
+}
+
+
+
+Preferences::ParkedShipCrew Preferences::GetParkedShipCrew()
+{
+	return static_cast<ParkedShipCrew>(parkedShipCrewIndex);
+}
+
+
+
+const string &Preferences::ParkedShipCrewSetting()
+{
+	return PARKED_SHIP_CREW_SETTING[parkedShipCrewIndex];
+}
+
+
+
+// End of difficulty settings
 
 
 

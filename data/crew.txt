@@ -1,0 +1,332 @@
+# Copyright (c) 2024 by Luke Arndt
+#
+# Endless Sky is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# Endless Sky is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+
+# Section 1: Crew Settings
+
+# Defines the various crew members that can command a ship.
+# It is used to prevent a ship of a given category from being assigned
+# crew members that are more senior than the ranking crew member.
+# The ranking crew member for a ship is determined by its category.
+#
+# Specify the crew members in the command structure from highest to lowest rank.
+
+"crew setting" "command structure"
+	"captain"
+	"player"
+	"commander"
+	"lieutenant commander"
+	"lieutenant"
+	"pilot"
+
+# Defines the ranking crew member for ships of a given category.
+# This is used to ensure that each ship has at least one crew member
+# of the defined rank, and to prevent that ship from being assigned any
+# crew members of an equal or higher rank than that.
+#
+# Each crew member assigned in this setting must also be included in the
+# "command structure" setting, with the exception of "null".
+
+"crew setting" "ranking crew by ship category"
+	"Transport" "pilot"
+	"Space Liner" "lieutenant"
+	"Light Freighter" "pilot"
+	"Heavy Freighter" "lieutenant"
+	"Utility" "captain"
+	"Interceptor" "pilot"
+	"Light Warship" "lieutenant"
+	"Medium Warship" "lieutenant commander"
+	"Heavy Warship" "commander"
+	"Superheavy" "captain"
+	"Fighter" "pilot"
+	"Drone" "null"
+
+# These settings are used to calculate the values of the "death benefit"
+# and "death shares" crew fields when they are not otherwise specified.
+#
+# By default, death benefits are equal to one year's salary and
+# a crew member gets a triple profit share on the day of their death.
+#
+# Death shares are only applied if the fleet makes a profit on the day
+# that the crew member died. For this reason, they are unlikely to matter
+# when they occur during space battles. There are two exceptions to this:
+#
+# 1. When the player loses one or more small ships during an otherwise
+#    profitable battle.
+#
+# 2. When the player captures a disabled ship but crew members die in
+#    the process.
+#
+# To help reinforce the impact of these situations, the Pilot and Marine
+# crew members receive unusually high death benefits and death shares.
+#
+# In universe, this helps to explain why someone would be willing to
+# sign up for a more vulnerable role in the fleet or proceed with a
+# risky boarding operation.
+
+"crew setting" "death benefit salary multiplier" 365
+"crew setting" "death shares multiplier" 2
+
+# This setting determines the conversion ratio between salary and shares,
+# which is used when either the "Crew salaries" or "Profit sharing"
+# difficulty settings are in "converted" mode.
+
+"crew setting" "conversion ratio: salary per share" 50
+
+
+
+# Section 2: Special crew members that are required by the system.
+
+# At the start of the game, the Player has 500 shares in the fleet; 250
+# from the base value and 250 for their Pilot's License.
+#
+# The Player gains a flat number of shares each time they reach a new level
+# of combat rating, which serves as a proxy for experience and reputation.
+# This is governed by the "shares per combat level" attribute.
+#
+# The Player also gains a flat number of shares each time they obtain a
+# license, which serves as a proxy for mission progress.
+# This is governed by the "shares per license" attribute.
+#
+# In theory, the "name" attribute could also be used by the mission system
+# to give the Player a new title as their fleet grows. As things stand
+# right now, it's a bit strange that the Player is referred to as a Captain
+# forever even if they command a vast fleet of warships. These title
+# upgrades could also come with increases to the Player's base shares.
+#
+# Here's an example of how that progression might work:
+#
+# Starting out:
+#   name: "Captain"
+#   shares "250"
+#
+# First promotion:
+#   name: "Fleet Captain"
+#   shares: "500"
+#
+# Second promotion:
+#   name: "Commodore"
+#   shares: "1000"
+#
+# Third promotion:
+#   name: "Admiral"
+#   shares: "2000"
+#
+
+"crew member" "player"
+	name "Captain"
+	shares 250
+	"avoids escorts"
+	"avoids parked"
+	"occurs at" 1
+	"shares per combat level" 100
+	"shares per license" 250
+
+
+# Marines are the extra crew that the player can hire for boarding operations.
+# They are only a little better paid than regulars, but they have unusually
+# high death benefits and death shares.
+#
+# This helps balance out the wildly lucrative practice of capturing enemy
+# ships. It also creates an incentive to minimise crew deaths during the
+# capture process. After accounting for death benefits and profit shares,
+# a player that throws away lives might actually lose more money than make.
+
+"crew member" "marine"
+	name "Marine"
+	salary 100
+	shares 2
+	"avoids parked"
+	"death benefit" 10000
+	"death shares" 100
+
+
+# When a ship doesn't have any officers, it is commanded by a Pilot.
+# Pilots are not paid much better than regulars, but they receive unusually
+# high shares and death benefits.
+#
+# This prevents small ships from contributing to high salary costs, while
+# ensuring that every gun/turret in the fleet has a meaningful impact on
+# the player's profit share ratio.
+#
+# In universe, this helps explain why someone might choose to fly a small
+# ship as part of a larger fleet. Small ships are the most vulnerable,
+# making the role more dangerous than serving on a larger vessel. In return,
+# the Pilot gets a higher share of the profits and more assurance that their
+# family will be looked after if they are killed in action.
+
+"crew member" "pilot"
+	name "Pilot"
+	salary 100
+	shares 10
+	"avoids parked"
+	"death benefit" 100000
+
+
+# Regulars are standard crew members that do not have any special rank or
+# responsibilities. They make up the bulk of most fleets.
+
+"crew member" "regular"
+	name "Regular"
+	salary 50
+	shares 1
+	"avoids parked"
+
+
+# The "null" crew member does not actually occur. It's used to reason
+# about ships that do not require any crew, such as drones.
+
+"crew member" "null"
+	name "Automated"
+	salary 0
+	shares 0
+
+
+
+# Section 3: Scaling crew member definitions
+
+# This section lists various crew members that are either placed on
+# a ship as the ranking crew member based on its category, or occur due
+# to the ship having a large enough crew count to require them.
+#
+# You may also define crew members that are not bound to the fleet's
+# command structure, which is defined in the "command structure" crew
+# setting at the top of this file. These non-command crew members will
+# not be limited by the command structure, merely occuring as you specify.
+#
+# Format:
+#
+#   (Required fields are marked by a *; do not include the * in their defintion)
+#
+# "crew member" "unique crew member id" *
+#   name * "Display Name; take care not to make it too long!"
+#   salary * (number of credits paid per day)
+#   shares * (number of shares in the fleet's profit)
+#   "death benefit" (number of credits paid to their estate upon death; same day for flagship, resolved on landing and deletion for escort)
+#   "death shares" (number of shares in the fleet's profit if they die; same day for flagship, until landing and deletion for escort)
+#   "ship population per member" (occurs on a ship each time the crew count reaches a multiple of this number)
+#   "occurs at" (occurs on a ship at these specific crew counts; list of numbers, eg 3 12 21 42)
+#   "only ship categories" (only occurs on ships of these categories; list of strings, eg "Light Freighter" "Heavy Freighter")
+#   "avoids escorts" (if present, will not occur on escort ships)
+#   "avoids flagship" (if present, will not occur on the flagship)
+#   "avoids parked" (if present, will not occur on parked ships)
+#   "only parked" (if present, will only occur on parked ships)
+#   "avoids ship categories" (will not occur on ships of these categories; list of strings, eg "Fighter" "Interceptor" "Drone")
+#   "shares per license" (number of shares added per license obtained; only works with the Player crew member)
+#   "shares per license" (number of shares added per level of combat rating; only works with the Player crew member)
+#   "parked salary" (number of credits paid per day while the ship is parked)
+#   "parked shares" (number of shares in the fleet's profit while the ship is parked)
+#
+# In the low to mid ranks, crew members receive much more salary than a
+# regular but not an especially high share of the fleet's profits. This
+# changes in the higher ranks, as profit shares make up an increasing
+# proportion of an officer's remuneration. Various ship classes end up
+# having very different cost profiles as a result:
+#
+# Combat:
+#
+#   Interceptor: Low salary, high shares.
+#   Light Warship: Moderate salary, low shares.
+#   Medium Warship: High salary, moderate shares.
+#   Heavy Warship: Moderate salary, high shares.
+#   Utility: High salary, high shares.
+#   Fighter: Low salary, high shares.
+#   Drone: No salary, no shares.
+#
+# Cargo:
+#
+#   Light Freighter: Low salary, high shares.
+#   Heavy Freighter: Moderate salary, low shares.
+#   Utility: High salary, high shares.
+#
+# Transport:
+#
+#   Transport: Low salary, high shares.
+#   Space Liner: Moderate salary, low shares.
+#   Utility: High salary, high shares.
+#
+# This gives the player an extra layer of flexibility and challenge when
+# designing their fleet.
+#
+# Peaceful gameplay activities like cargo hauling or transport work favour
+# a fleet with low salaries and high shares, as they generate reliable
+# profit over several days. To achieve this, they might use a fleet of
+# Heavy Freighters and minimal combat escorts.
+#
+# Aggressive gameplay activities like plundering and capturing enemy ships
+# are the opposite, favouring a fleet with high salaries and low shares.
+# This gives the player an incentive to limit their combat strength, which
+# can in turn lead to more exciting and challenging battles.
+#
+# Mission-style gameplay often involves a lot of jumping around and
+# being thrown into battles that the player can't just jump away from.
+# This incentivises the player to use a fleet that's sized appropriately
+# to the mission they're doing. If they trivialise the mission using a
+# huge swarm of heavy warships, they'll end up paying more on salaries
+# than they earn from their share of the mission rewards.
+
+"crew member" "petty officer"
+	name "Petty Officer"
+	salary 100
+	shares 5
+	"avoids parked"
+	"ship population per member" 7
+
+"crew member" "lieutenant"
+	name "Lieutenant"
+	salary 200
+	shares 10
+	"avoids parked"
+	"ship population per member" 15
+
+"crew member" "lieutenant commander"
+	name "Lt. Commander"
+	salary 300
+	shares 25
+	"avoids parked"
+	"ship population per member" 45
+
+"crew member" "commander"
+	name "Commander"
+	salary 400
+	shares 50
+	"avoids parked"
+	"ship population per member" 90
+
+"crew member" "captain"
+	name "Captain"
+	salary 500
+	shares 100
+	"avoids flagship"
+	"avoids parked"
+
+
+# Section 4: Crew that only occur on parked ships
+
+"crew member" "maintenance"
+	name "Maintenance"
+	salary 0
+	shares 0
+	"occurs at" 1
+	"only parked"
+	"parked salary" 25
+	"parked shares" 0
+	"ship population per member" 5
+
+"crew member" "security"
+	name "Security"
+	salary 0
+	shares 0
+	"occurs at" 1
+	"only parked"
+	"parked salary" 50
+	"parked shares" 1
+	"ship population per member" 10
+

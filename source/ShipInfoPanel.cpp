@@ -19,6 +19,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "CategoryList.h"
 #include "CategoryTypes.h"
 #include "Command.h"
+#include "Crew.h"
 #include "Dialog.h"
 #include "text/DisplayText.h"
 #include "text/Font.h"
@@ -34,6 +35,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "OutlineShader.h"
 #include "PlayerInfo.h"
 #include "PlayerInfoPanel.h"
+#include "Preferences.h"
 #include "Rectangle.h"
 #include "Ship.h"
 #include "ShipNameDialog.h"
@@ -73,6 +75,13 @@ ShipInfoPanel::ShipInfoPanel(PlayerInfo &player, InfoPanelState state)
 		while(shipIt != this->panelState.Ships().end() && shipIt->get() != player.Flagship())
 			++shipIt;
 	}
+
+	fleetAnalysis = make_shared<Crew::FleetAnalysis>(
+		player.Ships(),
+		player.Flagship(),
+		player.CombatLevel(),
+		player.Licenses().size()
+	);
 
 	UpdateInfo();
 }
@@ -429,13 +438,43 @@ void ShipInfoPanel::DrawOutfits(const Rectangle &bounds, Rectangle &cargoBounds)
 		table.DrawGap(10.);
 	}
 
-	// Check if this information spilled over into the cargo column.
-	if(table.GetPoint().X() >= cargoBounds.Left())
+	// Prepare to draw the crew manifest
+	shared_ptr<Crew::ShipAnalysis> shipAnalysis = fleetAnalysis->shipAnalyses->at(panelState.SelectedIndex());
+
+	bool showCrewManifest = false;
+	int64_t crewManifestHeight = 0;
+	if(shipAnalysis->CrewSummary()->size())
 	{
-		double startY = table.GetRowBounds().Top() - 8.;
+		showCrewManifest = true;
+		crewManifestHeight = shipAnalysis->CrewSummary()->size() * 20 + 25;
+	}
+	Point crewManifestStart = table.GetRowBounds().TopLeft();
+
+	// Don't let the crew manifest clip into the weapon section
+	if(
+		crewManifestStart.X() < cargoBounds.Left() &&
+		crewManifestStart.Y() + crewManifestHeight > bounds.Bottom()
+	)
+		crewManifestStart = cargoBounds.TopLeft() + Point(10., 8.);
+
+	// Don't let the crew manifest clip off the screen
+	if(crewManifestStart.Y() + crewManifestHeight > cargoBounds.Bottom())
+		showCrewManifest = false;
+
+	// Maybe draw the crew manifest
+	Point crewManifestEnd = showCrewManifest ? DrawCrewManifest(crewManifestStart, shipAnalysis) : crewManifestStart;
+
+	// Move the cargo down if the previous content has spilled over into its column
+	if(
+		crewManifestStart.X() >= cargoBounds.Left()
+	)
+	{
+		double startY = crewManifestEnd.Y();
+
 		cargoBounds = Rectangle::WithCorners(
 			Point(cargoBounds.Left(), startY),
-			Point(cargoBounds.Right(), max(startY, cargoBounds.Bottom())));
+			Point(cargoBounds.Right(), max(startY, cargoBounds.Bottom()))
+		);
 	}
 }
 
@@ -659,6 +698,72 @@ void ShipInfoPanel::DrawCargo(const Rectangle &bounds)
 		table.Draw("passengers:", dim);
 		table.Draw(to_string(cargo.Passengers()), bright);
 	}
+}
+
+
+
+/**
+ *	Draws the crew manifest for the ship.
+ *
+ *	@param topLeft The top left point of the crew manifest.
+ *	@return The bottom left point of the crew manifest.
+ */
+Point ShipInfoPanel::DrawCrewManifest(const Point &topLeft, const shared_ptr<Crew::ShipAnalysis> shipAnalysis)
+{
+	if(shipAnalysis->CrewSummary()->empty())
+		return topLeft;
+
+	Color dim = *GameData::Colors().Get("medium");
+	Color bright = *GameData::Colors().Get("bright");
+
+	bool crewSalariesEnabled = Preferences::GetCrewSalaries() == Preferences::CrewSalaries::ON;
+	bool profitSharingEnabled = Preferences::GetProfitSharing() == Preferences::ProfitSharing::ON;
+
+	int columns = 2 + (crewSalariesEnabled ? 1 : 0) + (profitSharingEnabled ? 1 : 0);
+
+	// Header
+	Table table;
+
+	table.AddColumn(0, {COLUMN_WIDTH - 10, Alignment::LEFT});
+	if(columns > 3)
+		table.AddColumn(COLUMN_WIDTH - 100, {COLUMN_WIDTH - 100, Alignment::RIGHT});
+	if(columns > 2)
+		table.AddColumn(COLUMN_WIDTH - 50, {COLUMN_WIDTH - 50, Alignment::RIGHT});
+	table.AddColumn(COLUMN_WIDTH, {COLUMN_WIDTH - 20, Alignment::RIGHT});
+	table.SetUnderline(0, COLUMN_WIDTH);
+
+	table.DrawAt(topLeft);
+
+	table.Draw("Crew", bright);
+	table.Draw("count", dim);
+	if(crewSalariesEnabled)
+		table.Draw("salary", dim);
+	if(profitSharingEnabled)
+		table.Draw("shares", dim);
+
+	for(const Crew::SummaryEntry &crewSummaryEntry : *shipAnalysis->CrewSummary())
+	{
+		// Crew member name
+		table.Draw(get<0>(crewSummaryEntry), dim);
+		// Crew member count
+		table.Draw(get<1>(crewSummaryEntry), bright);
+		// Crew member salary
+		if(crewSalariesEnabled)
+			table.Draw(get<2>(crewSummaryEntry), bright);
+		// Crew member shares
+		if(profitSharingEnabled)
+			table.Draw(get<3>(crewSummaryEntry), bright);
+	}
+
+	table.DrawGap(5);
+	table.Draw("Totals:", dim);
+	table.Draw(shipAnalysis->crewCountReport->at(Crew::ReportDimension::Actual), bright);
+	if(crewSalariesEnabled)
+		table.Draw(Format::Credits(shipAnalysis->salaryReport->at(Crew::ReportDimension::Actual)), bright);
+	if(profitSharingEnabled)
+		table.Draw(Format::Credits(shipAnalysis->sharesReport->at(Crew::ReportDimension::Actual)), bright);
+
+	return table.GetRowBounds().TopLeft();
 }
 
 

@@ -57,7 +57,8 @@ private:
 	// Snapshot name callback.
 	void SnapshotCallback(const std::string &name);
 	void WriteSnapshot(const std::string &sourceFile, const std::string &snapshotName);
-	// Load snapshot callback.
+	// Load snapshot callback and confirmation for the game load fee.
+	void ConfirmGameLoadFeeCallback();
 	void LoadCallback();
 	// Delete callbacks.
 	void DeletePilot(const std::string &);

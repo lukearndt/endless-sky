@@ -19,6 +19,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "CategoryList.h"
 #include "CategoryTypes.h"
 #include "Color.h"
+#include "Crew.h"
 #include "Depreciation.h"
 #include "FillShader.h"
 #include "text/Format.h"
@@ -26,6 +27,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "text/layout.hpp"
 #include "Outfit.h"
 #include "PlayerInfo.h"
+#include "Preferences.h"
 #include "Ship.h"
 #include "text/Table.h"
 
@@ -51,9 +53,10 @@ void ShipInfoDisplay::Update(const Ship &ship, const PlayerInfo &player, bool de
 	UpdateDescription(ship.Description(), ship.Attributes().Licenses(), true);
 	UpdateAttributes(ship, player, descriptionCollapsed, scrollingPanel);
 	const Depreciation &depreciation = ship.IsYours() ? player.FleetDepreciation() : player.StockDepreciation();
+	UpdateCrewManifest(ship, player);
 	UpdateOutfits(ship, player, depreciation);
 
-	maximumHeight = max(descriptionHeight, max(attributesHeight, outfitsHeight));
+	maximumHeight = max(descriptionHeight, max(attributesHeight, max(crewManifestHeight, outfitsHeight)));
 }
 
 
@@ -61,6 +64,13 @@ void ShipInfoDisplay::Update(const Ship &ship, const PlayerInfo &player, bool de
 int ShipInfoDisplay::GetAttributesHeight(bool sale) const
 {
 	return attributesHeight + (sale ? saleHeight : 0);
+}
+
+
+
+int ShipInfoDisplay::CrewManifestHeight() const
+{
+	return crewManifestHeight;
 }
 
 
@@ -122,6 +132,68 @@ void ShipInfoDisplay::DrawAttributes(const Point &topLeft, const bool sale) cons
 		table.Draw(energyTable[i], valueColor);
 		table.Draw(heatTable[i], valueColor);
 	}
+}
+
+
+
+void ShipInfoDisplay::DrawCrewManifest(const Point &topLeft) const
+{
+	if(crewSummary->empty())
+		return;
+
+	// Get standard colors to draw with.
+	const Color &labelColor = *GameData::Colors().Get("medium");
+	const Color &valueColor = *GameData::Colors().Get("bright");
+
+	bool crewSalariesEnabled = Preferences::GetCrewSalaries() == Preferences::CrewSalaries::ON;
+	bool profitSharingEnabled = Preferences::GetProfitSharing() == Preferences::ProfitSharing::ON;
+
+	int columns = 2 + (crewSalariesEnabled ? 1 : 0) + (profitSharingEnabled ? 1 : 0);
+
+	// Header
+	Table table;
+
+	table.AddColumn(10, {WIDTH - 10, Alignment::LEFT});
+	if(columns > 3)
+		table.AddColumn(WIDTH - 110, {WIDTH - 100, Alignment::RIGHT});
+	if(columns > 2)
+		table.AddColumn(WIDTH - 60, {WIDTH - 50, Alignment::RIGHT});
+	table.AddColumn(WIDTH - 10, {WIDTH - 20, Alignment::RIGHT});
+
+	table.SetHighlight(0, WIDTH);
+	table.DrawAt(topLeft);
+
+	table.Draw("Crew", valueColor);
+	table.Draw("count", labelColor);
+	if(crewSalariesEnabled)
+		table.Draw("salary", labelColor);
+	if(profitSharingEnabled)
+		table.Draw("shares", labelColor);
+
+	for(auto &crewSummaryEntry : *crewSummary)
+	{
+		CheckHover(table, get<0>(crewSummaryEntry));
+		// Crew member name
+		table.Draw(get<0>(crewSummaryEntry), labelColor);
+		// Crew member count
+		table.Draw(get<1>(crewSummaryEntry), valueColor);
+		// Crew member salary
+		if(crewSalariesEnabled)
+			table.Draw(Format::Credits(get<2>(crewSummaryEntry)), valueColor);
+		// Crew member shares
+		if(profitSharingEnabled)
+			table.Draw(get<3>(crewSummaryEntry), valueColor);
+	}
+
+	table.DrawGap(10.);
+	table.Draw("Totals:", valueColor);
+	table.Draw(totalCrewCount, valueColor);
+	if(crewSalariesEnabled)
+		table.Draw(Format::Credits(totalCrewSalary), valueColor);
+	if(profitSharingEnabled)
+		table.Draw(totalCrewShares, valueColor);
+
+	table.DrawGap(20.);
 }
 
 
@@ -422,6 +494,21 @@ void ShipInfoDisplay::UpdateAttributes(const Ship &ship, const PlayerInfo &playe
 	heatTable.push_back(Format::Number(maxHeat));
 	// Pad by 10 pixels on the top and bottom.
 	attributesHeight += 30;
+}
+
+
+
+void ShipInfoDisplay::UpdateCrewManifest(const Ship &ship, const PlayerInfo &player)
+{
+	Crew::ShipAnalysis analysis(make_shared<Ship>(ship), &ship == player.Flagship());
+
+	crewSummary = analysis.CrewSummary();
+
+	totalCrewCount = analysis.crewCountReport->at(Crew::ReportDimension::Actual);
+	totalCrewSalary = analysis.salaryReport->at(Crew::ReportDimension::Actual);
+	totalCrewShares = analysis.sharesReport->at(Crew::ReportDimension::Actual);
+
+	crewManifestHeight = crewSummary->empty() ? 0 : crewSummary->size() * 20 + 60;
 }
 
 

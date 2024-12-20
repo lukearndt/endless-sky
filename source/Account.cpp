@@ -18,6 +18,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "DataNode.h"
 #include "DataWriter.h"
 #include "text/Format.h"
+#include "Preferences.h"
 
 #include <algorithm>
 #include <numeric>
@@ -60,6 +61,10 @@ void Account::Load(const DataNode &node, bool clearFirst)
 			}
 		else if(child.Token(0) == "salaries" && child.Size() >= 2)
 			crewSalariesOwed = child.Value(1);
+		else if(child.Token(0) == "crew shares snapshot")
+			crewSharesSnapshot = child.Value(1);
+		else if(child.Token(0) == "death shares accrued")
+			deathSharesAccrued = child.Value(1);
 		else if(child.Token(0) == "maintenance" && child.Size() >= 2)
 			maintenanceDue = child.Value(1);
 		else if(child.Token(0) == "score" && child.Size() >= 2)
@@ -98,6 +103,9 @@ void Account::Save(DataWriter &out) const
 		if(maintenanceDue)
 			out.Write("maintenance", maintenanceDue);
 		out.Write("score", creditScore);
+
+		out.Write("crew shares snapshot", crewSharesSnapshot);
+		out.Write("death shares accrued", deathSharesAccrued);
 
 		out.Write("history");
 		out.BeginChild();
@@ -151,7 +159,7 @@ void Account::PayExtra(int mortgage, int64_t amount)
 
 
 // Step forward one day, and return a string summarizing payments made.
-string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
+string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int64_t playerShares, int64_t crewShares)
 {
 	ostringstream out;
 
@@ -178,6 +186,28 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 		{
 			credits -= crewSalariesOwed;
 			crewSalariesOwed = 0;
+		}
+	}
+
+
+	// Next attempt to pay any outstanding death benefits
+	int64_t deathBenefitsPaid = deathBenefitsOwed;
+	if(deathBenefitsOwed)
+	{
+		if(deathBenefitsOwed > credits)
+		{
+			// If you can't pay the full amount, still pay some of it and
+			// remember how much you still owe to the estates of your fallen crew.
+			deathBenefitsPaid = max<int64_t>(credits, 0);
+			deathBenefitsOwed -= deathBenefitsPaid;
+			credits -= deathBenefitsPaid;
+			missedPayment = true;
+			out << "You could not pay all the death benefits owed to the estates of your fallen crew.";
+		}
+		else
+		{
+			credits -= deathBenefitsOwed;
+			deathBenefitsOwed = 0;
 		}
 	}
 
@@ -241,10 +271,65 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 			++it;
 	}
 
+	// Calculate the change in net worth since yesterday.
+	int64_t netWorthChange = 0;
+	// Avoid calling history.back() at the start of a new game.
+	if(history.size() > 0)
+		netWorthChange = CalculateNetWorth(assets) - history.back();
+	int64_t sharedProfitsPaid = 0;
+
+	// When your net worth changes, you must share a portion of the profit or loss
+	// with your fleet's other shareholders.
+	// We use a snapshot of the crew shares from the start of the day because it was
+	// those crew members who contributed to the day's outcome. This prevents you from
+	// firing crew after a profitable day to avoid paying them their share of the profits,
+	// and prevents you from sharing the completed day's profits with newly hired crew members.
+	//
+	// If you made a profit, any accrued death shares are added to the profit sharing
+	// liability for the day. If you made a loss, the death shares are ignored to prevent
+	// the deceased crew member's estates from paying an unfair share of that loss.
+	int64_t nonPlayerShares = crewSharesSnapshot + netWorthChange > 0 ? deathSharesAccrued : 0;
+	int64_t totalFleetShares = playerShares + nonPlayerShares;
+	double profitShareRatio = static_cast<double>(nonPlayerShares) / static_cast<double>(totalFleetShares);
+
+	int64_t requiredProfitShare = netWorthChange * profitShareRatio;
+
+	// Update the sharedProfitsOwed account with today's required profit share.
+	// If the fleet has made a loss, that loss is also shared with the crew.
+	// The crew cannot owe the player money, so we cap sharedProfitsOwed at zero.
+	sharedProfitsOwed = max<int64_t>(sharedProfitsOwed + requiredProfitShare, 0);
+
+
+	// If you owe your fleet a share of profits, attempt to pay them.
+	if (sharedProfitsOwed > 0)
+	{
+		if(sharedProfitsOwed > credits)
+		{
+			// If you can't afford to pay your fleet's other shareholders,
+			// pay what you can and remember how much you still owe them.
+			sharedProfitsPaid = max<int64_t>(credits, 0);
+			sharedProfitsOwed -= sharedProfitsPaid;
+			credits -= sharedProfitsPaid;
+			missedPayment = true;
+			out << "You could not pay your crew their share of the fleet's profits.";
+		}
+		else
+		{
+			sharedProfitsPaid = sharedProfitsOwed;
+			credits -= sharedProfitsPaid;
+			sharedProfitsOwed = 0;
+		}
+	}
+
 	// Keep track of your net worth over the last HISTORY days.
 	if(history.size() > HISTORY)
 		history.erase(history.begin());
-	history.push_back(credits + assets - crewSalariesOwed - maintenanceDue);
+	history.push_back(CalculateNetWorth(assets));
+
+	// Update the crewSharesSnapshot and deathSharesAccrued so that they are
+	// ready for tomorrow's Step() calculation.
+	crewSharesSnapshot = crewShares;
+	deathSharesAccrued = 0;
 
 	// If you failed to pay any debt, your credit score drops. Otherwise, even
 	// if you have no debts, it increases. (Because, having no debts at all
@@ -252,7 +337,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	creditScore = max(200, min(800, creditScore + (missedPayment ? -5 : 1)));
 
 	// If you didn't make any payments, no need to continue further.
-	if(!(salariesPaid + maintenancePaid + mortgagesPaid + finesPaid + debtPaid))
+	if(!(salariesPaid + deathBenefitsPaid + maintenancePaid + mortgagesPaid + finesPaid + debtPaid + sharedProfitsPaid))
 		return out.str();
 	else if(missedPayment)
 		out << " ";
@@ -262,8 +347,12 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	map<string, int64_t> typesPaid;
 	if(salariesPaid)
 		typesPaid["crew salaries"] = salariesPaid;
+	if(deathBenefitsPaid)
+		typesPaid["death benefits"] = deathBenefitsPaid;
 	if(maintenancePaid)
 		typesPaid["maintenance"] = maintenancePaid;
+	if(sharedProfitsPaid)
+		typesPaid["shared profits"] = sharedProfitsPaid;
 	if(mortgagesPaid)
 		typesPaid["mortgages"] = mortgagesPaid;
 	if(finesPaid)
@@ -287,9 +376,15 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	{
 		if(salariesPaid)
 			out << Format::CreditString(salariesPaid) << " in crew salaries"
-				<< ((mortgagesPaid || finesPaid || debtPaid || maintenancePaid) ? " and " : ".");
+				<< ((mortgagesPaid || finesPaid || debtPaid || deathBenefitsPaid || maintenancePaid || sharedProfitsPaid) ? " and " : ".");
+		if(deathBenefitsPaid)
+			out << Format::CreditString(deathBenefitsPaid) << " in death benefits"
+				<< ((mortgagesPaid || finesPaid || debtPaid || maintenancePaid || sharedProfitsPaid) ? " and " : ".");
 		if(maintenancePaid)
-			out << Format::CreditString(maintenancePaid) << "  in maintenance"
+			out << Format::CreditString(maintenancePaid) << " in maintenance"
+				<< ((mortgagesPaid || finesPaid || debtPaid || sharedProfitsPaid) ? " and " : ".");
+		if(sharedProfitsPaid)
+			out << Format::CreditString(sharedProfitsPaid) << " in shared profits"
 				<< ((mortgagesPaid || finesPaid || debtPaid) ? " and " : ".");
 		if(mortgagesPaid)
 			out << Format::CreditString(mortgagesPaid) << " in mortgages"
@@ -353,6 +448,29 @@ void Account::PaySalaries(int64_t amount)
 
 
 
+void Account::AddDeathBenefits(int64_t amount)
+{
+	deathBenefitsOwed += amount;
+}
+
+
+
+int64_t Account::DeathBenefitsOwed() const
+{
+	return deathBenefitsOwed;
+}
+
+
+
+void Account::PayDeathBenefits(int64_t amount)
+{
+	amount = min(min(amount, deathBenefitsOwed), credits);
+	credits -= amount;
+	deathBenefitsOwed -= amount;
+}
+
+
+
 int64_t Account::MaintenanceDue() const
 {
 	return maintenanceDue;
@@ -365,6 +483,36 @@ void Account::PayMaintenance(int64_t amount)
 	amount = min(min(amount, maintenanceDue), credits);
 	credits -= amount;
 	maintenanceDue -= amount;
+}
+
+
+
+int64_t Account::SharedProfitsOwed() const
+{
+	return sharedProfitsOwed;
+}
+
+
+
+void Account::PaySharedProfits(int64_t amount)
+{
+	amount = min(min(amount, sharedProfitsOwed), credits);
+	credits -= amount;
+	sharedProfitsOwed -= amount;
+}
+
+
+
+int64_t Account::DeathSharesAccrued() const
+{
+	return deathSharesAccrued;
+}
+
+
+
+void Account::AddDeathShares(int64_t amount)
+{
+	deathSharesAccrued += amount;
 }
 
 
@@ -454,6 +602,15 @@ int64_t Account::TotalDebt(const string &type) const
 			total += mortgage.Principal();
 
 	return total;
+}
+
+
+
+// Calculate the player's net worth based on their current assets and liabilities.
+// Use this when NetWorth is not up to date, such as during a calculation.
+int64_t Account::CalculateNetWorth(int64_t assets) const
+{
+	return credits + assets - crewSalariesOwed - deathBenefitsOwed - sharedProfitsOwed;
 }
 
 

@@ -15,6 +15,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Crew.h"
 #include "ItemInfoDisplay.h"
 
 #include <string>
@@ -46,17 +47,20 @@ public:
 	// int DescriptionHeight() const;
 	// int AttributesHeight() const;
 	int GetAttributesHeight(bool sale) const;
+	int CrewManifestHeight() const;
 	int OutfitsHeight() const;
 
 	// Provided by ItemInfoDisplay:
 	// void DrawDescription(const Point &topLeft) const;
 	virtual void DrawAttributes(const Point &topLeft) const override;
 	virtual void DrawAttributes(const Point &topLeft, const bool sale) const;
+	void DrawCrewManifest(const Point &topLeft) const;
 	void DrawOutfits(const Point &topLeft) const;
 
 
 private:
 	void UpdateAttributes(const Ship &ship, const PlayerInfo &player, bool descriptionCollapsed, bool scrollingPanel);
+	void UpdateCrewManifest(const Ship &ship, const PlayerInfo &player);
 	void UpdateOutfits(const Ship &ship, const PlayerInfo &player, const Depreciation &depreciation);
 
 
@@ -67,6 +71,12 @@ private:
 	std::vector<std::string> tableLabels;
 	std::vector<std::string> energyTable;
 	std::vector<std::string> heatTable;
+
+	std::shared_ptr<std::vector<Crew::SummaryEntry>> crewSummary;
+	int64_t totalCrewCount = 0;
+	int64_t totalCrewSalary = 0;
+	int64_t totalCrewShares = 0;
+	int crewManifestHeight = 0;
 
 	std::vector<std::string> outfitLabels;
 	std::vector<std::string> outfitValues;
