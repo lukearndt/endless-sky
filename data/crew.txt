@@ -26,6 +26,7 @@
 	"lieutenant"
 	"pilot"
 
+
 # Defines the ranking crew member for ships of a given category.
 # This is used to ensure that each ship has at least one crew member
 # of the defined rank, and to prevent that ship from being assigned any
@@ -47,6 +48,7 @@
 	"Superheavy" "captain"
 	"Fighter" "pilot"
 	"Drone" "null"
+
 
 # These settings are used to calculate the values of the "death benefit"
 # and "death shares" crew fields when they are not otherwise specified.
@@ -74,6 +76,7 @@
 "crew setting" "death benefit salary multiplier" 365
 "crew setting" "death shares multiplier" 2
 
+
 # This setting determines the conversion ratio between salary and shares,
 # which is used when either the "Crew salaries" or "Profit sharing"
 # difficulty settings are in "converted" mode.
@@ -81,53 +84,72 @@
 "crew setting" "conversion ratio: salary per share" 50
 
 
+# These settings determine how many shares the player has.
+# The credit score setting requires a double because its
+# value is low enough that you might want a decimal value.
+# The rest of the settings require integer values.
+
+# Base shares are a large negative number because we don't want the player
+# to start with a lot of shares from their pilot's license, early combat
+# levels, and starting credit score of 400.
+# This value makes the player start the game with minimum amount of shares
+# and start to grow them once they pass the early single-ship stages.
+# From there, they'll only lose progress if they ruin their credit score.
+
+"crew setting" "player shares base" -600
+
+
+# Player shares can never go below this number. We use 100 because that
+# is how many shares a standard Captain has.
+
+"crew setting" "player shares minimum" 100
+
+
+# As the player gains a reputation for commanding a fleet and winning
+# battles, they can negotiate a bigger share of the profits.
+#
+# In gameplay terms, this setting represents the player's overall growth
+# outside of factions, missions or story elements. Combat level increases
+# logarithmically, so it progresses quickly to begin with and slows down
+# over time. Once it's around 10 or so, additional player shares are
+# more likely to come from licenses as they acquire alien technology.
+
+"crew setting" "player shares per combat level" 100
+
+
+# The conditions that lead to a low credit score usually include missed
+# payments to the crew. When this happens, the player has to promise a
+# greater share of profits or they might face a mutiny.
+# On the other hand, if the crew trusts that the player will pay their
+# debts promptly then they are happy for the player to take a bigger share.
+
+"crew setting" "player shares per credit score" 1.0
+
+
+# Licenses are granted to the player as they progress through story
+# missions with various factions, and allow access to that faction's
+# technology. This enhances the player's overall reputation, and crew
+# members will be more interested in serving on their technologically
+# advanced and powerful ships. This improves the player's negotiating
+# position, allowing them to take a greater share of the profits.
+#
+# In a metagame sense, this setting allows the player to profitably
+# command a more powerful fleet as they progress through the story.
+
+"crew setting" "player shares per license" 200
+
+
 
 # Section 2: Special crew members that are required by the system.
 
-# At the start of the game, the Player has 500 shares in the fleet; 250
-# from the base value and 250 for their Pilot's License.
-#
-# The Player gains a flat number of shares each time they reach a new level
-# of combat rating, which serves as a proxy for experience and reputation.
-# This is governed by the "shares per combat level" attribute.
-#
-# The Player also gains a flat number of shares each time they obtain a
-# license, which serves as a proxy for mission progress.
-# This is governed by the "shares per license" attribute.
-#
-# In theory, the "name" attribute could also be used by the mission system
-# to give the Player a new title as their fleet grows. As things stand
-# right now, it's a bit strange that the Player is referred to as a Captain
-# forever even if they command a vast fleet of warships. These title
-# upgrades could also come with increases to the Player's base shares.
-#
-# Here's an example of how that progression might work:
-#
-# Starting out:
-#   name: "Captain"
-#   shares "250"
-#
-# First promotion:
-#   name: "Fleet Captain"
-#   shares: "500"
-#
-# Second promotion:
-#   name: "Commodore"
-#   shares: "1000"
-#
-# Third promotion:
-#   name: "Admiral"
-#   shares: "2000"
-#
+# Regulars are standard crew members that do not have any special rank or
+# responsibilities. They make up the bulk of most fleets.
 
-"crew member" "player"
-	name "Captain"
-	shares 250
-	"avoids escorts"
+"crew member" "regular"
+	name "Regular"
+	salary 50
+	shares 1
 	"avoids parked"
-	"occurs at" 1
-	"shares per combat level" 100
-	"shares per license" 250
 
 
 # Marines are the extra crew that the player can hire for boarding operations.
@@ -144,7 +166,7 @@
 	salary 100
 	shares 2
 	"avoids parked"
-	"death benefit" 10000
+	"death benefit" 50000
 	"death shares" 100
 
 
@@ -168,16 +190,6 @@
 	shares 10
 	"avoids parked"
 	"death benefit" 100000
-
-
-# Regulars are standard crew members that do not have any special rank or
-# responsibilities. They make up the bulk of most fleets.
-
-"crew member" "regular"
-	name "Regular"
-	salary 50
-	shares 1
-	"avoids parked"
 
 
 # The "null" crew member does not actually occur. It's used to reason
@@ -219,8 +231,6 @@
 #   "avoids parked" (if present, will not occur on parked ships)
 #   "only parked" (if present, will only occur on parked ships)
 #   "avoids ship categories" (will not occur on ships of these categories; list of strings, eg "Fighter" "Interceptor" "Drone")
-#   "shares per license" (number of shares added per license obtained; only works with the Player crew member)
-#   "shares per license" (number of shares added per level of combat rating; only works with the Player crew member)
 #   "parked salary" (number of credits paid per day while the ship is parked)
 #   "parked shares" (number of shares in the fleet's profit while the ship is parked)
 #

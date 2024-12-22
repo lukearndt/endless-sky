@@ -607,8 +607,8 @@ void PlayerInfo::ApplyGameReloadFee()
 	{
 		int64_t mortgage = fee - Accounts().Credits();
 		feeMessage += " " + Format::Credits(Accounts().Credits())
-			+ " has been paid, and the remaining " + Format::Credits(mortgage)
-			+ " has been applied as a mortgage.";
+			+ " have been paid, and the remaining " + Format::Credits(mortgage)
+			+ " have been applied as a mortgage.";
 		Accounts().AddMortgage(fee - Accounts().Credits());
 		Accounts().AddCredits(-Accounts().Credits());
 	}
@@ -878,16 +878,16 @@ void PlayerInfo::IncrementDate()
 		assets += ship->Cargo().Value(system);
 
 	// Calculate the salaries and profit share ratio for the player's fleet.
-	const Crew::FleetAnalysis fleetAnalysis(ships, Flagship(), CombatLevel(), Licenses().size());
+	const shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis = FleetCrewAnalysis();
 
 	// Have the player pay salaries, mortgages, etc. and print a message that
 	// summarizes the payments that were made.
 	string message = accounts.Step(
 		assets,
-		fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual),
+		fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Actual),
 		b.maintenanceCosts,
-		fleetAnalysis.playerShares,
-		fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual)
+		fleetCrewAnalysis->playerShares,
+		fleetCrewAnalysis->sharesReport->at(Crew::ReportDimension::Actual)
 	);
 	if(!message.empty())
 		Messages::Add(message, Messages::Importance::High);
@@ -1044,6 +1044,28 @@ PlayerInfo::FleetBalance PlayerInfo::MaintenanceAndReturns() const
 			}
 		}
 	return b;
+}
+
+
+
+/**
+ * @brief Generate an analysis of the player's crew across the entire fleet.
+ *
+ * This is somewhat expensive, so it should be called sparingly. If you need
+ * to access the crew analysis multiple times, store the result in a variable.
+ *
+ * @return A shared pointer to a Crew::FleetAnalysis object.
+ */
+const std::shared_ptr<Crew::FleetAnalysis> PlayerInfo::FleetCrewAnalysis() const
+{
+  return make_shared<Crew::FleetAnalysis>(
+		ships,
+		Flagship(),
+		CombatLevel(),
+		Accounts().CreditScore(),
+		Licenses().size(),
+		Cargo().Passengers()
+	);
 }
 
 

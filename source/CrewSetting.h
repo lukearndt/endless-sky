@@ -28,6 +28,11 @@ public:
 	static const int64_t SalaryPerShare();
 	static const std::string RankingCrewId(const std::string &category);
 	static const std::vector<std::string> OutrankingCrewIds(const std::string &rankingCrewId);
+	static const int64_t PlayerSharesBase();
+	static const int64_t PlayerSharesMinimum();
+	static const int64_t PlayerSharesPerCombatLevel();
+	static const double PlayerSharesPerCreditRating();
+	static const int64_t PlayerSharesPerLicense();
 
 	const std::string &Id() const;
 	const std::string &Name() const;
@@ -46,6 +51,16 @@ private:
 	double deathBenefitSalaryMultiplier = 0.0;
 	// This is multiplied by the shares of a crew member to determine their default death shares.
 	double deathSharesMultiplier = 0.0;
+	// The base number of shares that the player has before any other factors.
+	int64_t playerSharesBase = 0;
+	// The minimum number of shares that they player can hold.
+	int64_t playerSharesMinimum = 0;
+	// The number of shares that the player gains for each level of combat rating.
+	int64_t playerSharesPerCombatLevel = 0;
+	// The number of shares that the player gains for each point of credit score.
+	double playerSharesPerCreditRating = 0.0;
+	// The number of shares that the player gains for each license that they have earned.
+	int64_t playerSharesPerLicense = 0;
 	// This is used to convert shares to salary when the "Profit sharing"
 	// difficulty setting is set to "converted".
 	int64_t salaryPerShare = 0;

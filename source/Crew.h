@@ -91,7 +91,14 @@ public:
 
 	class FleetAnalysis {
 		public:
-			FleetAnalysis(const Fleet& subjectFleet, const Ship *flagshipPtr, int combatLevel, int licenseCount);
+			FleetAnalysis(
+				const Fleet& subjectFleet,
+				const Ship *flagshipPtr,
+				int combatLevel,
+				int creditScore,
+				int licenseCount,
+				int passengers
+			);
 
 			std::shared_ptr<BunkAnalysis> fleetBunkAnalysis;
 			const std::shared_ptr<BunkAnalysis> flagshipBunkAnalysis;
@@ -153,6 +160,11 @@ public:
 		std::shared_ptr<Report<std::shared_ptr<Manifest>>> const &target,
 		const std::shared_ptr<Report<std::shared_ptr<Manifest>>> &source
 	);
+
+	// Calculate the number of shares that the player has
+	// based on their combat level, credit score, and
+	// how many licenses they have earned.
+	static int64_t PlayerShares(const int combatLevel, const int creditScore, const int licenseCount);
 };
 
 #endif

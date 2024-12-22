@@ -56,10 +56,6 @@ void CrewMember::Load(const DataNode &node)
 				salary = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "shares")
 				shares = max((int)child.Value(1), 0);
-			else if(child.Token(0) == "shares per combat level")
-				sharesPerCombatLevel = max((int)child.Value(1), 0);
-			else if(child.Token(0) == "shares per license")
-				sharesPerLicense = max((int)child.Value(1), 0);
 			else if(child.Token(0) == "avoids ship categories")
 				for(int index = 1; index < child.Size(); ++index)
 					avoidsShipCategories.push_back(child.Token(index));
@@ -222,30 +218,9 @@ int64_t CrewMember::Shares() const
 
 
 
-int64_t CrewMember::SharesPerCombatLevel() const
-{
-	return sharesPerCombatLevel;
-}
-
-
-
-int64_t CrewMember::SharesPerLicense() const
-{
-	return sharesPerLicense;
-}
-
-
-
 int64_t CrewMember::ShipPopulationPerMember() const
 {
 	return shipPopulationPerMember;
-}
-
-
-
-int64_t CrewMember::TotalShares(int combatLevel, int licenseCount) const
-{
-	return shares + sharesPerCombatLevel * combatLevel + sharesPerLicense * licenseCount;
 }
 
 

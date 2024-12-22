@@ -19,6 +19,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "CargoHold.h"
 #include "ConditionsStore.h"
 #include "CoreStartData.h"
+#include "Crew.h"
 #include "DataNode.h"
 #include "Date.h"
 #include "Depreciation.h"
@@ -143,6 +144,9 @@ public:
 	Account &Accounts();
 	// Calculate the daily maintenance cost and generated income for all ships and in cargo outfits.
 	FleetBalance MaintenanceAndReturns() const;
+
+	// Generate an analysis of the player's crew across the entire fleet.
+	const std::shared_ptr<Crew::FleetAnalysis> FleetCrewAnalysis() const;
 
 	// Access to the licenses the player owns.
 	void AddLicense(const std::string &name);

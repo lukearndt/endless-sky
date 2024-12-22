@@ -662,7 +662,7 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 			"(-" + Format::Decimal(deterrenceLevel, 1) + ")", dim, Truncate::MIDDLE, false);
 	}
 
-	Crew::FleetAnalysis fleetAnalysis(player.Ships(), player.Flagship(), player.CombatLevel(), player.Licenses().size());
+	const shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis = player.FleetCrewAnalysis();
 
 	// Other special information:
 	vector<pair<int64_t, string>> dailyIncome;
@@ -694,8 +694,8 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 	}
 
 	// Add the player's daily expenses from crew salaries.
-	dailyIncome.emplace_back(-fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual), "crew salaries");
-	dailyIncomeTotal -= fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual);
+	dailyIncome.emplace_back(-fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Actual), "crew salaries");
+	dailyIncomeTotal -= fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Actual);
 
 	sort(dailyIncome.begin(), dailyIncome.end(), std::greater<>());
 	dailyIncome.emplace_back(dailyIncomeTotal, "total");
@@ -706,16 +706,16 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 	vector<pair<int64_t, string>> profitSharing;
 
 
-	profitSharing.emplace_back(fleetAnalysis.playerShares, "your shares");
-	profitSharing.emplace_back(fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual), "crew shares");
+	profitSharing.emplace_back(fleetCrewAnalysis->playerShares, "your shares");
+	profitSharing.emplace_back(fleetCrewAnalysis->sharesReport->at(Crew::ReportDimension::Actual), "crew shares");
 
 	int64_t deathShares = player.Accounts().DeathSharesAccrued();
 	if(deathShares > 0)
 		profitSharing.emplace_back(deathShares, "today's death shares");
 
 	profitSharing.emplace_back(
-		fleetAnalysis.playerShares * 100 /
-		(fleetAnalysis.sharesReport->at(Crew::ReportDimension::Actual) + fleetAnalysis.playerShares + deathShares),
+		fleetCrewAnalysis->playerShares * 100 /
+		(fleetCrewAnalysis->sharesReport->at(Crew::ReportDimension::Actual) + fleetCrewAnalysis->playerShares + deathShares),
 		"your share of profits (%)"
 	);
 	DrawList(profitSharing, table, "profit sharing:", 4);

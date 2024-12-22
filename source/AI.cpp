@@ -569,6 +569,11 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 		newOrders.target = player.FlagshipPtr();
 		IssueOrders(newOrders, "gathering around your flagship.");
 	}
+	if(activeCommands.Has(Command::MINING) && !shift)
+	{
+		newOrders.type = Orders::MINING;
+		IssueOrders(newOrders, "mining nearby asteroids.");
+	}
 
 	// Get rid of any invalid orders. Carried ships will retain orders in case they are deployed.
 	for(auto it = orders.begin(); it != orders.end(); )
@@ -832,7 +837,7 @@ void AI::Step(Command &activeCommands)
 					outfitScans[&*it].insert(&*target);
 			}
 		}
-		if(isPresent && !personality.IsSwarming())
+		if(isPresent && !personality.IsSwarming() && !command.Has(Command::MINING))
 		{
 			// Each ship only switches targets twice a second, so that it can
 			// focus on damaging one particular ship.
@@ -1715,8 +1720,8 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 		if(parent->Commands().Has(Command::JUMP) && ship.JumpsRemaining())
 			return false;
 	}
-	// Do not keep chasing flotsam because another order was given.
-	if(ship.GetTargetFlotsam() && (type != Orders::HARVEST || (ship.CanBeCarried() && !ship.HasDeployOrder())))
+	// Do not keep chasing flotsam if a conflicting order has been given.
+	if(ship.GetTargetFlotsam() && ((type != Orders::HARVEST && type != Orders::MINING) || (ship.CanBeCarried() && !ship.HasDeployOrder())))
 	{
 		ship.SetTargetFlotsam(nullptr);
 		return false;
@@ -1758,6 +1763,16 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 	else if(type == Orders::HARVEST)
 	{
 		if(DoHarvesting(ship, command))
+		{
+			ship.SetCommands(command);
+			ship.SetCommands(firingCommands);
+		}
+		else
+			return false;
+	}
+	else if(type == Orders::MINING)
+	{
+		if(DoMining(ship, command))
 		{
 			ship.SetCommands(command);
 			ship.SetCommands(firingCommands);
@@ -2888,6 +2903,58 @@ bool AI::ShouldUseAfterburner(Ship &ship)
 
 
 
+/**
+ * Checks if attacking the target asteroid would be feasible, and attacks it if so.
+ *
+ * @param ship The ship that is attacking.
+ * @param command The command being executed.
+ * @param asteroid The asteroid to consider attacking.
+ *
+ * @return Whether or not the ship decided to attack the target.
+ */
+bool AI::ConsiderAttacking(Ship &ship, Command &command, const shared_ptr<Minable> &asteroid)
+{
+	if(!asteroid)
+		return false;
+
+  if(asteroid->Velocity().Length() >= ship.MaxVelocity())
+		return false;
+
+	ship.SetTargetAsteroid(asteroid);
+	MoveToAttack(ship, command, *asteroid);
+	AutoFire(ship, firingCommands, *asteroid);
+
+	return true;
+}
+
+
+
+/**
+ * Checks if attacking the target ship would be feasible, and attacks it if so.
+ *
+ * @param ship The ship that is attacking.
+ * @param command The command being executed.
+ * @param otherShip The ship to consider attacking.
+ *
+ * @return Whether or not the ship decided to attack the target.
+ */
+bool AI::ConsiderAttacking(Ship &ship, Command &command, const shared_ptr<Ship> &otherShip)
+{
+	if(!otherShip)
+		return false;
+
+  if(otherShip->Velocity().Length() >= ship.MaxVelocity())
+		return false;
+
+	ship.SetTargetShip(otherShip);
+	MoveToAttack(ship, command, *otherShip);
+	AutoFire(ship, firingCommands, *otherShip);
+
+	return true;
+}
+
+
+
 // "Appeasing" ships will dump cargo after being injured, if they are being targeted.
 void AI::DoAppeasing(const shared_ptr<Ship> &ship, double *threshold) const
 {
@@ -3115,54 +3182,151 @@ void AI::DoSurveillance(Ship &ship, Command &command, shared_ptr<Ship> &target) 
 
 
 
-void AI::DoMining(Ship &ship, Command &command)
+/**
+ * A ship can use this routine to mine for asteroids in its current system.
+ * The routine is designed to be called every frame, and runs through a
+ * series of steps to determine the best course of action for the ship.
+ *
+ * First, it attempts to harvest nearby flotsam to collect mined minerals.
+ *
+ * If there's no flotsam nearby, the ship checks if it is currently
+ * targeting an asteroid. If so, it considers mining it.
+ *
+ * Next, the ship checks if its parent has targeted an asteroid. If so,
+ * it accepts that asteroid as its new target unless it doesn't think it
+ * can reach it. Note that the ship will continues to target that asteroid
+ * even if the parent changes target afterward.
+ *
+ * If the parent isn't targeting an asteroid either, the ship scans for
+ * an asteroid if it has the ability to do so. This scanning attempt is
+ * rate limited to once every 30 frames or so. If an asteroid is found,
+ * the ship targets it and considers mining it.
+ *
+ * Next, the ship checks if it has an asteroid scanner. If it does, it
+ * patrols the asteroid belt in its current system. Otherwise, it checks
+ * if its parent has an asteroid scanner and follows it if it does.
+ *
+ * AI ships that don't have asteroid scanners will also attempt to patrol
+ * the asteroid belt and mine any nearby asteroids that they can reach.
+ * This is a workaround because we can't trust that all of the AI miners
+ * to have scanners equipped, even though they probably ought to.
+ *
+ * After all this, if the ship still hasn't chosen an action, it returns
+ * false so that the rest of the AI system can decide what to do next.
+ *
+ * @param ship The ship that has been commanded to mine asteroids.
+ * @param command The command being executed.
+ *
+ * @return Whether or not the ship has chosen an action.
+ */
+bool AI::DoMining(Ship &ship, Command &command)
 {
-	// This function is only called for ships that are in the player's system.
-	// Update the radius that the ship is searching for asteroids at.
-	bool isNew = !miningAngle.contains(&ship);
-	Angle &angle = miningAngle[&ship];
-	if(isNew)
-	{
-		angle = Angle::Random();
-		miningRadius[&ship] = ship.GetSystem()->AsteroidBeltRadius();
-	}
-	angle += Angle::Random(1.) - Angle::Random(1.);
-	double radius = miningRadius[&ship] * pow(2., angle.Unit().X());
+	// Step 1: First try to harvest any nearby flotsam since we want the ore.
+	if(DoHarvesting(ship, command))
+		return true;
 
-	shared_ptr<Minable> target = ship.GetTargetAsteroid();
-	if(!target || target->Velocity().Length() > ship.MaxVelocity())
+
+	// Step 2: Continue mining the targeted asteroid if that's still feasible.
+	shared_ptr<Minable> asteroid = ship.GetTargetAsteroid();
+
+	if(ConsiderAttacking(ship, command, asteroid))
+		return true;
+
+
+	// Step 3: Check if its parent ship has targeted an asteroid.
+	shared_ptr<Ship> parent = ship.GetParent();
+	bool hasParent = parent && parent->GetSystem() == ship.GetSystem();
+
+	if(hasParent && ConsiderAttacking(ship, command, parent->GetTargetAsteroid()))
+		return true;
+
+
+	/* Step 4: Scan for a nearby asteroid to mine. Rate limited for performance.
+		Attempts a scan every 30 frames on average, or about twice per second.
+
+		The player's escorts can't find their own asteroids unless they have
+		asteroid scanners. In theory they could ask their parent to scan for
+		them, but that would grant the player passive mining capability as
+		long as they had asteroid scanners on their flagship. That would be
+		too convenient and powerful, so we don't allow it.
+
+		Instead, we require that the player put asteroid scanners on each
+		escort that they want to empower with the ability to independently
+		mine asteroids. If the player isn't willing to make that investment,
+		they have to manually target each asteroid for their escorts to mine.
+
+		Carried ships like fighters and drones should still be able mine as
+		long as their parent carrier can scan for asteroids. Once their parent
+		targets an asteroid in its own right, the carried ships can copy the
+		target and mine it. This can make their target resolution a bit slower,
+		but it's a reasonable trade-off for the ability to send a carrier to
+		mine for you using its fighters and drones.
+	*/
+	bool hasAsteroidScanner = ship.Attributes().Get("asteroid scan power") > 0.;
+
+	if(!Random::Int(30))
 	{
-		for(const shared_ptr<Minable> &minable : minables)
+		if(ConsiderAttacking(ship, command, FindMinable(ship)))
+			return true;
+	}
+
+
+	// Step 5: If the ship has an asteroid scanner, patrol the asteroid belt.
+	// We also allow this behaviour for non-player ships that don't have
+	// scanners because we want them to be able to mine asteroids too.
+	// Ideally we would have scanners on all AI ships that are supposed to
+	// be mining, but we can't guarantee that, so we have to make do.
+	if(hasAsteroidScanner || !ship.IsYours())
+	{
+		bool isNew = !miningAngle.contains(&ship);
+		Angle &angle = miningAngle[&ship];
+		if(isNew)
 		{
-			Point offset = minable->Position() - ship.Position();
-			// Target only nearby minables that are within 45deg of the current heading
-			// and not moving faster than the ship can catch.
-			if(offset.Length() < 800. && offset.Unit().Dot(ship.Facing().Unit()) > .7
-					&& minable->Velocity().Dot(offset.Unit()) < ship.MaxVelocity())
+			angle = Angle::Random();
+			miningRadius[&ship] = ship.GetSystem()->AsteroidBeltRadius();
+		}
+		angle += Angle::Random(1.) - Angle::Random(1.);
+
+		double radius = miningRadius[&ship] * pow(2., angle.Unit().X());
+
+		Point heading = Angle(30.).Rotate(ship.Position().Unit() * radius) - ship.Position();
+		command.SetTurn(TurnToward(ship, heading));
+
+		if(ship.Velocity().Dot(heading.Unit()) < .7 * ship.MaxVelocity())
+			command |= Command::FORWARD;
+
+		// Let non-player ships mine any nearby asteroids they find.
+		if(!ship.IsYours())
+		{
+			for(const shared_ptr<Minable> &minable : minables)
 			{
-				target = minable;
-				ship.SetTargetAsteroid(target);
-				break;
+				Point offset = minable->Position() - ship.Position();
+				// Target only nearby minables that are within 45deg of the current heading
+				// and not moving faster than the ship can catch.
+				if(offset.Length() < 800. && offset.Unit().Dot(ship.Facing().Unit()) > .7
+						&& minable->Velocity().Dot(offset.Unit()) < ship.MaxVelocity()
+						&& ConsiderAttacking(ship, command, minable))
+					return true;
 			}
 		}
-	}
-	if(target)
-	{
-		// If the asteroid has moved well out of reach, stop tracking it.
-		if(target->Position().Distance(ship.Position()) > 1600.)
-			ship.SetTargetAsteroid(nullptr);
-		else
-		{
-			MoveToAttack(ship, command, *target);
-			AutoFire(ship, firingCommands, *target);
-			return;
-		}
+
+		return true;
 	}
 
-	Point heading = Angle(30.).Rotate(ship.Position().Unit() * radius) - ship.Position();
-	command.SetTurn(TurnToward(ship, heading));
-	if(ship.Velocity().Dot(heading.Unit()) < .7 * ship.MaxVelocity())
-		command |= Command::FORWARD;
+
+	// Step 6: If the parent ship has an asteroid scanner, follow it around.
+	// This is especially useful for carried ships like fighters and drones,
+	// as it tells them to follow their carriers around the asteroid belt.
+	if(hasParent && parent->Attributes().Get("asteroid scan power") > 0.)
+	{
+		KeepStation(ship, command, *parent);
+		return true;
+	}
+
+
+	// If the ship reaches this point, we return false and let the rest of
+	// the AI system figure out something for it to do.
+	return false;
 }
 
 
@@ -4018,16 +4182,21 @@ double AI::RendezvousTime(const Point &p, const Point &v, double vp)
 
 
 
-// Searches every asteroid within the ship scan limit and returns either the
-// asteroid closest to the ship or the asteroid of highest value in range, depending
-// on the player's preferences.
-bool AI::TargetMinable(Ship &ship) const
+/**
+ * Searches every asteroid within the ship scan limit and returns either the
+ * asteroid closest to the ship or the asteroid of highest value in range,
+ * depending on the player's preferences.
+ *
+ * @param ship The ship that will scan for the asteroid.
+ * @return A shared pointer to the asteroid, if one is found.
+ */
+shared_ptr<Minable> AI::FindMinable(const Ship &ship) const
 {
+	auto bestMinable = ship.GetTargetAsteroid();
 	double scanRangeMetric = 10000. * ship.Attributes().Get("asteroid scan power");
 	if(!scanRangeMetric)
-		return false;
+		return bestMinable;
 	const bool findClosest = Preferences::Has("Target asteroid based on");
-	auto bestMinable = ship.GetTargetAsteroid();
 	double bestScore = findClosest ? numeric_limits<double>::max() : 0.;
 	auto GetDistanceMetric = [&ship](const Minable &minable) -> double {
 		return ship.Position().DistanceSquared(minable.Position());
@@ -4074,7 +4243,16 @@ bool AI::TargetMinable(Ship &ship) const
 		else
 			bestMinable = minable;
 	}
-	if(bestMinable)
+
+	return bestMinable;
+}
+
+
+
+// Scan for the best minable asteroid and set it as the ship's target.
+bool AI::TargetMinable(Ship &ship) const
+{
+	auto bestMinable = FindMinable(ship);
 		ship.SetTargetAsteroid(bestMinable);
 	return static_cast<bool>(ship.GetTargetAsteroid());
 }

@@ -41,10 +41,7 @@ class CrewMember
 		int64_t ParkedShares() const;
 		int64_t Salary() const;
 		int64_t Shares() const;
-		int64_t SharesPerCombatLevel() const;
-		int64_t SharesPerLicense() const;
 		int64_t ShipPopulationPerMember() const;
-		int64_t TotalShares(int combatLevel, int licenseCount) const;
 
 		// We only want there to be a single shared_ptr for each CrewMember object.
 		// Instead of calling make_shared<CrewMember>(...) directly, use this function.
@@ -76,14 +73,6 @@ class CrewMember
 		int64_t salary = 0;
 		// The crew member's shares in the fleet's profits (minimum 0)
 		int64_t shares = 0;
-		// The number of shares that the crew member gains for each level of combat rating
-		// This attribute is only used by the Player crew member to calculate TotalShares.
-    // For other crew members, we use Shares directly as a performance optimisation.
-		int64_t sharesPerCombatLevel = 0;
-		// The number of shares that the crew member gains with each new license
-		// This attribute is only used by the Player crew member to calculate TotalShares.
-    // For other crew members, we use Shares directly as a performance optimisation.
-		int64_t sharesPerLicense = 0;
 		// Every nth crew member on the ship will be this crew member
 		int64_t shipPopulationPerMember = 0;
 		// The id that the crew member is stored against in GameData::Crews()

@@ -86,7 +86,7 @@ private:
 	std::vector<std::shared_ptr<Ship>>::const_iterator shipIt;
 
 	// Analysis of the fleet's crew.
-	std::shared_ptr<Crew::FleetAnalysis> fleetAnalysis;
+	std::shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis;
 
 	// Information about the currently selected ship.
 	ShipInfoDisplay infoDisplay;

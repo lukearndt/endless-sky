@@ -3685,7 +3685,8 @@ void Ship::SetTargetShip(const shared_ptr<Ship> &ship)
 		cargoScan = 0.;
 		outfitScan = 0.;
 	}
-	targetAsteroid.reset();
+	if(ship)
+		targetAsteroid.reset();
 }
 
 

@@ -76,12 +76,7 @@ ShipInfoPanel::ShipInfoPanel(PlayerInfo &player, InfoPanelState state)
 			++shipIt;
 	}
 
-	fleetAnalysis = make_shared<Crew::FleetAnalysis>(
-		player.Ships(),
-		player.Flagship(),
-		player.CombatLevel(),
-		player.Licenses().size()
-	);
+	fleetCrewAnalysis = player.FleetCrewAnalysis();
 
 	UpdateInfo();
 }
@@ -439,7 +434,7 @@ void ShipInfoPanel::DrawOutfits(const Rectangle &bounds, Rectangle &cargoBounds)
 	}
 
 	// Prepare to draw the crew manifest
-	shared_ptr<Crew::ShipAnalysis> shipAnalysis = fleetAnalysis->shipAnalyses->at(panelState.SelectedIndex());
+	shared_ptr<Crew::ShipAnalysis> shipAnalysis = fleetCrewAnalysis->shipAnalyses->at(panelState.SelectedIndex());
 
 	bool showCrewManifest = false;
 	int64_t crewManifestHeight = 0;

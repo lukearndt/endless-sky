@@ -496,6 +496,7 @@ void PreferencesPanel::DrawControls()
 		Command::FIGHT,
 		Command::GATHER,
 		Command::HOLD,
+		Command::MINING,
 		Command::AMMO,
 		Command::HARVEST,
 		Command::NONE,

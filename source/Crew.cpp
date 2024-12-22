@@ -212,9 +212,6 @@ shared_ptr<vector<Crew::SummaryEntry>> Crew::ShipAnalysis::CrewSummary()
 		{
 			shared_ptr<CrewMember> crewMember = crewMemberEntry.first;
 
-			if(crewMember->Id() == "player")
-				continue;
-
 			Count count = crewMemberEntry.second;
 
 			summary->push_back({
@@ -260,11 +257,13 @@ Crew::FleetAnalysis::FleetAnalysis(
 	const Fleet &subjectFleet,
 	const Ship * flagshipPtr,
 	int combatLevel,
-	int licenseCount
+	int creditScore,
+	int licenseCount,
+	int passengers
 )	:
 	fleetBunkAnalysis(make_shared<BunkAnalysis>()),
 	flagshipBunkAnalysis(make_shared<BunkAnalysis>(flagshipPtr)),
-	playerShares(GameData::CrewMembers().Get("player")->TotalShares(combatLevel, licenseCount)),
+	playerShares(PlayerShares(combatLevel, creditScore, licenseCount)),
 	profitShareRatio(0),
 	crewCountReport(make_shared<Report<Count>>(initializer_list<Count>{0, 0, 0})),
 	manifestReport(make_shared<Report<shared_ptr<Manifest>>>(initializer_list<shared_ptr<Manifest>>{
@@ -298,13 +297,28 @@ Crew::FleetAnalysis::FleetAnalysis(
 		}
 		else
 		{
-			MergeBunkAnalyses(fleetBunkAnalysis, shipAnalysis.bunkAnalysis);
+			// Parked ships can't carry passengers or extra crew members,
+			// so they aren't included in the fleet's overall bunk analysis.
+			if(!ship->IsParked())
+				MergeBunkAnalyses(fleetBunkAnalysis, shipAnalysis.bunkAnalysis);
 			MergeReports(crewCountReport, shipAnalysis.crewCountReport);
 			MergeReports(salaryReport, shipAnalysis.salaryReport);
 			MergeReports(sharesReport, shipAnalysis.sharesReport);
 			MergeReports(manifestReport, shipAnalysis.manifestReport);
 		}
 	}
+
+	// Passengers are managed by the cargo system, which pools everything
+	// together while we're on a planet, so we can't rely on the passenger
+	// count from each ship to be accurate.
+	fleetBunkAnalysis->passengers = passengers;
+	fleetBunkAnalysis->occupied =
+		fleetBunkAnalysis->requiredCrew
+		- fleetBunkAnalysis->extraCrew
+		+ passengers;
+	fleetBunkAnalysis->empty =
+		fleetBunkAnalysis->total
+		- fleetBunkAnalysis->occupied;
 
 	// Calculate the fleet's profit sharing requirements.
 	nonPlayerShares = sharesReport->at(ReportDimension::Actual) + deathShares;
@@ -316,7 +330,7 @@ Crew::FleetAnalysis::FleetAnalysis(
 		profitPlayerPercentage = playerShares * 100 / fleetSharesIncludingPlayer;
 	}
 	else
-		Logger::LogError("Crew::FleetAnalysis - Profit sharing disabled because fleet has no shares; check for problems in data/crew.txt");
+		Logger::LogError("Crew::FleetAnalysis - Profit sharing disabled because the fleet has no shares; check for problems in data/crew.txt");
 }
 
 
@@ -399,14 +413,17 @@ shared_ptr<Crew::Manifest> Crew::BuildRequiredCrewManifest(const shared_ptr<Ship
 	}
 
 	int64_t remainingCrewMembers = ship->RequiredCrew() - crewAccountedFor
-		// If this is the flagship, one crew member is the player
+		// The flagship has one fewer crew member because the player is on it.
 		- isFlagship;
 
-	// Any remaining crew members are regulars, if they can occur on the ship
+	// Any remaining crew members are regulars if they can occur on the ship
 	if(remainingCrewMembers > 0)
 	{
 		const shared_ptr<CrewMember> regular = GameData::CrewMembers().Get("regular")->GetSharedPtr();
 
+		// If regular crew members can't occur on the ship, it might have a
+		// lower crew count than the required crew count. This usually happens
+		// when the ship is parked.
 		if(regular->CanOccurOnShip(ship, isFlagship))
 			manifest[regular] = remainingCrewMembers;
 	}
@@ -656,4 +673,26 @@ shared_ptr<Crew::Report<shared_ptr<Crew::Manifest>>> Crew::MergeReports(
 	}
 
 	return target;
+}
+
+
+
+/**
+ * Calculate the player's total number of shares in the
+ * fleet's profits and losses.
+ *
+ * @param combatLevel The player's combat level.
+ * @param creditScore The player's credit score.
+ * @param licenseCount The number of licenses that the player has earned.
+ *
+ * @return The player's current shares in the fleet
+*/
+int64_t Crew::PlayerShares(const int combatLevel, const int creditScore, const int licenseCount)
+{
+	int64_t playerShares = CrewSetting::PlayerSharesBase()
+		+ CrewSetting::PlayerSharesPerCombatLevel() * combatLevel
+		+ CrewSetting::PlayerSharesPerCreditRating() * creditScore
+		+ CrewSetting::PlayerSharesPerLicense() * licenseCount;
+
+  return max(playerShares, CrewSetting::PlayerSharesMinimum());
 }

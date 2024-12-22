@@ -180,7 +180,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			crewSalariesOwed -= salariesPaid;
 			credits -= salariesPaid;
 			missedPayment = true;
-			out << "You could not pay all your crew salaries.";
+			out << "You could not pay all your crew salaries. ";
 		}
 		else
 		{
@@ -202,7 +202,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			deathBenefitsOwed -= deathBenefitsPaid;
 			credits -= deathBenefitsPaid;
 			missedPayment = true;
-			out << "You could not pay all the death benefits owed to the estates of your fallen crew.";
+			out << "You could not pay all the death benefits owed to the estates of your fallen crew. ";
 		}
 		else
 		{
@@ -223,7 +223,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			maintenanceDue -= maintenancePaid;
 			credits -= maintenancePaid;
 			if(!missedPayment)
-				out << "You could not pay all your maintenance costs.";
+				out << "You could not pay all your maintenance costs. ";
 			missedPayment = true;
 		}
 		else
@@ -245,7 +245,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 		{
 			mortgage.MissPayment();
 			if(!missedPayment)
-				out << "You missed a mortgage payment.";
+				out << "You missed a mortgage payment. ";
 			missedPayment = true;
 		}
 		else
@@ -288,7 +288,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 	// If you made a profit, any accrued death shares are added to the profit sharing
 	// liability for the day. If you made a loss, the death shares are ignored to prevent
 	// the deceased crew member's estates from paying an unfair share of that loss.
-	int64_t nonPlayerShares = crewSharesSnapshot + netWorthChange > 0 ? deathSharesAccrued : 0;
+	int64_t nonPlayerShares = crewSharesSnapshot + (netWorthChange > 0 ? deathSharesAccrued : 0);
 	int64_t totalFleetShares = playerShares + nonPlayerShares;
 	double profitShareRatio = static_cast<double>(nonPlayerShares) / static_cast<double>(totalFleetShares);
 
@@ -311,7 +311,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			sharedProfitsOwed -= sharedProfitsPaid;
 			credits -= sharedProfitsPaid;
 			missedPayment = true;
-			out << "You could not pay your crew their share of the fleet's profits.";
+			out << "You could not pay your crew their share of the fleet's profits. ";
 		}
 		else
 		{

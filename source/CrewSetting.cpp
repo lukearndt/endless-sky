@@ -90,6 +90,56 @@ void CrewSetting::Load(const DataNode &node)
 
 		salaryPerShare = node.Value(2);
 	}
+
+	if(id == "player shares base")
+	{
+		if(node.Size() != 3) {
+			node.PrintTrace("Skipping malformed node:");
+			return;
+		}
+
+		playerSharesBase = node.Value(2);
+	}
+
+	if(id == "player shares minimum")
+	{
+		if(node.Size() != 3) {
+			node.PrintTrace("Skipping malformed node:");
+			return;
+		}
+
+		playerSharesMinimum = node.Value(2);
+	}
+
+	if(id == "player shares per combat level")
+	{
+		if(node.Size() != 3) {
+			node.PrintTrace("Skipping malformed node:");
+			return;
+		}
+
+		playerSharesPerCombatLevel = node.Value(2);
+	}
+
+	if(id == "player shares per credit score")
+	{
+		if(node.Size() != 3) {
+			node.PrintTrace("Skipping malformed node:");
+			return;
+		}
+
+		playerSharesPerCreditRating = node.Value(2);
+	}
+
+	if(id == "player shares per license")
+	{
+		if(node.Size() != 3) {
+			node.PrintTrace("Skipping malformed node:");
+			return;
+		}
+
+		playerSharesPerLicense = node.Value(2);
+	}
 }
 
 
@@ -110,6 +160,41 @@ const std::vector<std::string> CrewSetting::OutrankingCrewIds(const std::string 
 		return it->second;
 	else
 		return {};
+}
+
+
+
+const int64_t CrewSetting::PlayerSharesBase()
+{
+  return GameData::CrewSettings().Get("player shares base")->playerSharesBase;
+}
+
+
+
+const int64_t CrewSetting::PlayerSharesMinimum()
+{
+  return GameData::CrewSettings().Get("player shares minimum")->playerSharesMinimum;
+}
+
+
+
+const int64_t CrewSetting::PlayerSharesPerCombatLevel()
+{
+  return GameData::CrewSettings().Get("player shares per combat level")->playerSharesPerCombatLevel;
+}
+
+
+
+const double CrewSetting::PlayerSharesPerCreditRating()
+{
+  return GameData::CrewSettings().Get("player shares per credit score")->playerSharesPerCreditRating;
+}
+
+
+
+const int64_t CrewSetting::PlayerSharesPerLicense()
+{
+  return GameData::CrewSettings().Get("player shares base")->playerSharesBase;
 }
 
 

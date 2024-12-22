@@ -109,9 +109,12 @@ void BankPanel::Draw()
 	int64_t totalPayment = otherPayment;
 
 	// Check if salaries need to be drawn.
-	Crew::FleetAnalysis fleetAnalysis(player.Ships(), player.Flagship(), player.CombatLevel(), player.Licenses().size());
-	int64_t salaries = fleetAnalysis.salaryReport->at(Crew::ReportDimension::Actual);
+	const shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis = player.FleetCrewAnalysis();
+
+	int64_t salaries = fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Actual);
 	int64_t crewSalariesOwed = player.Accounts().CrewSalariesOwed();
+	int64_t deathBenefitsOwed = player.Accounts().DeathBenefitsOwed();
+	int64_t sharedProfitsOwed = player.Accounts().SharedProfitsOwed();
 	int64_t salariesIncome = player.Accounts().SalariesIncomeTotal();
 	int64_t tributeIncome = player.GetTributeTotal();
 
@@ -209,6 +212,22 @@ void BankPanel::Draw()
 		table.Draw(Format::Credits(b.maintenanceCosts));
 		table.Advance();
 	}
+	if(deathBenefitsOwed)
+	{
+		// Check whether the player owes shared profits.
+		table.Draw("Death Benefits");
+		table.Draw(Format::Credits(deathBenefitsOwed));
+		table.Draw("(overdue)");
+		table.Advance(2);
+	}
+	if(sharedProfitsOwed)
+	{
+		// Check whether the player owes shared profits.
+		table.Draw("Shared Profits");
+		table.Draw(Format::Credits(sharedProfitsOwed));
+		table.Draw("(overdue)");
+		table.Advance(2);
+	}
 	if(salariesIncome || tributeIncome || b.assetsReturns)
 	{
 		// Your daily income offsets expenses.
@@ -256,7 +275,7 @@ void BankPanel::Draw()
 	}
 
 	info.ClearConditions();
-	if((crewSalariesOwed || maintenanceDue) && player.Accounts().Credits() > 0)
+	if((crewSalariesOwed || maintenanceDue || sharedProfitsOwed || deathBenefitsOwed) && player.Accounts().Credits() > 0)
 		info.SetCondition("can pay");
 	else
 		for(const Mortgage &mortgage : player.Accounts().Mortgages())
@@ -307,6 +326,7 @@ bool BankPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, boo
 		player.Accounts().PaySalaries(player.Accounts().CrewSalariesOwed());
 		player.Accounts().PayMaintenance(player.Accounts().MaintenanceDue());
 		player.Accounts().PaySharedProfits(player.Accounts().SharedProfitsOwed());
+		player.Accounts().PayDeathBenefits(player.Accounts().DeathBenefitsOwed());
 		qualify = player.Accounts().Prequalify();
 	}
 	else

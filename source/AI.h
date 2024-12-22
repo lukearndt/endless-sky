@@ -131,11 +131,14 @@ private:
 	static void PickUp(Ship &ship, Command &command, const Body &target);
 	// Special decisions a ship might make.
 	static bool ShouldUseAfterburner(Ship &ship);
+	// If the target can feasibly be reached, attack it and return true; otherwise false.
+	bool ConsiderAttacking(Ship &ship, Command &command, const std::shared_ptr<Minable> &asteroid);
+	bool ConsiderAttacking(Ship &ship, Command &command, const std::shared_ptr<Ship> &otherShip);
 	// Special personality behaviors.
 	void DoAppeasing(const std::shared_ptr<Ship> &ship, double *threshold) const;
 	void DoSwarming(Ship &ship, Command &command, std::shared_ptr<Ship> &target);
 	void DoSurveillance(Ship &ship, Command &command, std::shared_ptr<Ship> &target) const;
-	void DoMining(Ship &ship, Command &command);
+	bool DoMining(Ship &ship, Command &command);
 	bool DoHarvesting(Ship &ship, Command &command) const;
 	bool DoCloak(Ship &ship, Command &command);
 	void DoPatrol(Ship &ship, Command &command) const;
@@ -164,7 +167,9 @@ private:
 
 	void MovePlayer(Ship &ship, Command &activeCommands);
 
-	// True if found asteroid.
+	// Use the ship's sensors to find a mineable asteroid, but don't select it.
+	std::shared_ptr<Minable> FindMinable(const Ship &ship) const;
+	// As FindMinable, but select the asteroid and return true or false.
 	bool TargetMinable(Ship &ship) const;
 	// True if the ship performed the indicated event to the other ship.
 	bool Has(const Ship &ship, const std::weak_ptr<const Ship> &other, int type) const;
@@ -189,6 +194,7 @@ private:
 		// HARVEST is related to MINE and is for picking up flotsam after
 		// ATTACK.
 		static const int HARVEST = 0x003;
+		static const int MINING = 0x004;
 		static const int KEEP_STATION = 0x100;
 		static const int GATHER = 0x101;
 		static const int ATTACK = 0x102;
