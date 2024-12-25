@@ -244,6 +244,8 @@ target_sources(EndlessSkyLib PRIVATE
 	PlayerInfoPanel.h
 	Plugins.cpp
 	Plugins.h
+	Plunder.cpp
+	Plunder.h
 	Point.cpp
 	Point.h
 	PointerShader.cpp

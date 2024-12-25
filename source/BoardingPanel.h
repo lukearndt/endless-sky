@@ -19,6 +19,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Panel.h"
 
 #include "CaptureOdds.h"
+#include "Plunder.h"
 
 #include <memory>
 #include <string>
@@ -65,53 +66,6 @@ private:
 	// Build a list of casualties from the boarding action and trigger any
 	// consequences that result from them, such as death benefits and death shares.
 	void ResolveCasualties();
-
-private:
-	// This class represents one item in the list of outfits you can plunder.
-	class Plunder {
-	public:
-		// Plunder can be either outfits or commodities.
-		Plunder(const std::string &commodity, int count, int unitValue);
-		Plunder(const Outfit *outfit, int count);
-
-		// Sort by value per ton of mass.
-		bool operator<(const Plunder &other) const;
-
-		// Check how many of this item are left un-plundered. Once this is zero,
-		// the item can be removed from the list.
-		int Count() const;
-		// Get the value of each unit of this plunder item.
-		int64_t UnitValue() const;
-
-		// Get the name of this item. If it is a commodity, this is its name.
-		const std::string &Name() const;
-		// Get the mass, in the format "<count> x <unit mass>". If this is a
-		// commodity, no unit mass is given (because it is 1). If the count is
-		// 1, only the unit mass is reported.
-		const std::string &Size() const;
-		// Get the total value (unit value times count) as a string.
-		const std::string &Value() const;
-
-		// If this is an outfit, get the outfit. Otherwise, this returns null.
-		const Outfit *GetOutfit() const;
-		// Find out how many of these I can take if I have this amount of cargo
-		// space free.
-		bool CanTake(const Ship &ship) const;
-		// Take some or all of this plunder item.
-		void Take(int count);
-
-	private:
-		void UpdateStrings();
-		double UnitMass() const;
-
-	private:
-		std::string name;
-		const Outfit *outfit;
-		int count;
-		int64_t unitValue;
-		std::string size;
-		std::string value;
-	};
 
 private:
 	PlayerInfo &player;
