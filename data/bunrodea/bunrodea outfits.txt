@@ -151,6 +151,7 @@ outfit "Reactor Overclocker"
 	"energy generation" 0.9
 	"heat generation" 3.15
 	"reactor upgrades" -3
+	unplunderable 1
 	description "The Reactor Overclocker is a component that can be installed into a Bunrodea reactor in order to modify its effectiveness. Overclockers increase the strength of the energy generation of a reactor, but at the cost of reduced heat efficiency."
 
 outfit "Reactor Limiter"
@@ -162,6 +163,7 @@ outfit "Reactor Limiter"
 	"energy generation" -0.55
 	"heat generation" -6.6
 	"reactor upgrades" -2
+	unplunderable 1
 	description "The Reactor Limiter is a component that can be installed into a Bunrodea reactor in order to modify its effectiveness. Limiters increase the heat efficiency of a reactor, but at the cost of reducing the strength of its energy generation."
 
 outfit "Quark Reactor"
@@ -173,6 +175,7 @@ outfit "Quark Reactor"
 	"energy generation" 8.35
 	"heat generation" 10.9
 	"reactor upgrades" 6
+	unplunderable 1
 #	ammo "Reactor Overclocker"
 #	ammo "Reactor Limiter"
 	description "Bunrodean reactors appear to be named after types of exotic stars that either once were or still are considered theoretical to humanity. A quark star was first discovered by humanity near the Shangri-La system during the 28th century, a star with core temperatures and pressures so extreme that quark matter is produced."
@@ -187,6 +190,7 @@ outfit "Electroweak Reactor"
 	"energy generation" 17.25
 	"heat generation" 20.5
 	"reactor upgrades" 18
+	unplunderable 1
 #	ammo "Reactor Overclocker"
 #	ammo "Reactor Limiter"
 	description "The existence of the exotic stars that this Bunrodean reactor bears the name of is still unknown to humanity. An electroweak star is an exotic star that would be prevented from collapsing by the electroweak force as quarks are converted to leptons in the star's core."
@@ -201,6 +205,7 @@ outfit "Dark Reactor"
 	"energy generation" 24.7
 	"heat generation" 28.6
 	"reactor upgrades" 30
+	unplunderable 1
 #	ammo "Reactor Overclocker"
 #	ammo "Reactor Limiter"
 	description `The term "dark star" can have different meanings, but one definition of it is a star whose core is formed around a large amount of dark matter. Such exotic stars are theorized by humanity to have possibly existed among the first generations of stars in the universe, with concentrations of dark matter acting as nucleation sites.`

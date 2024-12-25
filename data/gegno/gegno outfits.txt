@@ -78,6 +78,7 @@ outfit "C3 Scrap Cell"
 	"outfit space" -25
 	"energy generation" 1.4
 	"heat generation" 2
+	unplunderable 1
 	description `The Scrap Cell is a small radiothermal generator that produces a limited amount of energy. It is only used on the Gegno's smaller-sized vessels, or in tandem with their less energy-hungry internals.`
 
 
@@ -91,6 +92,7 @@ outfit "C7 Brawl Cell"
 	"outfit space" -39
 	"energy generation" 2.7
 	"heat generation" 3.4
+	unplunderable 1
 	description `When developing the C7 Brawl Cell, the Gegno decided to scale up the smaller C3 Scrap Cell. Unfortunately, the new design became so tall that the Gegno struggled to fit it into some of their ships, requiring them to turn the entire thing sideways. This design still serves the Gegno well, though it will likely be phased out in favor of newer generators as they become more compact and efficient.`
 
 
@@ -104,6 +106,7 @@ outfit "C17 Warzone Core"
 	"outfit space" -87
 	"energy generation" 10.2
 	"heat generation" 22.9
+	unplunderable 1
 	description `The Gegno began developing nuclear technology once their cities grew massive enough to require it. The Warzone Core is a medium-sized nuclear fission reactor that is a suitable power source for most of the Gegno's large ships, though it appears to lack many of the fail-safes you would expect to find on a human nuclear reactor.`
 
 
@@ -120,6 +123,7 @@ outfit "C27 Campaign Core"
 	"outfit space" -145
 	"energy generation" 19.9
 	"heat generation" 46.3
+	unplunderable 1
 	description `In order to power the largest of vessels along with their energy-guzzling systems and engines, the Gegno designed the Campaign fusion reactor from earlier prototypes dating back to their generation ship era. It's still used to this day and is efficient enough to satisfy the requirements of the largest of Gegno warships, but just looking at it raises safety concerns.`
 
 
@@ -136,6 +140,7 @@ outfit "I70 Ameliorate Cell"
 	"energy capacity" 2520
 	"energy generation" 1.4
 	"heat generation" 2.9
+	unplunderable 1
 	description `The I70 Cell was designed by the Scin as a smaller, more compact power system for their Halite fighters. It has enough energy generation and capacity to fuel the Halite's thrusters and their weapons for a short period. Unfortunately, as a side effect, a bit more excess heat is also generated.`
 
 
@@ -452,7 +457,7 @@ effect "irate fire"
 		"frame rate" 40
 		"no repeat"
 	"lifetime" 5
-	
+
 effect "irate smoke"
 	sprite "effect/smoke"
 		"scale" 0.1
@@ -527,7 +532,7 @@ outfit "Choleric Cannon Turret"
 		"hull damage" 311
 		"hit force" 270
 	description `Mounted on a turret, a Choleric Cannon is much more devastating without the need to keep a target in front of the ship to land shots. It can consistently put out damage to a target's hull, and with multiple turrets, any shieldless vessel is forced to retreat after a decent enough bombardment lest they be destroyed.`
-	
+
 effect "choleric fire"
 	sprite "effect/chfire"
 		"frame rate" 25
@@ -544,7 +549,7 @@ effect "choleric smoke"
 	"random angle" 360
 	"random velocity" 0.5
 	"velocity scale" 0.4
-	
+
 
 outfit "Ballistic Cannon"
 	category "Guns"
@@ -631,7 +636,7 @@ effect "ballistic hit"
 	"random velocity" 1
 	"random spin" 5
 	"velocity scale" 0.4
-	
+
 effect "ballistic smoke"
 	sprite "effect/smoke"
 		"scale" 0.1
@@ -939,7 +944,7 @@ outfit "Savagery Bludgeon"
 		"hull damage" 40
 		"hit force" 750
 	description `A Savagery Bludgeon is a mace-like weapon found jammed into the Gegno Vi's Dunite duelist ships. They are used as melee weapons for close-quarter rams and jousts during duels. However, they have hardly any use as a weapon outside of this as they merely scratch larger ship's hulls and barely put a dent into anything shielded.`
-	
+
 effect "bludgeon impact"
 	sound "bludgeon impact"
 
@@ -970,7 +975,7 @@ outfit "Irate Carronade"
 	"capture defense" 3.7
 	"unplunderable" 1
 	description `Miniaturizing ship-to-ship cannons and haphazardly shoving them into small makeshift barricades isn't exactly the safest way to install boarding defenses. Despite this, the hard-armored hulls of larger Gegno warships prove resilient enough to field Irate Carronades. Anyone, or anything, that unknowingly approaches a corridor where one is installed will likely become a new paint layer on the nearby walls.`
-	
+
 outfit "Plasmasickle"
 	category "Hand to Hand"
 	licenses
@@ -993,7 +998,7 @@ outfit "Plasma Grenades"
 	"capture defense" 1.2
 	"unplunderable" 1
 	description `With development of more plasma-based weaponry, the Scin invented their own type of grenades using plasma to create powerful explosions. They are effective at clearing out large groups of enemies and are less of a hazard than unpredictable fragmentation grenades, allowing them to be a bit more reliable for defensive use. These grenades are kept in odd magnetic storage devices that prevent them from accidentally detonating - except on rare occasions.`
-	
+
 
 
 # Special Outfits
@@ -1012,7 +1017,7 @@ outfit "Vi Lord License"
 	category "Licenses"
 	thumbnail "outfit/unknown"
 	description "A majority of the Vi's military hierarchy recognizes you as a respectable foe and invaluable asset for their ambitions. The responsibility of maintaining the largest of Vi vessels is now within your grasp."
-	
+
 outfit "Vi Centurion License"
 	category "Licenses"
 	thumbnail "outfit/unknown"

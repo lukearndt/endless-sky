@@ -119,6 +119,7 @@ outfit `1-"Uurau" Betavoltaic Cell`
 	"energy generation" 0.85
 	"heat generation" 0.65
 	"energy capacity" 1200
+	unplunderable 1
 	description "Unlike most radioisotope generators, this power cell operates by extracting electricity directly from beta particles produced by radioactive decay. While this process yields less energy per unit of material, it is also safer and produces very little waste heat."
 
 outfit `OC-"Mavra" Betavoltaic Cell`
@@ -134,6 +135,7 @@ outfit `OC-"Mavra" Betavoltaic Cell`
 	"energy generation" 2.25
 	"heat generation" 3.8
 	"energy capacity" 2000
+	unplunderable 1
 	description "In an effort to produce a high-density power source smaller than their fusion reactors, the Successors have created this overcharged betavoltaic cell, which contains particularly high-density radioactive material and lacks much of the radiation shielding of the standard models. While it has technically passed safety inspection, most Successor pilots understandably prefer to keep a bulkhead between themselves and one of these potent little cores at all times."
 
 outfit `3-"Kaska" Betavoltaic Cell`
@@ -149,6 +151,7 @@ outfit `3-"Kaska" Betavoltaic Cell`
 	"energy generation" 3.5
 	"heat generation" 2.6
 	"energy capacity" 3100
+	unplunderable 1
 	description "The Successors' betavoltaic generators are products of a time shortly after the collapse of their Predecessors' empire, one marked by scarcity and necessity. Their rugged designs did not appeal to traditional values of beauty, elegance, or uniqueness, but instead offered a level of reliability that made them very popular among those who were then struggling to survive."
 
 outfit `6-"Ruuv" Betavoltaic Cell`
@@ -164,6 +167,7 @@ outfit `6-"Ruuv" Betavoltaic Cell`
 	"energy generation" 8.1
 	"heat generation" 5.3
 	"energy capacity" 8500
+	unplunderable 1
 	description "This large modular betavoltaic generator is designed to be resilient and dependable: if one of its component cells fails, it can continue to operate at only a slightly reduced output. The Successors eschew its use on warships because of its low energy density, but it sees substantial use aboard their merchant, archaeological, and other civilian craft."
 
 
@@ -210,6 +214,7 @@ outfit `"Nnesa" Fusion Core`
 	"heat generation" 14.6
 	"shield energy multiplier" -0.08
 	"hull energy multiplier" -0.08
+	unplunderable 1
 	description "While betavoltaics may be sufficient for civilian use, the more advanced technology of the High Houses is energy-hungry enough to require more powerful generators. Rather than focusing on extracting as much power from as little space as possible, the High Houses have designed these stellarator fusion reactors for efficiency and portability; they produce little heat and few waste byproducts. In addition, they are designed to channel power more efficiently to a ship's defensive systems, manifested as a reduction in the power draw of the associated outfits."
 
 outfit `"Ryuit" Fusion Core`
@@ -226,6 +231,7 @@ outfit `"Ryuit" Fusion Core`
 	"heat generation" 23.5
 	"shield energy multiplier" -0.14
 	"hull energy multiplier" -0.14
+	unplunderable 1
 	description "Like most Successor technology, their modern reactors are based on similar ones secreted away by the High Houses during the collapse of the Predecessors' empire. Even though their modern efforts don't quite match the potency of their ancestors', the designs retain an aura of elegance and power, twisting like flames and humming with energy."
 	description "	One also can't help but wonder about those few original reactors, which presumably remain locked away in the private vaults of the High Houses, kept in prime condition for if and when they are needed once again."
 
@@ -243,6 +249,7 @@ outfit `"Uoret" Fusion Core`
 	"heat generation" 35.1
 	"shield energy multiplier" -0.22
 	"hull energy multiplier" -0.22
+	unplunderable 1
 	description "Designed in the form of a flowering plant from the ancestral homeworld of the Successors, this largest and most powerful of the High Houses' stellarators demonstrates a mastery of nuclear fusion power far exceeding humanity's. In addition to being powerful and surprisingly efficient, it is also supported by a large and well-integrated power distribution network capable of massively reducing the draw of the Successors' energy-hungry defensive outfits."
 
 

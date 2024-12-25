@@ -557,6 +557,7 @@ outfit "Millennium Cell"
 	"heat generation" 6.0
 	"ion resistance" 0.025
 	"scramble resistance" 0.025
+	unplunderable 1
 	description "This quite compact radiothermal generator uses isotopes so radioactive, and so tightly packed together, that it could almost be classified as a nuclear reactor."
 	description "	Although not very impressive in terms of how much energy they produce, Remnant generators have been designed to better handle the energy draining effects of ionization."
 
@@ -572,6 +573,7 @@ outfit "Epoch Cell"
 	"heat generation" 19.8
 	"ion resistance" 0.085
 	"scramble resistance" 0.085
+	unplunderable 1
 	description "Efficient Remnant technology ensures that nearly all the heat produced by this generator's radioisotopes is converted into electricity instead of becoming waste heat."
 	description "	The Remnant took the ion dissipation effects of the crystals found on Viminal and replicated them for their generators in order to help survive the hostile environment of the Ember Waste."
 
@@ -587,6 +589,7 @@ outfit "Aeon Cell"
 	"heat generation" 31.5
 	"ion resistance" 0.14
 	"scramble resistance" 0.14
+	unplunderable 1
 	description "The early Remnant engineers did not trust the finicky and unpredictable nuclear reactors that were then in use in human space, so they instead focused on perfecting the art of radioisotope thermoelectric power."
 	description "	The ion resistance on all Remnant generators not only allows them to bounce back from ion storms more quickly, but also gives their ships a window of time when an ion storm starts where they are not affected, giving them a chance to escape before becoming debilitated by the storm."
 
