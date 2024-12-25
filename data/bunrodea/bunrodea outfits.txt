@@ -125,6 +125,7 @@ outfit "Solar Battery"
 	"outfit space" -7
 	"energy capacity" 6000
 	"solar cell" 36
+	unplunderable 1
 #	ammo "Solar Cell"
 	description "Bunrodean solar batteries are required for the installation of solar cells, but solar batteries are perfectly capable of going without solar cells. Many captains will install batteries to store energy gained from normal reactors without ever installing solar cells."
 

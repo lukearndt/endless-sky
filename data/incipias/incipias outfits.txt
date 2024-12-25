@@ -240,6 +240,7 @@ outfit "Metallic Hydrogen Cell"
 	mass 20
 	"outfit space" -20
 	"energy capacity" 500
+	unplunderable 1
 	description "Hydrogen energy storage was discovered early by the Incipias because of the great amount of metallic hydrogen on their homeworld. Because Incipias ships usually access their energy at the time it is produced, only a small amount of storage is needed. Most of their ships have only one cell installed as a consequence."
 
 # Engines:

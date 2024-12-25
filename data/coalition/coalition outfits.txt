@@ -99,6 +99,7 @@ outfit "Small Battery Module"
 	"mass" 4
 	"outfit space" -4
 	"energy capacity" 3600
+	unplunderable 1
 	description "Because Coalition ships rely on solar power, they must also be able to store a substantial amount of energy. This small battery pack is much more efficient than comparable human technology."
 
 outfit "Large Battery Module"
@@ -110,6 +111,7 @@ outfit "Large Battery Module"
 	"mass" 18
 	"outfit space" -18
 	"energy capacity" 18000
+	unplunderable 1
 	description "This battery pack stores enough power to allow a Coalition ship to continue maneuvering even when its solar panels are only producing a fraction of their peak output."
 
 
