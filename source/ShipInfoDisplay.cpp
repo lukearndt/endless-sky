@@ -321,6 +321,9 @@ void ShipInfoDisplay::UpdateAttributes(const Ship &ship, const PlayerInfo &playe
 		attributeValues.push_back(Format::Number(ship.Fuel() * fuelCapacity)
 			+ " / " + Format::Number(fuelCapacity));
 	attributesHeight += 20;
+	attributeLabels.push_back("drag:");
+	attributeValues.push_back(Format::Number(ship.Drag()));
+	attributesHeight += 20;
 
 	double fullMass = emptyMass + attributes.Get("cargo space");
 	isGeneric &= (fullMass != emptyMass);
