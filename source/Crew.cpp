@@ -314,7 +314,7 @@ Crew::FleetAnalysis::FleetAnalysis(
 	fleetBunkAnalysis->passengers = passengers;
 	fleetBunkAnalysis->occupied =
 		fleetBunkAnalysis->requiredCrew
-		- fleetBunkAnalysis->extraCrew
+		+ fleetBunkAnalysis->extraCrew
 		+ passengers;
 	fleetBunkAnalysis->empty =
 		fleetBunkAnalysis->total
@@ -685,7 +685,7 @@ shared_ptr<Crew::Report<shared_ptr<Crew::Manifest>>> Crew::MergeReports(
  * @param creditScore The player's credit score.
  * @param licenseCount The number of licenses that the player has earned.
  *
- * @return The player's current shares in the fleet
+ * @return The player's current shares in the fleet.
 */
 int64_t Crew::PlayerShares(const int combatLevel, const int creditScore, const int licenseCount)
 {

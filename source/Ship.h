@@ -383,6 +383,7 @@ public:
 	// on its crew size and "crew equivalent" attribute.
 	int CrewValue() const;
 	void AddCrew(int count);
+	void ResetCrew();
 	// Check if this is a ship that can be used as a flagship.
 	bool CanBeFlagship() const;
 

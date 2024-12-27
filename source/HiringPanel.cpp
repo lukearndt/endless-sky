@@ -31,8 +31,9 @@ using namespace std;
 
 
 HiringPanel::HiringPanel(PlayerInfo &player)
-	: player(player), maxHire(0), maxFire(0)
+	: player(player), fleetCrewAnalysis(player.FleetCrewAnalysis()), maxHire(0), maxFire(0)
 {
+	fleetCrewAnalysis = player.FleetCrewAnalysis();
 	SetTrapAllEvents(false);
 }
 
@@ -40,6 +41,7 @@ HiringPanel::HiringPanel(PlayerInfo &player)
 
 void HiringPanel::Step()
 {
+	fleetCrewAnalysis = player.FleetCrewAnalysis();
 	DoHelp("hiring");
 }
 
@@ -50,44 +52,37 @@ void HiringPanel::Draw()
 	const Interface *hiring = GameData::Interfaces().Get("hiring");
 	info.ClearConditions();
 
-	// Analyse the player's fleet and generate a report.
-	const shared_ptr<Crew::FleetAnalysis> analysis = player.FleetCrewAnalysis();
-	PlayerInfo::FleetBalance fleetBalance = player.MaintenanceAndReturns();
-
-	info.SetString("flagship bunks", Format::Number(analysis->flagshipBunkAnalysis->total));
-	info.SetString("flagship required", Format::Number(analysis->flagshipBunkAnalysis->requiredCrew));
-	info.SetString("flagship extra", Format::Number(analysis->flagshipBunkAnalysis->extraCrew));
-	info.SetString("flagship unused", Format::Number(analysis->flagshipBunkAnalysis->empty));
-
-	info.SetString("fleet bunks", Format::Number(analysis->fleetBunkAnalysis->total));
-	info.SetString("fleet required", Format::Number(analysis->fleetBunkAnalysis->requiredCrew));
-	info.SetString("fleet unused", Format::Number(analysis->fleetBunkAnalysis->empty));
-	info.SetString("passengers", Format::Number(analysis->fleetBunkAnalysis->passengers));
-
-	info.SetString("salary required", to_string(analysis->salaryReport->at(Crew::ReportDimension::Required)));
-	info.SetString("shares required", to_string(analysis->sharesReport->at(Crew::ReportDimension::Required)));
-	info.SetString("salary extra", to_string(analysis->salaryReport->at(Crew::ReportDimension::Extra)));
-	info.SetString("shares extra", to_string(analysis->sharesReport->at(Crew::ReportDimension::Extra)));
-
-	info.SetString("your share of profits", to_string(analysis->profitPlayerPercentage) + "%");
-	info.SetString("player profit percentage", to_string(analysis->profitPlayerPercentage) + "% of fleet profits");
-	info.SetString("player daily income", to_string(
-		player.GetTributeTotal() + player.Accounts().SalariesIncomeTotal()
-		+ fleetBalance.assetsReturns - fleetBalance.maintenanceCosts
+	maxFire = max(fleetCrewAnalysis->flagshipBunkAnalysis->extraCrew, (int64_t)0);
+	maxHire = max((int64_t)0, min(
+		fleetCrewAnalysis->flagshipBunkAnalysis->empty,
+		fleetCrewAnalysis->fleetBunkAnalysis->empty
 	));
-	info.SetString("player shares", to_string(analysis->playerShares));
+
+	info.SetString("flagship bunks", Format::Number(fleetCrewAnalysis->flagshipBunkAnalysis->total));
+	info.SetString("flagship required", Format::Number(fleetCrewAnalysis->flagshipBunkAnalysis->requiredCrew));
+	info.SetString("flagship extra", Format::Number(fleetCrewAnalysis->flagshipBunkAnalysis->extraCrew));
+	info.SetString("flagship unused", Format::Number(maxHire));
+
+	info.SetString("fleet bunks", Format::Number(fleetCrewAnalysis->fleetBunkAnalysis->total));
+	info.SetString("fleet required", Format::Number(fleetCrewAnalysis->fleetBunkAnalysis->requiredCrew));
+	info.SetString("fleet unused", Format::Number(fleetCrewAnalysis->fleetBunkAnalysis->empty));
+	info.SetString("passengers", Format::Number(fleetCrewAnalysis->fleetBunkAnalysis->passengers));
+
+	info.SetString("salary required", to_string(fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Required)));
+	info.SetString("shares required", to_string(fleetCrewAnalysis->sharesReport->at(Crew::ReportDimension::Required)));
+	info.SetString("salary extra", to_string(fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Extra)));
+	info.SetString("shares extra", to_string(fleetCrewAnalysis->sharesReport->at(Crew::ReportDimension::Extra)));
+
+	info.SetString("your share of profits", to_string(fleetCrewAnalysis->profitPlayerPercentage) + "%");
+	info.SetString("player profit percentage", to_string(fleetCrewAnalysis->profitPlayerPercentage) + "% of fleet profits");
+	info.SetString("player daily income", Format::Credits(player.GetDailyGrossIncome()));
+	info.SetString("player shares", to_string(fleetCrewAnalysis->playerShares));
 
 	int modifier = Modifier();
 	if(modifier > 1)
 		info.SetString("modifier", "x " + to_string(modifier));
 	else
 		info.SetString("modifier", "");
-
-	maxFire = max(analysis->flagshipBunkAnalysis->extraCrew, (int64_t)0);
-	maxHire = max(min(
-		analysis->flagshipBunkAnalysis->empty,
-		analysis->fleetBunkAnalysis->empty - analysis->fleetBunkAnalysis->passengers
-	), (int64_t)0);
 
 	if(maxHire)
 		info.SetCondition("can hire");

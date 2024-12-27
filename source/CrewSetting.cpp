@@ -194,7 +194,7 @@ const double CrewSetting::PlayerSharesPerCreditRating()
 
 const int64_t CrewSetting::PlayerSharesPerLicense()
 {
-  return GameData::CrewSettings().Get("player shares base")->playerSharesBase;
+  return GameData::CrewSettings().Get("player shares per license")->playerSharesPerLicense;
 }
 
 

@@ -275,6 +275,9 @@ public:
 	const std::map<const Planet *, int64_t> &GetTribute() const;
 	int64_t GetTributeTotal() const;
 
+	// Get the player's total gross daily income from all sources.
+	int64_t GetDailyGrossIncome() const;
+
 	// Check what the player knows about the given system or planet.
 	bool HasSeen(const System &system) const;
 	bool CanView(const System &system) const;

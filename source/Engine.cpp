@@ -440,7 +440,7 @@ void Engine::Place(const list<NPC> &npcs, shared_ptr<Ship> flagship)
 
 			// Avoid the exploit where the player can wear down an NPC's
 			// crew by attrition over the course of many days.
-			ship->AddCrew(max(0, ship->RequiredCrew() - ship->Crew()));
+			ship->ResetCrew();
 			if(!ship->IsDisabled())
 				ship->Recharge();
 

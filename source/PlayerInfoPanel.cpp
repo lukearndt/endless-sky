@@ -121,14 +121,14 @@ namespace {
 			rhs->Attributes().Get("fuel capacity") * rhs->Fuel();
 	}
 
-	bool CompareRequiredCrew(const shared_ptr<Ship> &lhs, const shared_ptr<Ship> &rhs)
+	bool CompareCrew(const shared_ptr<Ship> &lhs, const shared_ptr<Ship> &rhs)
 	{
 		// Parked ships are sorted to the end.
 		if(lhs->IsParked())
 			return false;
 		else if(rhs->IsParked())
 			return true;
-		return lhs->RequiredCrew() < rhs->RequiredCrew();
+		return lhs->Crew() < rhs->Crew();
 	}
 
 	// A helper function for reversing the arguments of the given function F.
@@ -153,7 +153,7 @@ namespace {
 			return ReverseCompare<CompareHull>;
 		else if(f == &CompareFuel)
 			return ReverseCompare<CompareFuel>;
-		return ReverseCompare<CompareRequiredCrew>;
+		return ReverseCompare<CompareCrew>;
 	}
 }
 
@@ -165,7 +165,7 @@ const PlayerInfoPanel::SortableColumn PlayerInfoPanel::columns[7] = {
 	SortableColumn("shields", 550, 493, {57, Alignment::RIGHT, Truncate::BACK}, CompareShields),
 	SortableColumn("hull", 610, 553, {57, Alignment::RIGHT, Truncate::BACK}, CompareHull),
 	SortableColumn("fuel", 670, 613, {57, Alignment::RIGHT, Truncate::BACK}, CompareFuel),
-	SortableColumn("crew", 730, 673, {57, Alignment::RIGHT, Truncate::BACK}, CompareRequiredCrew)
+	SortableColumn("crew", 730, 673, {57, Alignment::RIGHT, Truncate::BACK}, CompareCrew)
 };
 
 
@@ -832,12 +832,7 @@ void PlayerInfoPanel::DrawFleet(const Rectangle &bounds)
 			ship.Attributes().Get("fuel capacity") * ship.Fuel()));
 		table.Draw(fuel);
 
-		// If this isn't the flagship, we'll remember how many crew it has, but
-		// only the minimum number of crew need to be paid for.
-		int crewCount = ship.Crew();
-		if(!isFlagship)
-			crewCount = min(crewCount, ship.RequiredCrew());
-		string crew = (ship.IsParked() ? "Parked" : to_string(crewCount));
+		string crew = (ship.IsParked() ? "Parked" : to_string(ship.Crew()));
 		table.Draw(crew);
 
 		++index;

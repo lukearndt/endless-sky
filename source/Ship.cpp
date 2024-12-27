@@ -3009,6 +3009,13 @@ void Ship::AddCrew(int count)
 
 
 
+void Ship::ResetCrew()
+{
+	crew = min<int>(RequiredCrew(), attributes.Get("bunks"));
+}
+
+
+
 // Check if this is a ship that can be used as a flagship.
 bool Ship::CanBeFlagship() const
 {

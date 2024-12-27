@@ -1416,7 +1416,7 @@ vector<shared_ptr<Ship>>::iterator PlayerInfo::DisownShip(const Ship *selected)
 
 
 // Park or unpark the given ship. A parked ship remains on a planet instead of
-// flying with the player, and requires no daily crew payments.
+// flying with the player, and has different crew requirements.
 void PlayerInfo::ParkShip(const Ship *selected, bool isParked)
 {
 	for(auto &ship : ships)
@@ -1424,6 +1424,7 @@ void PlayerInfo::ParkShip(const Ship *selected, bool isParked)
 		{
 			isParked &= !ship->IsDisabled();
 			ship->SetIsParked(isParked);
+			ship->ResetCrew();
 			UpdateCargoCapacities();
 			flagship.reset();
 			return;
@@ -1784,11 +1785,14 @@ bool PlayerInfo::TakeOff(UI *ui, const bool distributeCargo)
 	// escorts know which ship is acting as flagship.
 	SetFlagship(*flagship);
 
-	// Recharge any ships that can be recharged, and load available cargo.
+	// Recharge any ships that can be recharged, load cargo, and tidy up crew.
 	const bool canUseServices = planet->CanUseServices();
 	for(const shared_ptr<Ship> &ship : ships)
 		if(!ship->IsParked() && !ship->IsDisabled())
 		{
+			// Make sure that escort ships have the correct number crew members.
+			if(ship != flagship)
+				ship->ResetCrew();
 			// Recalculate the weapon cache in case a mass-less change had an effect.
 			ship->GetAICache().Calibrate(*ship.get());
 			if(ship->GetSystem() != system)
@@ -2597,6 +2601,18 @@ int64_t PlayerInfo::GetTributeTotal() const
 			return value + tribute.second;
 		}
 	);
+}
+
+
+
+/**
+ * Get the player's gross daily income from tribute and salary.
+ *
+ * @return The player's gross daily income.
+ */
+int64_t PlayerInfo::GetDailyGrossIncome() const
+{
+  return GetTributeTotal() + Accounts().SalariesIncomeTotal();
 }
 
 

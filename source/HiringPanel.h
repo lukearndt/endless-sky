@@ -15,6 +15,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Crew.h"
 #include "Panel.h"
 
 class PlayerInfo;
@@ -39,6 +40,7 @@ protected:
 
 private:
 	PlayerInfo &player;
+	std::shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis;
 
 	int maxHire;
 	int maxFire;
