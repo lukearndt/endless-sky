@@ -334,6 +334,38 @@ Crew::FleetAnalysis::FleetAnalysis(
 }
 
 
+
+/**
+ * Backup constructor for the FleetAnalysis class.
+ * This constructor is only used when the fleet has no ships,
+ * or when it somehow lacks a flagship.
+ *
+ * @param combatLevel The player's combat level.
+ * @param creditScore The player's credit score.
+ * @param licenseCount The number of licenses that the player has.
+ */
+Crew::FleetAnalysis::FleetAnalysis(int combatLevel, int creditScore, int licenseCount) :
+	fleetBunkAnalysis(make_shared<BunkAnalysis>()),
+	flagshipBunkAnalysis(make_shared<BunkAnalysis>()),
+	playerShares(PlayerShares(combatLevel, creditScore, licenseCount)),
+	profitShareRatio(0),
+	crewCountReport(make_shared<Report<Count>>(initializer_list<Count>{0, 0, 0})),
+	manifestReport(make_shared<Report<shared_ptr<Manifest>>>(initializer_list<shared_ptr<Manifest>>{
+		make_shared<Manifest>(),
+		make_shared<Manifest>(),
+		make_shared<Manifest>(),
+	})),
+	salaryReport(make_shared<Report<Total>>(initializer_list<Total>{0, 0, 0})),
+	sharesReport(make_shared<Report<Total>>(initializer_list<Total>{0, 0, 0})),
+	shipAnalyses(make_shared<vector<shared_ptr<ShipAnalysis>>>()),
+	deathBenefits(0),
+	deathShares(0),
+	fleetSharesIncludingPlayer(playerShares),
+	profitPlayerPercentage(100)
+{}
+
+
+
 /**
  * Constructor for the CasualtyAnalysis class.
  * Analyses the crew members lost based on its manifest before and after a change.

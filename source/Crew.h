@@ -91,6 +91,7 @@ public:
 
 	class FleetAnalysis {
 		public:
+			// This is the primary constructor for the FleetAnalysis class.
 			FleetAnalysis(
 				const Fleet& subjectFleet,
 				const Ship *flagshipPtr,
@@ -98,6 +99,12 @@ public:
 				int creditScore,
 				int licenseCount,
 				int passengers
+			);
+			// This is a backup constructor for when we don't have any ships.
+			FleetAnalysis(
+				int combatLevel,
+				int creditScore,
+				int licenseCount
 			);
 
 			std::shared_ptr<BunkAnalysis> fleetBunkAnalysis;

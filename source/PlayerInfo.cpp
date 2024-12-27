@@ -1058,6 +1058,14 @@ PlayerInfo::FleetBalance PlayerInfo::MaintenanceAndReturns() const
  */
 const std::shared_ptr<Crew::FleetAnalysis> PlayerInfo::FleetCrewAnalysis() const
 {
+	// This prevents the game from crashing if the player has no ships.
+	if(ships.empty() || !Flagship())
+		return make_shared<Crew::FleetAnalysis>(
+			CombatLevel(),
+			Accounts().CreditScore(),
+			Licenses().size()
+		);
+
   return make_shared<Crew::FleetAnalysis>(
 		ships,
 		Flagship(),
