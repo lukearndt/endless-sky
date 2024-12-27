@@ -34,6 +34,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Phrase.h"
 #include "Planet.h"
 #include "PlayerInfo.h"
+#include "Plunder.h"
 #include "Preferences.h"
 #include "Projectile.h"
 #include "Random.h"
@@ -1763,7 +1764,7 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 
 
-// Check if this ship is boarding another ship.
+// Used for boarding another ship, or for returning to a carrier.
 shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking)
 {
 	if(!hasBoarded)
@@ -1815,17 +1816,26 @@ shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking)
 	if(!victim->IsDisabled())
 		return shared_ptr<Ship>();
 
-	// If the boarding ship is the player, they will choose what to plunder.
-	// Always take fuel and energy if you can.
+	// We now know that we are boarding a hostile disabled ship.
+
+	// First take any fuel or energy that the victim has.
 	victim->TransferFuel(victim->fuel, this);
 	victim->TransferEnergy(victim->energy, this);
+
+	// If the boarding ship is the player's flagship, they will choose what to plunder.
 	if(autoPlunder)
 	{
-		// Take any commodities that fit.
-		victim->cargo.TransferAll(cargo, false);
+		Plunder::Session plunderSession(victim, this);
 
-		// Pause for two seconds before moving on.
-		pilotError = 120;
+		// Take as much valuable plunder as possible from the victim.
+		plunderSession.Raid();
+
+		if(IsYours())
+			Messages::Add(plunderSession.GetSummary(), Messages::Importance::High);
+
+		// Pause for one frame per ton of mass taken in the raid.
+		// This adds up to one second per 60 tons of mass.
+		pilotError = plunderSession.TotalMassTaken();
 	}
 
 	// Stop targeting this ship (so you will not board it again right away).
@@ -3513,6 +3523,54 @@ void Ship::AddOutfit(const Outfit *outfit, int count)
 		else if(isYours)
 			navigation.Recalibrate(*this);
 	}
+}
+
+
+
+/**
+ * Get a list of the outfits that can be plundered from this ship.
+ * While many outfits can be taken from a ship by boarding it, some are
+ * contained wholly within the vessel and cannot be taken externally.
+ * To obtain these outfits, the attacker must invade the ship and defeat
+ * the crew, capturing the entire vessel it in the process.
+ *
+ * @return A map of plunderable outfits and their quantities.
+ */
+shared_ptr<map<const Outfit *, int>> Ship::PlunderableOutfits() const
+{
+	auto plunderableOutfits = make_shared<map<const Outfit *, int>>();
+	auto sit = Outfits().begin();
+	auto cit = Cargo().Outfits().begin();
+	while(sit != Outfits().end() || cit != Cargo().Outfits().end())
+	{
+		const Outfit *outfit = nullptr;
+		int count = 0;
+		// Merge the outfit lists from the ship itself and its cargo bay. If an
+		// outfit exists in both locations, combine the counts.
+		bool shipIsFirst = (cit == Cargo().Outfits().end() ||
+			(sit != Outfits().end() && sit->first <= cit->first));
+		bool cargoIsFirst = (sit == Outfits().end() ||
+			(cit != Cargo().Outfits().end() && cit->first <= sit->first));
+		if(shipIsFirst)
+		{
+			outfit = sit->first;
+			// Don't include outfits that are installed and unplunderable,
+			// but "unplunderable" outfits can still be stolen from cargo.
+			if(!sit->first->Get("unplunderable"))
+				count += sit->second;
+			++sit;
+		}
+		if(cargoIsFirst)
+		{
+			outfit = cit->first;
+			count += cit->second;
+			++cit;
+		}
+		if(outfit && count)
+			(*plunderableOutfits)[outfit] = count;
+	}
+
+	return plunderableOutfits;
 }
 
 

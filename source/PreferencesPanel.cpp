@@ -499,6 +499,7 @@ void PreferencesPanel::DrawControls()
 		Command::MINING,
 		Command::AMMO,
 		Command::HARVEST,
+		Command::PLUNDER,
 		Command::NONE,
 		Command::NONE,
 		Command::NEAREST,

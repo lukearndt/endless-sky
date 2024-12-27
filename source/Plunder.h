@@ -15,7 +15,12 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Outfit.h"
+#include "Ship.h"
+
+#include <memory>
 #include <string>
+#include <vector>
 
 class Outfit;
 class Ship;
@@ -27,6 +32,51 @@ public:
 	// Plunder can be either outfits or commodities.
 	Plunder(const std::string &commodity, int count, int unitValue);
 	Plunder(const Outfit *outfit, int count);
+
+	class Session {
+	public:
+		Session(std::shared_ptr<Ship> &victim, Ship * attacker);
+
+		// Get the list of items that can be plundered from the victim ship.
+		const std::vector<Plunder> &GetPlunder() const;
+		const Plunder &GetPlunder(int index) const;
+
+		// Take as much valuable plunder as possible from the victim ship.
+		void Raid();
+
+		// Take an item from the victim and give it on the attacker.
+		// If no quantity is specified, take as many as possible.
+		// Returns how many were successfully taken.
+		int Take(int index, bool pruneList = false, int quantity = -1);
+
+		// Get a message describing the result of the plunder session.
+		const std::string GetSummary() const;
+
+		// Get a list of all of the plunder that was taken.
+		const std::vector<Plunder> &GetTaken() const;
+
+		// Get the total mass of the plunder that was taken.
+		int64_t TotalCommodityMassTaken() const;
+
+		// Get the total mass of the plunder that was taken.
+		int64_t TotalMassTaken() const;
+
+		// Get the total mass of the plunder that was taken.
+		int64_t TotalOutfitsTaken() const;
+
+		// Get the total value of all the plunder that was taken.
+		int64_t TotalValueTaken() const;
+
+	private:
+		Ship * attacker;
+		std::shared_ptr<Ship> victim;
+		std::vector<Plunder> plunder;
+		std::vector<Plunder> taken;
+		int64_t totalCommodityMassTaken;
+		int64_t totalMassTaken;
+		int64_t totalOutfitsTaken;
+		int64_t totalValueTaken;
+	};
 
 	// Sort by value per ton of mass.
 	bool operator<(const Plunder &other) const;
@@ -51,8 +101,10 @@ public:
 	// Find out how many of these I can take if I have this amount of cargo
 	// space free.
 	bool CanTake(const Ship &ship) const;
-	// Take some or all of this plunder item.
-	void Take(int count);
+
+protected:
+	// Used by Plunder::Session to update the count when an item is taken.
+	void Remove(int count);
 
 private:
 	void UpdateStrings();

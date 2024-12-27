@@ -574,6 +574,23 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 		newOrders.type = Orders::MINING;
 		IssueOrders(newOrders, "mining nearby asteroids.");
 	}
+	if(activeCommands.Has(Command::PLUNDER) && !shift)
+	{
+		string message;
+		if(target && !target->IsYours())
+		{
+			newOrders.type = Orders::PLUNDER_TARGET;
+			newOrders.target = target;
+			IssueOrders(newOrders, target->IsDisabled()
+				? "plundering \"" + target->Name() + "\"."
+				: "attempting to disable and plunder \"" + target->Name() + "\".");
+		}
+		else
+		{
+			newOrders.type = Orders::PLUNDER_HOSTILES;
+			IssueOrders(newOrders, "attacking hostile ships and plundering them once disabled.");
+		}
+	}
 
 	// Get rid of any invalid orders. Carried ships will retain orders in case they are deployed.
 	for(auto it = orders.begin(); it != orders.end(); )
@@ -815,6 +832,7 @@ void AI::Step(Command &activeCommands)
 		shared_ptr<Ship> target = it->GetTargetShip();
 		shared_ptr<Minable> targetAsteroid = it->GetTargetAsteroid();
 		shared_ptr<Flotsam> targetFlotsam = it->GetTargetFlotsam();
+		// If the ship is trying to pick up flotsam, let it continue to do so.
 		if(isPresent && it->IsYours() && targetFlotsam && FollowOrders(*it, command))
 			continue;
 		// Determine if this ship was trying to scan its previous target. If so, keep
@@ -1446,14 +1464,23 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 	shared_ptr<Ship> target;
 	const Government *gov = ship.GetGovernment();
 	if(!gov || ship.GetPersonality().IsPacifist())
-		return FindNonHostileTarget(ship);
+		return FindSurveillanceTarget(ship);
 
 	bool isYours = ship.IsYours();
+	Orders order;
 	if(isYours)
 	{
 		auto it = orders.find(&ship);
-		if(it != orders.end() && (it->second.type == Orders::ATTACK || it->second.type == Orders::FINISH_OFF))
-			return it->second.target.lock();
+		if(it != orders.end())
+		{
+			order = it->second;
+			if(
+				order.type == Orders::ATTACK
+				|| order.type == Orders::FINISH_OFF
+				|| order.type == Orders::PLUNDER_TARGET
+			)
+				return order.target.lock();
+		}
 	}
 
 	// If this ship is not armed, do not make it fight.
@@ -1466,7 +1493,7 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 			maxRange = max(maxRange, weapon.GetOutfit()->Range());
 		}
 	if(!maxRange)
-		return FindNonHostileTarget(ship);
+		return FindSurveillanceTarget(ship);
 
 	const Personality &person = ship.GetPersonality();
 	shared_ptr<Ship> oldTarget = ship.GetTargetShip();
@@ -1475,9 +1502,9 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 	if(oldTarget && person.IsTimid() && oldTarget->IsDisabled()
 			&& ship.Position().Distance(oldTarget->Position()) > 1000.)
 		oldTarget.reset();
-	// Ships with 'plunders' personality always destroy the ships they have boarded
-	// unless they also have either or both of the 'disables' or 'merciful' personalities.
-	if(oldTarget && person.Plunders() && !person.Disables() && !person.IsMerciful()
+	// NPC ships with the 'plunders' and 'vindictive' personalities destroy
+	// the ships that they have finished plundering.
+	if(oldTarget && person.Plunders() && person.IsVindictive()
 			&& oldTarget->IsDisabled() && Has(ship, oldTarget, ShipEvent::BOARD))
 		return oldTarget;
 	shared_ptr<Ship> parentTarget;
@@ -1494,7 +1521,8 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 	double closest = person.IsHunting() ? numeric_limits<double>::infinity() :
 		(minRange > 1000.) ? maxRange * 1.5 : 4000.;
 	bool hasNemesis = false;
-	bool canPlunder = person.Plunders() && ship.Cargo().Free() && !ship.CanBeCarried();
+	bool canPlunder = ship.Cargo().Free() &&
+	(person.Plunders() || order.type == Orders::PLUNDER_TARGET || order.type == Orders::PLUNDER_HOSTILES);
 	// Figure out how strong this ship is.
 	int64_t maxStrength = 0;
 	auto strengthIt = shipStrength.find(&ship);
@@ -1566,7 +1594,7 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 	// With no hostile targets, NPCs with enforcement authority (and any
 	// mission NPCs) should consider friendly targets for surveillance.
 	if(!isYours && !target && (ship.IsSpecial() || scanPermissions.at(gov)))
-		target = FindNonHostileTarget(ship);
+		target = FindSurveillanceTarget(ship);
 
 	// Vindictive personalities without in-range hostile targets keep firing at an old
 	// target (instead of perhaps moving about and finding one that is still alive).
@@ -1582,7 +1610,7 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 
 
 
-shared_ptr<Ship> AI::FindNonHostileTarget(const Ship &ship) const
+shared_ptr<Ship> AI::FindSurveillanceTarget(const Ship &ship) const
 {
 	shared_ptr<Ship> target;
 
@@ -1780,6 +1808,22 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 		else
 			return false;
 	}
+	else if(type == Orders::PLUNDER_HOSTILES || type == Orders::PLUNDER_TARGET)
+	{
+		// If the target is an enemy and not disabled, setting it as a target
+		// is enough to make the ship attack it.
+		if(type == Orders::PLUNDER_TARGET)
+			ship.SetTargetShip(target);
+
+		if(DoPlundering(ship, command))
+		{
+			ship.SetCommands(command);
+			ship.SetCommands(firingCommands);
+			return true;
+		}
+		else
+			return false;
+	}
 	else if(!target)
 	{
 		// Note: in AI::UpdateKeys() we already made sure that if a set of orders
@@ -1884,7 +1928,7 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 		{
 			if(it->second.type == Orders::MOVE_TO)
 				ignoreTargetShip = (ship.GetTargetSystem() && ship.JumpsRemaining()) || ship.GetTargetStellar();
-			else if(it->second.type == Orders::ATTACK || it->second.type == Orders::FINISH_OFF)
+			else if(it->second.type == Orders::ATTACK || it->second.type == Orders::FINISH_OFF || it->second.type == Orders::PLUNDER_TARGET)
 				friendlyOverride = it->second.target.lock() == target;
 		}
 	}
@@ -3192,27 +3236,25 @@ void AI::DoSurveillance(Ship &ship, Command &command, shared_ptr<Ship> &target) 
  * If there's no flotsam nearby, the ship checks if it is currently
  * targeting an asteroid. If so, it considers mining it.
  *
- * Next, the ship checks if its parent has targeted an asteroid. If so,
- * it accepts that asteroid as its new target unless it doesn't think it
- * can reach it. Note that the ship will continues to target that asteroid
- * even if the parent changes target afterward.
- *
- * If the parent isn't targeting an asteroid either, the ship scans for
- * an asteroid if it has the ability to do so. This scanning attempt is
- * rate limited to once every 30 frames or so. If an asteroid is found,
+ * If the ship has an asteroid scanner, it searches for a nearby asteroid
+ * to mine based on the player's targeting settings. This scanning attempt
+ * is rate limited to once every 30 frames or so. If an asteroid is found,
  * the ship targets it and considers mining it.
  *
- * Next, the ship checks if it has an asteroid scanner. If it does, it
- * patrols the asteroid belt in its current system. Otherwise, it checks
- * if its parent has an asteroid scanner and follows it if it does.
+ * Otherwise, the ship checks if its parent has targeted an asteroid.
+ * If so, it accepts that asteroid as its new target unless it doesn't
+ * think it can reach it. Note that the ship will continues to target
+ * that asteroid even if the parent changes target afterward.
+ *
+ * If the ship can't see an asteroid to mine yet, it patrols the asteroid
+ * belt if it has a scanner. If it doesn't have its own scanner, it checks
+ * if its parent has one and follows the parent around if so. Otherwise,
+ * the routine returns false so that the ship can choose a different action.
  *
  * AI ships that don't have asteroid scanners will also attempt to patrol
  * the asteroid belt and mine any nearby asteroids that they can reach.
  * This is a workaround because we can't trust that all of the AI miners
  * to have scanners equipped, even though they probably ought to.
- *
- * After all this, if the ship still hasn't chosen an action, it returns
- * false so that the rest of the AI system can decide what to do next.
  *
  * @param ship The ship that has been commanded to mine asteroids.
  * @param command The command being executed.
@@ -3233,15 +3275,11 @@ bool AI::DoMining(Ship &ship, Command &command)
 		return true;
 
 
-	// Step 3: Check if its parent ship has targeted an asteroid.
+	bool hasAsteroidScanner = ship.Attributes().Get("asteroid scan power") > 0.;
 	shared_ptr<Ship> parent = ship.GetParent();
 	bool hasParent = parent && parent->GetSystem() == ship.GetSystem();
 
-	if(hasParent && ConsiderAttacking(ship, command, parent->GetTargetAsteroid()))
-		return true;
-
-
-	/* Step 4: Scan for a nearby asteroid to mine. Rate limited for performance.
+	/* Step 3 (scanner): Find the next asteroid to mine. Rate limited.
 		Attempts a scan every 30 frames on average, or about twice per second.
 
 		The player's escorts can't find their own asteroids unless they have
@@ -3262,20 +3300,26 @@ bool AI::DoMining(Ship &ship, Command &command)
 		but it's a reasonable trade-off for the ability to send a carrier to
 		mine for you using its fighters and drones.
 	*/
-	bool hasAsteroidScanner = ship.Attributes().Get("asteroid scan power") > 0.;
-
-	if(!Random::Int(30))
-	{
-		if(ConsiderAttacking(ship, command, FindMinable(ship)))
+	if(hasAsteroidScanner) {
+		if(!Random::Int(30))
+		{
+			if(ConsiderAttacking(ship, command, FindMinable(ship)))
+				return true;
+		}
+	} else if(hasParent) {
+		// Step 3 (no scanner): If the ship doesn't have its own asteroid
+		// scanner, it must rely on its parent to find asteroids to mine.
+		if(ConsiderAttacking(ship, command, parent->GetTargetAsteroid()))
 			return true;
 	}
 
 
-	// Step 5: If the ship has an asteroid scanner, patrol the asteroid belt.
-	// We also allow this behaviour for non-player ships that don't have
-	// scanners because we want them to be able to mine asteroids too.
-	// Ideally we would have scanners on all AI ships that are supposed to
-	// be mining, but we can't guarantee that, so we have to make do.
+
+	// Step 4 (scanner / npc): If the ship has an asteroid scanner, it patrols
+	// the asteroid belt. We also allow this behaviour for non-player ships
+	// that don't have scanners because we want them to be able to mine
+	// asteroids too. Ideally we would have scanners on all AI ships that
+	// are supposed to be mining, but we can't guarantee that they will.
 	if(hasAsteroidScanner || !ship.IsYours())
 	{
 		bool isNew = !miningAngle.contains(&ship);
@@ -3314,9 +3358,10 @@ bool AI::DoMining(Ship &ship, Command &command)
 	}
 
 
-	// Step 6: If the parent ship has an asteroid scanner, follow it around.
-	// This is especially useful for carried ships like fighters and drones,
-	// as it tells them to follow their carriers around the asteroid belt.
+	// Step 4 (non-scanner escort): If the parent ship has an asteroid
+	// scanner, follow it around. This is especially useful for carried
+	// ships like fighters and drones, as it tells them to follow their
+	// carriers around the asteroid belt.
 	if(hasParent && parent->Attributes().Get("asteroid scan power") > 0.)
 	{
 		KeepStation(ship, command, *parent);
@@ -3324,8 +3369,8 @@ bool AI::DoMining(Ship &ship, Command &command)
 	}
 
 
-	// If the ship reaches this point, we return false and let the rest of
-	// the AI system figure out something for it to do.
+	// If the routine reaches this point, we return false and let the AI
+	// system figure out a different action for the ship to take.
 	return false;
 }
 
@@ -3539,6 +3584,88 @@ void AI::DoPatrol(Ship &ship, Command &command) const
 		const Point targetPosition = ship.Position() + targetVelocity;
 		MoveTo(ship, command, targetPosition, targetVelocity, 10., 1.);
 	}
+}
+
+
+
+/**
+ * A ship can use this routine to evaluate its current target for boarding.
+ *
+ * If the ship doesn't have a target yet, it searches for a disabled
+ * enemy ship that it hasn't boarded yet.
+ *
+ * If it can't find a suitable enemy, it searches for a disabled friendly
+ * ship that it can repair.
+ *
+ * @param ship The ship that is plundering.
+ * @param command The command being executed.
+ *
+ * @return Whether or not the ship has chosen an action.
+ */
+bool AI::DoPlundering(Ship &ship, Command &command)
+{
+	shared_ptr<Ship> target = ship.GetTargetShip();
+
+	bool hasFreeCargo = ship.Cargo().Free() > 0;
+
+	// If the ship doesn't have a target yet and it has free cargo space,
+	// it searches for a disabled enemy ship that it hasn't boarded yet.
+	if(!target && hasFreeCargo)
+	{
+		auto enemies = GetShipsList(ship, true);
+		for(auto &foe : enemies)
+			if(foe->IsDisabled())
+			{
+				auto foePtr = foe->shared_from_this();
+				if(!Has(ship, foePtr, ShipEvent::BOARD))
+				{
+					target = foePtr;
+					break;
+				}
+			}
+	}
+
+	// If there aren't any enemies, it searches for a disabled ally to repair.
+	if(!target)
+	{
+		auto allies = GetShipsList(ship, false);
+		for(auto &ally : allies)
+			if(ally->IsDisabled())
+			{
+				target = ally->shared_from_this();
+				break;
+			}
+	}
+
+	// If it still doesn't have a disabled target, it can't board anything.
+	if(!target || !target->IsDisabled())
+		return false;
+
+	// From this point onward, we know that the ship has a disabled target.
+
+	bool autoPlunder = false;
+	// If the disabled target is an enemy, the ship considers plundering it.
+	if(ship.GetGovernment()->IsEnemy(target->GetGovernment()))
+	{
+		// Abort if the ship doesn't have any free cargo space, or if it has
+		// already boarded this target.
+		if(!hasFreeCargo || Has(ship, target, ShipEvent::BOARD))
+		{
+			target.reset();
+			return false;
+		}
+
+		autoPlunder = true;
+	}
+
+	// Move to the target ship and board it.
+	ship.SetTargetShip(target);
+	if(!ship.Board(autoPlunder, true))
+	{
+		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
+		command |= Command::BOARD;
+	}
+	return true;
 }
 
 
@@ -3932,7 +4059,8 @@ void AI::AutoFire(const Ship &ship, FireCommand &command, bool secondary, bool i
 		if(it != orders.end() && it->second.target.lock() == currentTarget)
 		{
 			disabledOverride = (it->second.type == Orders::FINISH_OFF);
-			friendlyOverride = disabledOverride | (it->second.type == Orders::ATTACK);
+			friendlyOverride = disabledOverride |
+				(it->second.type == Orders::ATTACK || it->second.type == Orders::PLUNDER_TARGET);
 		}
 	}
 	bool currentIsEnemy = currentTarget
@@ -4024,9 +4152,9 @@ void AI::AutoFire(const Ship &ship, FireCommand &command, bool secondary, bool i
 		// Homing weapons revert to "dumb firing" if they have no target.
 		if(weapon->Homing() && currentTarget)
 		{
-			// NPCs shoot ships that they just plundered.
+			// NPCs shoot ships that they just plundered if they are vindictive.
 			bool hasBoarded = !ship.IsYours() && Has(ship, currentTarget, ShipEvent::BOARD);
-			if(currentTarget->IsDisabled() && (disables || (plunders && !hasBoarded)) && !disabledOverride)
+			if(currentTarget->IsDisabled() && !person.IsVindictive() && (disables || (plunders && !hasBoarded)) && !disabledOverride)
 				continue;
 			// Don't fire secondary weapons at targets that have started jumping.
 			if(weapon->Icon() && currentTarget->IsEnteringHyperspace())
@@ -4059,9 +4187,9 @@ void AI::AutoFire(const Ship &ship, FireCommand &command, bool secondary, bool i
 		// For non-homing weapons:
 		for(const auto &target : enemies)
 		{
-			// NPCs shoot ships that they just plundered.
+			// NPCs shoot ships that they just plundered if they are vindictive.
 			bool hasBoarded = !ship.IsYours() && Has(ship, target->shared_from_this(), ShipEvent::BOARD);
-			if(target->IsDisabled() && (disables || (plunders && !hasBoarded)) && !disabledOverride)
+			if(target->IsDisabled() && !person.IsVindictive() && (disables || (plunders && !hasBoarded)) && !disabledOverride)
 				continue;
 			// Merciful ships let fleeing ships go.
 			if(target->IsFleeing() && person.IsMerciful())

@@ -37,7 +37,7 @@ class Ship;
 // capture is "turn-based" combat where each "turn" one or both ships lose crew.
 class BoardingPanel : public Panel {
 public:
-	BoardingPanel(PlayerInfo &player, const std::shared_ptr<Ship> &victim);
+	BoardingPanel(PlayerInfo &player, std::shared_ptr<Ship> &victim);
 
 	virtual void Draw() override;
 
@@ -72,8 +72,6 @@ private:
 	std::shared_ptr<Ship> you;
 	std::shared_ptr<Ship> victim;
 
-	// List of items you can plunder.
-	std::vector<Plunder> plunder;
 	int selected = 0;
 	double scroll = 0.;
 
@@ -86,6 +84,9 @@ private:
 	CaptureOdds defenseOdds;
 	// These messages are shown to report the results of hand to hand combat.
 	std::vector<std::string> messages;
+
+	// Allows us to list plunderable items and take them from the victim.
+	Plunder::Session plunderSession;
 
 	// Whether or not the ship can be captured.
 	bool canCapture = false;

@@ -60,32 +60,18 @@ namespace {
 
 
 // Constructor.
-BoardingPanel::BoardingPanel(PlayerInfo &player, const shared_ptr<Ship> &victim)
+BoardingPanel::BoardingPanel(PlayerInfo &player, shared_ptr<Ship> &victim)
 	: player(player), you(player.FlagshipPtr()), victim(victim),
-	attackOdds(*you, *victim), defenseOdds(*victim, *you), shipAnalysisBefore(player.FlagshipPtr(), true)
+	attackOdds(*you, *victim), defenseOdds(*victim, *you), plunderSession(victim, player.Flagship()),
+	shipAnalysisBefore(player.FlagshipPtr(), true)
 {
 	// The escape key should close this panel rather than bringing up the main menu.
 	SetInterruptible(false);
-
-	// Figure out how much the victim's commodities are worth in the current
-	// system and add them to the list of plunder.
-	const System &system = *player.GetSystem();
-	for(const auto &it : victim->Cargo().Commodities())
-		if(it.second)
-			plunder.emplace_back(it.first, it.second, system.Trade(it.first));
-
-	// Add the plunderable outfits from the victim's ship and cargo bay.
-	for(const auto &it : victim->PlunderableOutfits())
-		if(it.second)
-			plunder.emplace_back(it.first, it.second);
 
 	canCapture = victim->IsCapturable() || player.CaptureOverriden(victim);
 	// Some "ships" do not represent something the player could actually pilot.
 	if(!canCapture)
 		messages.emplace_back("This is not a ship that you can capture.");
-
-	// Sort the plunder by price per ton.
-	sort(plunder.begin(), plunder.end());
 }
 
 
@@ -111,9 +97,9 @@ void BoardingPanel::Draw()
 	const Font &font = FontSet::Get(14);
 	// Y offset to center the text in a 20-pixel high row.
 	double fontOff = .5 * (20 - font.Height());
-	for( ; y < endY && static_cast<unsigned>(index) < plunder.size(); y += 20, ++index)
+	for( ; y < endY && static_cast<unsigned>(index) < plunderSession.GetPlunder().size(); y += 20, ++index)
 	{
-		const Plunder &item = plunder[index];
+		const Plunder &item = plunderSession.GetPlunder(index);
 
 		// Check if this is the selected row.
 		bool isSelected = (index == selected);
@@ -210,44 +196,14 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 		return false;
 	else if(key == 't' && CanTake())
 	{
-		CargoHold &cargo = you->Cargo();
-		int count = plunder[selected].Count();
-
-		const Outfit *outfit = plunder[selected].GetOutfit();
-		if(outfit)
-		{
-			// Check if this outfit is ammo for one of your weapons. If so, use
-			// it to refill your ammo rather than putting it in cargo.
-			int available = count;
-			// Keep track of how many you actually took.
-			count = 0;
-			for(const auto &it : you->Outfits())
-				if(it.first != outfit && it.first->Ammo() == outfit)
-				{
-					// Figure out how many of these outfits you can install.
-					count = you->Attributes().CanAdd(*outfit, available);
-					you->AddOutfit(outfit, count);
-					// You have now installed as many of these items as possible.
-					break;
-				}
-			// Transfer as many as possible of these outfits to your cargo hold.
-			count += cargo.Add(outfit, available - count);
-			// Take outfits from cargo first, then from the ship itself.
-			int remaining = count - victim->Cargo().Remove(outfit, count);
-			victim->AddOutfit(outfit, -remaining);
-		}
-		else
-			count = victim->Cargo().Transfer(plunder[selected].Name(), count, cargo);
-
-		// If all of the plunder of this type was taken, remove it from the list.
-		// Otherwise, just update the count in the list item.
-		if(count == plunder[selected].Count())
-		{
-			plunder.erase(plunder.begin() + selected);
-			selected = min<int>(selected, plunder.size());
-		}
-		else
-			plunder[selected].Take(count);
+		const Plunder &item = plunderSession.GetPlunder(selected);
+		int quantity = KMOD_SHIFT ? 1 : item.Count();
+		if(item.CanTake(*you))
+			plunderSession.Take(selected, true, quantity);
+	}
+	else if(key == 'r')
+	{
+		plunderSession.Raid();
 	}
 	else if(!isCapturing &&
 			(key == SDLK_UP || key == SDLK_DOWN || key == SDLK_PAGEUP
@@ -439,7 +395,7 @@ bool BoardingPanel::Click(int x, int y, int clicks)
 	if(x >= -330 && x < 20 && y >= -180 && y < 60)
 	{
 		int index = (scroll + y - -170) / 20;
-		if(static_cast<unsigned>(index) < plunder.size())
+		if(static_cast<unsigned>(index) < plunderSession.GetPlunder().size())
 			selected = index;
 		return true;
 	}
@@ -454,7 +410,7 @@ bool BoardingPanel::Drag(double dx, double dy)
 {
 	// The list is 240 pixels tall, and there are 10 pixels padding on the top
 	// and the bottom, so:
-	double maximumScroll = max(0., 20. * plunder.size() - 220.);
+	double maximumScroll = max(0., 20. * plunderSession.GetPlunder().size() - 220.);
 	scroll = max(0., min(maximumScroll, scroll - dy));
 
 	return true;
@@ -488,10 +444,10 @@ bool BoardingPanel::CanTake() const
 		return false;
 	if(isCapturing || playerDied)
 		return false;
-	if(static_cast<unsigned>(selected) >= plunder.size())
+	if(static_cast<unsigned>(selected) >= plunderSession.GetPlunder().size())
 		return false;
 
-	return plunder[selected].CanTake(*you);
+	return plunderSession.GetPlunder(selected).CanTake(*you);
 }
 
 
@@ -533,7 +489,7 @@ void BoardingPanel::DoKeyboardNavigation(const SDL_Keycode key)
 	else if(key == SDLK_HOME)
 		selected = 0;
 	else if(key == SDLK_END)
-		selected = static_cast<int>(plunder.size() - 1);
+		selected = static_cast<int>(plunderSession.GetPlunder().size() - 1);
 	else
 	{
 		if(key == SDLK_UP)
@@ -541,7 +497,7 @@ void BoardingPanel::DoKeyboardNavigation(const SDL_Keycode key)
 		else if(key == SDLK_DOWN)
 			++selected;
 	}
-	selected = max(0, min(static_cast<int>(plunder.size() - 1), selected));
+	selected = max(0, min(static_cast<int>(plunderSession.GetPlunder().size() - 1), selected));
 
 	// Scroll down at least far enough to view the current item.
 	double minimumScroll = max(0., 20. * selected - 200.);

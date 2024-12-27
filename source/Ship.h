@@ -446,6 +446,8 @@ public:
 	int OutfitCount(const Outfit *outfit) const;
 	// Add or remove outfits. (To remove, pass a negative number.)
 	void AddOutfit(const Outfit *outfit, int count);
+	// List of outfits that can be plundered from this ship.
+	std::shared_ptr<std::map<const Outfit *, int>> PlunderableOutfits() const;
 
 	// Get the list of weapons.
 	Armament &GetArmament();

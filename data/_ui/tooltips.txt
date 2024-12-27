@@ -1324,6 +1324,10 @@ tip "Fleet: Toggle ammo usage"
 tip "Fleet: Harvest flotsam"
 	`Command your fleet to harvest nearby flotsam (e.g. dropped cargo). The "Flotsam collection" setting must allow your escorts to pick up flotsam in order to harvest it.`
 
+tip "Fleet: Plunder enemy ship(s)"
+	`Command your fleet to attack, disable, board, and plunder the selected target. If only some escorts are selected, only sends the command to those escorts.`
+	`If you don't have a target selected, your fleet will fight hostile ships as normal, but they will also board them once disabled. They will also attempt to board and repair any friendly disabled ships that 't  w ill also board and repair any friendly ships that they  and then board them once disabled.`
+
 
 
 # Settings

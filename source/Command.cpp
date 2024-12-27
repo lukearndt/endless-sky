@@ -80,11 +80,12 @@ const Command Command::GATHER(ONE << 29, "Fleet: Gather around me");
 const Command Command::HOLD(ONE << 30, "Fleet: Hold position");
 const Command Command::HARVEST(ONE << 31, "Fleet: Harvest flotsam");
 const Command Command::MINING(ONE << 32, "Fleet: Mine asteroids");
-const Command Command::AMMO(ONE << 33, "Fleet: Toggle ammo usage");
-const Command Command::AUTOSTEER(ONE << 34, "Auto steer");
-const Command Command::WAIT(ONE << 35, "");
-const Command Command::STOP(ONE << 36, "");
-const Command Command::SHIFT(ONE << 37, "");
+const Command Command::PLUNDER(ONE << 33, "Fleet: Plunder enemy ship(s)");
+const Command Command::AMMO(ONE << 34, "Fleet: Toggle ammo usage");
+const Command Command::AUTOSTEER(ONE << 35, "Auto steer");
+const Command Command::WAIT(ONE << 36, "");
+const Command Command::STOP(ONE << 37, "");
+const Command Command::SHIFT(ONE << 38, "");
 
 
 

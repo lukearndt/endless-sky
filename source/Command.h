@@ -69,6 +69,7 @@ public:
 	static const Command MINING;
 	static const Command AMMO;
 	static const Command HARVEST;
+	static const Command PLUNDER;
 
 	// This command is given in combination with JUMP or LAND and tells a ship
 	// not to jump or land yet even if it is in position to do so. It can be

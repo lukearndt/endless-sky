@@ -1759,7 +1759,9 @@ void Engine::MoveShip(const shared_ptr<Ship> &ship)
 	}
 
 	// Boarding:
-	bool autoPlunder = !ship->IsYours();
+	// If the boarding ship is the player's flagship, we will display the
+	// boarding panel. Otherwise, it will perform any plundering automatically.
+	bool autoPlunder = ship.get() != flagship;
 	// The player should not become a docked passenger on some other ship, but AI ships may.
 	bool nonDocker = ship.get() == flagship;
 	shared_ptr<Ship> victim = ship->Board(autoPlunder, nonDocker);
