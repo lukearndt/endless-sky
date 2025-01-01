@@ -1691,8 +1691,14 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 	// is landing, jumping, or cloaked. If already destroyed (e.g. self-destructing),
 	// eject any ships still docked, possibly destroying them in the process.
 	bool ejecting = IsDestroyed();
-	if(!ejecting && (!commands.Has(Command::DEPLOY) || zoom != 1.f || hyperspaceCount ||
-			(cloak && !attributes.Get("cloaked deployment"))))
+	if(!ejecting && (
+		!commands.Has(Command::DEPLOY)
+			|| zoom != 1.f
+			|| hyperspaceCount
+			|| (cloak && !attributes.Get("cloaked deployment"))
+			|| commands.Has(Command::JUMP)
+			|| commands.Has(Command::FLEET_JUMP)
+		))
 		return;
 
 	for(Bay &bay : bays)
@@ -1775,12 +1781,12 @@ shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking, const vector<sha
 	if(CannotAct(Ship::ActionType::BOARD) || !victim || victim->IsDestroyed() || victim->GetSystem() != GetSystem())
 		return shared_ptr<Ship>();
 
-	// For a fighter or drone, "board" means "return to ship." Except when the ship is
-	// explicitly of the nonDocking type.
-	if(CanBeCarried() && !nonDocking)
+	// For a fighter or drone, "board" means "return to ship" if the "victim"
+	// is an ally and the ship isn't explicitly of the nonDocking type.
+	if(CanBeCarried() && !nonDocking && victim->GetGovernment() == government)
 	{
 		SetTargetShip(shared_ptr<Ship>());
-		if(!victim->IsDisabled() && victim->GetGovernment() == government)
+		if(!victim->IsDisabled())
 			victim->Carry(shared_from_this());
 		return shared_ptr<Ship>();
 	}
@@ -1825,17 +1831,22 @@ shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking, const vector<sha
 	// If the boarding ship is the player's flagship, they will choose what to plunder.
 	if(autoPlunder)
 	{
-		Plunder::Session plunderSession(victim, this);
+		Plunder::Session plunderSession(victim, this, attackerFleet);
 
 		// Take as much valuable plunder as possible from the victim.
 		plunderSession.Raid();
 
-		if(IsYours())
-			Messages::Add(plunderSession.GetSummary(), Messages::Importance::High);
-
 		// Pause for one frame per ton of mass taken in the raid.
 		// This adds up to one second per 60 tons of mass.
 		pilotError = plunderSession.TotalMassTaken();
+
+		if(plunderSession.TotalValueTaken() > 0)
+		{
+			if(IsYours())
+				Messages::Add(plunderSession.GetSummary(), Messages::Importance::High);
+			else if (victim->IsYours())
+				Messages::Add(plunderSession.GetSummary(), Messages::Importance::Highest);
+		}
 	}
 
 	// Stop targeting this ship (so you will not board it again right away).

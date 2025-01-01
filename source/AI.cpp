@@ -127,6 +127,9 @@ namespace {
 					&& escort->GetSystem() == ship.GetSystem()
 					&& escort->JumpNavigation().JumpFuel() && !escort->IsReadyToJump(true))
 				return false;
+			// If the escort is a carried ship that's trying to board, it's not ready to jump.
+			if(escort->CanBeCarried() && escort->IsBoarding())
+				return false;
 		}
 		return true;
 	}
@@ -2352,10 +2355,11 @@ bool AI::ShouldDock(const Ship &ship, const Ship &parent, const System *playerSy
 
 	// A player-owned carried ship should return to its carrier when the player
 	// has ordered it to "no longer deploy" or when it is not in the current system.
+	// It should also return if its parent is about to jump.
 	// A non-player-owned carried ship should retreat if its parent is calling it back.
 	if(ship.IsYours())
 	{
-		if(!ship.HasDeployOrder() || ship.GetSystem() != playerSystem)
+		if(!ship.HasDeployOrder() || ship.GetSystem() != playerSystem || parent.Commands().Has(Command::JUMP) || parent.Commands().Has(Command::FLEET_JUMP))
 			return true;
 	}
 	else if(!parent.Commands().Has(Command::DEPLOY))
