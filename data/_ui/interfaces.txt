@@ -1126,6 +1126,12 @@ interface "boarding"
 		from 330 28
 		align right
 
+# This is a placeholder until the boarding UI png has been updated to include a Raid button
+#	active if "can raid"
+#	button r "_Raid"
+#		center -315 115
+#		dimensions 70 30
+
 	active if "can take"
 	button t "_Take"
 		center -235 115
