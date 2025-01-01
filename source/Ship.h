@@ -221,7 +221,7 @@ public:
 	// Check if this ship is boarding another ship. If it is, it either plunders
 	// it or, if this is a player ship, returns the ship it is plundering so a
 	// plunder dialog can be displayed.
-	std::shared_ptr<Ship> Board(bool autoPlunder, bool nonDocking);
+	std::shared_ptr<Ship> Board(bool autoPlunder, bool nonDocking, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 	// Scan the target, if able and commanded to. Return a ShipEvent bitmask
 	// giving the types of scan that succeeded.
 	int Scan(const PlayerInfo &player);

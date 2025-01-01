@@ -1764,7 +1764,7 @@ void Engine::MoveShip(const shared_ptr<Ship> &ship)
 	bool autoPlunder = ship.get() != flagship;
 	// The player should not become a docked passenger on some other ship, but AI ships may.
 	bool nonDocker = ship.get() == flagship;
-	shared_ptr<Ship> victim = ship->Board(autoPlunder, nonDocker);
+	shared_ptr<Ship> victim = ship->Board(autoPlunder, nonDocker, ship->IsYours() ? player.Ships() : vector<shared_ptr<Ship>>());
 	if(victim)
 		eventQueue.emplace_back(ship, victim,
 			ship->GetGovernment()->IsEnemy(victim->GetGovernment()) ?
@@ -2469,10 +2469,10 @@ void Engine::DoCollection(Flotsam &flotsam)
 			total += ship->Cargo().Free();
 
 	message += " (" + Format::CargoString(free, "free space") + " remaining";
-	if(free == total)
-		message += ".)";
-	else
-		message += ", " + Format::MassString(total) + " in fleet.)";
+	if(total > free)
+		message += "; " + Format::MassString(total) + " in fleet)";
+	message += ").";
+
 	Messages::Add(message, Messages::Importance::High);
 }
 

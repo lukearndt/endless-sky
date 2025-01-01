@@ -165,8 +165,9 @@ double Plunder::UnitMass() const
  * @param victim The ship from which to plunder.
  * @param attacker The ship that is plundering.
  */
-Plunder::Session::Session(shared_ptr<Ship> &victim, Ship * attacker) :
+Plunder::Session::Session(shared_ptr<Ship> &victim, Ship * attacker, const vector<shared_ptr<Ship>> &attackerFleet) :
 	attacker(attacker),
+	attackerFleet(attackerFleet),
 	victim(victim),
 	plunder({}),
 	taken({}),
@@ -336,7 +337,7 @@ int Plunder::Session::Take(int index, bool pruneList, int quantity)
 /**
  * Get a message describing the result of the plunder session.
  * This message is intended to be displayed to the player after one of
- * their escorts has successfully plundered a disabled ship.
+ * their escorts has plundered a disabled ship or been plundered in turn.
  *
  * @return A string describing the result of the plunder session.
  */
@@ -355,16 +356,26 @@ const std::string Plunder::Session::GetSummary() const
 
 	message += " from \"" + victim->Name()
 		+ "\" for a total value of " + Format::Credits(totalValueTaken)
-		+ " credits, and has " + Format::MassString(attacker->Cargo().Free()) + " of remaining cargo space.";
+		+ " credits";
 
-	if(attacker->Cargo().Free() < 1)
-		message += "\"" + attacker->Name() + "\" has no more cargo space remaining.";
-	else
-		message += attacker->Name() + " has " + Format::MassString(attacker->Cargo().Free()) + " of cargo space remaining.";
+	if(!victim->IsYours())
+	{
+		message += " (" + Format::CargoString(attacker->Cargo().Free(), "free space") + " remaining";
 
+		if(attackerFleet.size() > 1)
+		{
+			int total = 0;
+			for(const shared_ptr<Ship> &ship : attackerFleet)
+				if(!ship->IsDestroyed() && !ship->IsParked() && ship->GetSystem() == attacker->GetSystem())
+					total += ship->Cargo().Free();
+
+			message += "; " + Format::MassString(total) + " in fleet";
+		}
+		message += ").";
+	}
 
 	if(plunder.empty())
-		message += "\n\"" + victim->Name() + "\" has nothing left that can be plundered.";
+		message += " \"" + victim->Name() + "\" has nothing left that can be plundered.";
 
 	return message;
 }

@@ -35,7 +35,7 @@ public:
 
 	class Session {
 	public:
-		Session(std::shared_ptr<Ship> &victim, Ship * attacker);
+		Session(std::shared_ptr<Ship> &victim, Ship * attacker, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 
 		// Get the list of items that can be plundered from the victim ship.
 		const std::vector<Plunder> &GetPlunder() const;
@@ -69,6 +69,7 @@ public:
 
 	private:
 		Ship * attacker;
+		std::vector<std::shared_ptr<Ship>> attackerFleet;
 		std::shared_ptr<Ship> victim;
 		std::vector<Plunder> plunder;
 		std::vector<Plunder> taken;

@@ -53,6 +53,8 @@ protected:
 private:
 	// You can't exit this dialog if you are in the middle of combat.
 	bool CanExit() const;
+	// Check if you can raid the ship for valuables.
+	bool CanRaid(bool alreadyCheckedPlunder = false, bool canTakeSomething = false) const;
 	// Check if you can take the outfit at the given position in the list.
 	bool CanTake() const;
 	// Check if you can initiate hand to hand combat.

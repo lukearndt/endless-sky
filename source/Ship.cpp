@@ -1765,7 +1765,7 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 
 // Used for boarding another ship, or for returning to a carrier.
-shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking)
+shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking, const vector<shared_ptr<Ship>> &attackerFleet)
 {
 	if(!hasBoarded)
 		return shared_ptr<Ship>();

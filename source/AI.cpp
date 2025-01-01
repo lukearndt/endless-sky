@@ -3660,7 +3660,7 @@ bool AI::DoPlundering(Ship &ship, Command &command)
 
 	// Move to the target ship and board it.
 	ship.SetTargetShip(target);
-	if(!ship.Board(autoPlunder, true))
+	if(!ship.Board(autoPlunder, true, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>()))
 	{
 		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
 		command |= Command::BOARD;

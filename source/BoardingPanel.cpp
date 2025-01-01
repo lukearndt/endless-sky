@@ -62,7 +62,7 @@ namespace {
 // Constructor.
 BoardingPanel::BoardingPanel(PlayerInfo &player, shared_ptr<Ship> &victim)
 	: player(player), you(player.FlagshipPtr()), victim(victim),
-	attackOdds(*you, *victim), defenseOdds(*victim, *you), plunderSession(victim, player.Flagship()),
+	attackOdds(*you, *victim), defenseOdds(*victim, *you), plunderSession(victim, player.Flagship(), player.Ships()),
 	shipAnalysisBefore(player.FlagshipPtr(), true)
 {
 	// The escape key should close this panel rather than bringing up the main menu.
@@ -97,6 +97,8 @@ void BoardingPanel::Draw()
 	const Font &font = FontSet::Get(14);
 	// Y offset to center the text in a 20-pixel high row.
 	double fontOff = .5 * (20 - font.Height());
+	// TODO: Placeholder until the boarding UI png is updated.
+	// bool canTakeSomething = false;
 	for( ; y < endY && static_cast<unsigned>(index) < plunderSession.GetPlunder().size(); y += 20, ++index)
 	{
 		const Plunder &item = plunderSession.GetPlunder(index);
@@ -107,7 +109,11 @@ void BoardingPanel::Draw()
 			FillShader::Fill(Point(-155., y + 10.), Point(360., 20.), back);
 
 		// Color the item based on whether you have space for it.
-		const Color &color = item.CanTake(*you) ? isSelected ? bright : medium : dim;
+		bool canTake = item.CanTake(*you);
+		// TODO: Placeholder until the boarding UI png is updated.
+		// if(canTake)
+		// 	canTakeSomething = true;
+		const Color &color = canTake ? isSelected ? bright : medium : dim;
 		Point pos(-320., y + fontOff);
 		font.Draw(item.Name(), pos, color);
 		font.Draw({item.Value(), {260, Alignment::RIGHT}}, pos, color);
@@ -118,6 +124,10 @@ void BoardingPanel::Draw()
 	info.ClearConditions();
 	if(CanExit())
 		info.SetCondition("can exit");
+	// TODO: The boarding UI png needs to be updated to include a "raid" button.
+	// This is a placeholder until that has been done.
+	// if(CanRaid(true, canTakeSomething))
+	// 	info.SetCondition("can raid");
 	if(CanTake())
 		info.SetCondition("can take");
 	if(CanCapture())
@@ -201,10 +211,8 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 		if(item.CanTake(*you))
 			plunderSession.Take(selected, true, quantity);
 	}
-	else if(key == 'r')
-	{
+	else if(key == 'r' && CanRaid())
 		plunderSession.Raid();
-	}
 	else if(!isCapturing &&
 			(key == SDLK_UP || key == SDLK_DOWN || key == SDLK_PAGEUP
 			|| key == SDLK_PAGEDOWN || key == SDLK_HOME || key == SDLK_END))
@@ -430,6 +438,41 @@ bool BoardingPanel::Scroll(double dx, double dy)
 bool BoardingPanel::CanExit() const
 {
 	return !isCapturing;
+}
+
+
+
+/**
+ * Check if you can raid the ship for valuables.
+ *
+ * @param alreadyCheckedPlunder Whether or not the list of plunder has already
+ * 	been checked to determine if you can take something. This lets us skip
+ * 	that check if we already know the result, such as during Draw().
+ * @param canTakeSomething Whether or not you can take at least one item.
+ *
+ * @return True if you can raid the ship for valuables.
+ */
+bool BoardingPanel::CanRaid(bool alreadyCheckedPlunder, bool canTakeSomething) const
+{
+	if(alreadyCheckedPlunder && !canTakeSomething)
+		return false;
+	// If you ship or the other ship has been captured:
+	if(!you->IsYours())
+		return false;
+	if(victim->IsYours())
+		return false;
+	if(isCapturing || playerDied)
+		return false;
+
+	if(alreadyCheckedPlunder)
+		return true;
+
+	// Check if you can take anything from the victim.
+	for(const Plunder &item : plunderSession.GetPlunder())
+		if(item.CanTake(*you))
+			return true;
+
+	return false;
 }
 
 
