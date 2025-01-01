@@ -1479,7 +1479,7 @@ tip "Game reload fee type"
 	`Each option determines what the game reload fee is a percentage of:`
 	`Gross worth: total fleet + gross credits. The most difficult option.`
 	`Net worth: total fleet + net credits.`
-	`Active worth: active fleet + gross credits. The recommended option.`
+	`Active worth: active fleet + net credits. The recommended option.`
 	`Total fleet: the value of your fleet.`
 	`Active fleet: the value of your fleet, excluding any parked ships.`
 	`Gross credits: your total credits.`

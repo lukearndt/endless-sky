@@ -49,6 +49,10 @@ private:
 
 private:
 	PlayerInfo &player;
+	// This is the amount of shared profits that will be paid out to the fleet's
+	// non-player shareholders at the end of the day. Since we only display the
+	// bank panel while landed, this value should not change before takeoff.
+	int64_t upcomingSharedProfits;
 	// Loan amount you're prequalified for.
 	int64_t qualify;
 	int selectedRow = 0;

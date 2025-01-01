@@ -561,7 +561,12 @@ void PlayerInfo::ApplyGameReloadFee()
 			assetGroupValue = Accounts().NetWorth();
 			break;
 		case Preferences::GameReloadFeeType::ACTIVE_WORTH :
-			assetGroupValue = Accounts().Credits();
+			assetGroupValue = assetGroupValue = Accounts().Credits()
+				- Accounts().TotalDebt()
+				- Accounts().CrewSalariesOwed()
+				- Accounts().MaintenanceDue()
+				- Accounts().SharedProfitsOwed()
+				- Accounts().DeathBenefitsOwed();
 			for(const shared_ptr<Ship> &ship : Ships())
 				if(!ship->IsParked())
 					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
@@ -871,19 +876,13 @@ void PlayerInfo::IncrementDate()
 		accounts.AddCredits(salariesIncome + tributeIncome + b.assetsReturns);
 	}
 
-	// For accounting, keep track of the player's net worth. This is for
-	// calculation of yearly income to determine maximum mortgage amounts.
-	int64_t assets = depreciation.Value(ships, date.DaysSinceEpoch());
-	for(const shared_ptr<Ship> &ship : ships)
-		assets += ship->Cargo().Value(system);
-
 	// Calculate the salaries and profit share ratio for the player's fleet.
 	const shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis = FleetCrewAnalysis();
 
 	// Have the player pay salaries, mortgages, etc. and print a message that
 	// summarizes the payments that were made.
 	string message = accounts.Step(
-		assets,
+		TotalAssetValue(),
 		fleetCrewAnalysis->salaryReport->at(Crew::ReportDimension::Actual),
 		b.maintenanceCosts,
 		fleetCrewAnalysis->playerShares,
@@ -2035,6 +2034,25 @@ const CargoHold &PlayerInfo::DistributeCargo()
 	cargo.TransferAll(flagship->Cargo());
 
 	return cargo;
+}
+
+
+
+/**
+ * Get the total value of the player's current assets.
+ *
+ * Iterates twice through all of the player's ships, first to calculate
+ * their hull and outfit value and then again to sum up the value of
+ * their combined cargo. Call this sparingly to avoid performance issues.
+ *
+ * @return The total value of the player's assets.
+ */
+int64_t PlayerInfo::TotalAssetValue() const
+{
+  int64_t total = depreciation.Value(ships, date.DaysSinceEpoch());
+	for(const shared_ptr<Ship> &ship : ships)
+		total += ship->Cargo().Value(system);
+	return total;
 }
 
 

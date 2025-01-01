@@ -49,8 +49,15 @@ namespace {
 
 
 // Constructor.
-BankPanel::BankPanel(PlayerInfo &player)
-	: player(player), qualify(player.Accounts().Prequalify())
+BankPanel::BankPanel(PlayerInfo &player) :
+	player(player),
+	upcomingSharedProfits(
+		player.Accounts().UpcomingSharedProfits(
+			player.TotalAssetValue(),
+			Crew::PlayerShares(player.CombatLevel(), player.Accounts().CreditScore(), player.Licenses().size())
+		)
+	),
+	qualify(player.Accounts().Prequalify())
 {
 	// This panel should allow events it does not respond to to pass through to
 	// the underlying PlanetPanel.
@@ -212,22 +219,6 @@ void BankPanel::Draw()
 		table.Draw(Format::Credits(b.maintenanceCosts));
 		table.Advance();
 	}
-	if(deathBenefitsOwed)
-	{
-		// Check whether the player owes shared profits.
-		table.Draw("Death Benefits");
-		table.Draw(Format::Credits(deathBenefitsOwed));
-		table.Draw("(overdue)");
-		table.Advance(2);
-	}
-	if(sharedProfitsOwed)
-	{
-		// Check whether the player owes shared profits.
-		table.Draw("Shared Profits");
-		table.Draw(Format::Credits(sharedProfitsOwed));
-		table.Draw("(overdue)");
-		table.Advance(2);
-	}
 	if(salariesIncome || tributeIncome || b.assetsReturns)
 	{
 		// Your daily income offsets expenses.
@@ -250,6 +241,33 @@ void BankPanel::Draw()
 	table.Draw("total:", selected);
 	table.Draw(Format::Credits(totalPayment), unselected);
 	table.Advance();
+
+	// Draw upcoming or overdue payments that the player needs to make.
+	table.Advance(6);
+	if(deathBenefitsOwed)
+	{
+		// Check whether the player owes shared profits.
+		table.Draw("Death Benefits");
+		table.Draw(Format::Credits(deathBenefitsOwed));
+		table.Draw("(overdue)");
+		table.Advance(3);
+	}
+	if(sharedProfitsOwed)
+	{
+		// Check whether the player owes shared profits.
+		table.Draw("Shared Profits");
+		table.Draw(Format::Credits(sharedProfitsOwed));
+		table.Draw("(overdue)");
+		table.Advance(3);
+	}
+	if(upcomingSharedProfits)
+	{
+		// Show the player how much shared profit they will pay during takeoff.
+		table.Draw("Shared Profits");
+		table.Draw(Format::Credits(upcomingSharedProfits));
+		table.Draw("(estimated; finalized during takeoff)");
+		table.Advance(3);
+	}
 
 	// Draw the credit score.
 	table.DrawAt(Point(0., FIRST_Y + 210.));

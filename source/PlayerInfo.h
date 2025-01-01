@@ -208,6 +208,9 @@ public:
 	// Distribute cargo to local ships. Returns a reference to the player's cargo.
 	const CargoHold &DistributeCargo();
 
+	// Get the total value of the player's current assets.
+	int64_t TotalAssetValue() const;
+
 	// Get or add to pilot's playtime.
 	double GetPlayTime() const noexcept;
 	void AddPlayTime(std::chrono::nanoseconds timeVal);

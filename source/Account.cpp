@@ -63,10 +63,14 @@ void Account::Load(const DataNode &node, bool clearFirst)
 			crewSalariesOwed = child.Value(1);
 		else if(child.Token(0) == "crew shares snapshot")
 			crewSharesSnapshot = child.Value(1);
+		else if(child.Token(0) == "death benefits owed" && child.Size() >= 2)
+			deathBenefitsOwed = child.Value(1);
 		else if(child.Token(0) == "death shares accrued")
 			deathSharesAccrued = child.Value(1);
 		else if(child.Token(0) == "maintenance" && child.Size() >= 2)
 			maintenanceDue = child.Value(1);
+		else if(child.Token(0) == "shared profit owed" && child.Size() >= 2)
+			sharedProfitsOwed = child.Value(1);
 		else if(child.Token(0) == "score" && child.Size() >= 2)
 			creditScore = child.Value(1);
 		else if(child.Token(0) == "mortgage")
@@ -100,12 +104,17 @@ void Account::Save(DataWriter &out) const
 		}
 		if(crewSalariesOwed)
 			out.Write("salaries", crewSalariesOwed);
+		if(deathBenefitsOwed)
+			out.Write("death benefits owed", deathBenefitsOwed);
+		if(deathSharesAccrued)
+			out.Write("death shares accrued", deathSharesAccrued);
 		if(maintenanceDue)
 			out.Write("maintenance", maintenanceDue);
+		if(sharedProfitsOwed)
+			out.Write("shared profit owed", sharedProfitsOwed);
 		out.Write("score", creditScore);
 
 		out.Write("crew shares snapshot", crewSharesSnapshot);
-		out.Write("death shares accrued", deathSharesAccrued);
 
 		out.Write("history");
 		out.BeginChild();
@@ -271,36 +280,16 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			++it;
 	}
 
-	// Calculate the change in net worth since yesterday.
-	int64_t netWorthChange = 0;
-	// Avoid calling history.back() at the start of a new game.
-	if(history.size() > 0)
-		netWorthChange = CalculateNetWorth(assets) - history.back();
-	int64_t sharedProfitsPaid = 0;
-
-	// When your net worth changes, you must share a portion of the profit or loss
-	// with your fleet's other shareholders.
-	// We use a snapshot of the crew shares from the start of the day because it was
-	// those crew members who contributed to the day's outcome. This prevents you from
-	// firing crew after a profitable day to avoid paying them their share of the profits,
-	// and prevents you from sharing the completed day's profits with newly hired crew members.
-	//
-	// If you made a profit, any accrued death shares are added to the profit sharing
-	// liability for the day. If you made a loss, the death shares are ignored to prevent
-	// the deceased crew member's estates from paying an unfair share of that loss.
-	int64_t nonPlayerShares = crewSharesSnapshot + (netWorthChange > 0 ? deathSharesAccrued : 0);
-	int64_t totalFleetShares = playerShares + nonPlayerShares;
-	double profitShareRatio = static_cast<double>(nonPlayerShares) / static_cast<double>(totalFleetShares);
-
-	int64_t requiredProfitShare = netWorthChange * profitShareRatio;
+	// Calculate the profit share owed to the fleet's non-player shareholders.
+	int64_t upcomingSharedProfits = UpcomingSharedProfits(assets, playerShares, true);
 
 	// Update the sharedProfitsOwed account with today's required profit share.
 	// If the fleet has made a loss, that loss is also shared with the crew.
 	// The crew cannot owe the player money, so we cap sharedProfitsOwed at zero.
-	sharedProfitsOwed = max<int64_t>(sharedProfitsOwed + requiredProfitShare, 0);
-
+	sharedProfitsOwed = max<int64_t>(sharedProfitsOwed + upcomingSharedProfits, 0);
 
 	// If you owe your fleet a share of profits, attempt to pay them.
+	int64_t sharedProfitsPaid = 0;
 	if (sharedProfitsOwed > 0)
 	{
 		if(sharedProfitsOwed > credits)
@@ -503,6 +492,33 @@ void Account::PaySharedProfits(int64_t amount)
 
 
 
+int64_t Account::UpcomingSharedProfits(int64_t assets, int64_t playerShares, bool debtAccountedFor) const
+{
+  // Calculate the change in net worth since yesterday.
+	int64_t netWorthChange = 0;
+	// Avoid calling history.back() at the start of a new game.
+	if(history.size() > 0)
+		netWorthChange = CalculateNetWorth(assets, debtAccountedFor) - history.back();
+
+	// When your net worth changes, you must share a portion of the profit or loss
+	// with your fleet's other shareholders.
+	// We use a snapshot of the crew shares from the start of the day because it was
+	// those crew members who contributed to the day's outcome. This prevents you from
+	// firing crew after a profitable day to avoid paying them their share of the profits,
+	// and prevents you from sharing the completed day's profits with newly hired crew members.
+	//
+	// If you made a profit, any accrued death shares are added to the profit sharing
+	// liability for the day. If you made a loss, the death shares are ignored to prevent
+	// the deceased crew member's estates from paying an unfair share of that loss.
+	int64_t nonPlayerShares = crewSharesSnapshot + (netWorthChange > 0 ? deathSharesAccrued : 0);
+	int64_t totalFleetShares = playerShares + nonPlayerShares;
+	double profitShareRatio = static_cast<double>(nonPlayerShares) / static_cast<double>(totalFleetShares);
+
+	return netWorthChange * profitShareRatio;
+}
+
+
+
 int64_t Account::DeathSharesAccrued() const
 {
 	return deathSharesAccrued;
@@ -606,11 +622,19 @@ int64_t Account::TotalDebt(const string &type) const
 
 
 
-// Calculate the player's net worth based on their current assets and liabilities.
-// Use this when NetWorth is not up to date, such as during a calculation.
-int64_t Account::CalculateNetWorth(int64_t assets) const
+/**
+ * Calculate the player's net worth based on their current assets and liabilities.
+ * Use this when NetWorth is not up to date, such as during a calculation.
+ *
+ * @param assets The player's current assets.
+ * @param debtAccountedFor If true, assumes that total debt has already been subtracted
+ * 	from the player's assets. We use this during Step() as a performance optimization.
+ *
+ * @return The player's current net worth.
+ */
+int64_t Account::CalculateNetWorth(int64_t assets, bool debtAccountedFor) const
 {
-	return credits + assets - crewSalariesOwed - deathBenefitsOwed - sharedProfitsOwed;
+	return credits + assets - crewSalariesOwed - deathBenefitsOwed - sharedProfitsOwed - (debtAccountedFor ? 0 : TotalDebt());
 }
 
 
