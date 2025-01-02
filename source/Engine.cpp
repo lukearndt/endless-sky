@@ -1467,6 +1467,9 @@ void Engine::CalculateStep()
 			&& isTargetable && flagshipIsTargetable)
 				eventQueue.emplace_back(player.FlagshipPtr(), it, ShipEvent::ENCOUNTER);
 	}
+	// It's possible that the flagship has now changed if the player has
+	// joined or returned from a fighter deployment.
+	flagship = player.Flagship();
 	// If the flagship just began jumping, play the appropriate sound.
 	if(!wasHyperspacing && flagship && flagship->IsEnteringHyperspace())
 	{
@@ -1761,14 +1764,19 @@ void Engine::MoveShip(const shared_ptr<Ship> &ship)
 	// Boarding:
 	// If the boarding ship is the player's flagship, we will display the
 	// boarding panel. Otherwise, it will perform any plundering automatically.
-	bool autoPlunder = ship.get() != flagship;
-	// The player should not become a docked passenger on some other ship, but AI ships may.
-	bool nonDocker = ship.get() == flagship;
-	shared_ptr<Ship> victim = ship->Board(autoPlunder, nonDocker, ship->IsYours() ? player.Ships() : vector<shared_ptr<Ship>>());
+	// If the player's flagship is boarding a carrier that they own, attempts
+	// to transfer them to the carrier by making it the flagship.
+	bool isPlayerFlagship = ship.get() == flagship;
+	shared_ptr<Ship> victim = ship->Board(!isPlayerFlagship, isPlayerFlagship, ship->IsYours() ? player.Ships() : vector<shared_ptr<Ship>>());
 	if(victim)
-		eventQueue.emplace_back(ship, victim,
-			ship->GetGovernment()->IsEnemy(victim->GetGovernment()) ?
-				ShipEvent::BOARD : ShipEvent::ASSIST);
+	{
+		if(flagship->CanBeCarried() && victim->IsYours())
+			player.DockWithCarrier(victim);
+		else
+			eventQueue.emplace_back(ship, victim,
+				ship->GetGovernment()->IsEnemy(victim->GetGovernment()) ?
+					ShipEvent::BOARD : ShipEvent::ASSIST);
+	}
 
 	// The remaining actions can only be performed by ships in the current system.
 	if(ship->GetSystem() != player.GetSystem())

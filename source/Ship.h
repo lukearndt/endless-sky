@@ -218,10 +218,10 @@ public:
 
 	// Launch any ships that are ready to launch.
 	void Launch(std::list<std::shared_ptr<Ship>> &ships, std::vector<Visual> &visuals);
-	// Check if this ship is boarding another ship. If it is, it either plunders
-	// it or, if this is a player ship, returns the ship it is plundering so a
-	// plunder dialog can be displayed.
-	std::shared_ptr<Ship> Board(bool autoPlunder, bool nonDocking, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
+	// Check if this ship is boarding another ship. If not, returns a null pointer.
+	// If the boarder is the player's flagship, returns the ship that is being boarded.
+	// If the boarder is not the player's flagship, plunders the target if autoPlunder is true.
+	std::shared_ptr<Ship> Board(bool autoPlunder, bool isPlayerFlaship, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 	// Scan the target, if able and commanded to. Return a ShipEvent bitmask
 	// giving the types of scan that succeeded.
 	int Scan(const PlayerInfo &player);

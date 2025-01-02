@@ -89,6 +89,8 @@ namespace {
 			return false;
 		if(IsStranded(target) && !ship.GetGovernment()->IsEnemy(target.GetGovernment()))
 			return true;
+		if(ship.CanBeCarried() && ship.GetGovernment() == target.GetGovernment() && target.BaysFree(ship.Attributes().Category()) > 0)
+			return true;
 		return target.IsDisabled();
 	}
 
@@ -208,7 +210,9 @@ namespace {
 	}
 
 	// Issue deploy orders for the selected ships (or the full fleet if no ships are selected).
-	void IssueDeploy(const PlayerInfo &player)
+	// If transferPlayer is true, attempts to transfer the player to a fighter.
+	// Returns true if the player is transferring to a carrier (so that we can trigger the autopilot).
+	bool IssueDeploy(PlayerInfo &player, bool transferPlayer)
 	{
 		// Lay out the rules for what constitutes a deployable ship. (Since player ships are not
 		// deleted from memory until the next landing, check both parked and destroyed states.)
@@ -225,7 +229,52 @@ namespace {
 			toRecall.reserve(maxCount);
 		}
 
-		// First, check if the player selected any carried ships.
+		// First, check if the player is trying to return from a fighter deployment.
+		if(transferPlayer && player.Flagship()->CanBeCarried())
+		{
+			// This is almost certainly "fighter", but let's make sure it's correct.
+			string playerShipCategory = player.Flagship()->Attributes().Category();
+
+			// Default to the carrier the player was deployed from.
+			shared_ptr<Ship> carrier = player.CarrierDeployedFrom();
+			// If the carrier is destroyed or in a different system, the player can't dock with it.
+			if(!carrier || !carrier->IsDestroyed() || carrier->GetSystem() != player.Flagship()->GetSystem())
+				carrier = nullptr;
+
+			// If the player's carrier is missing, look for another carrier in the same system.
+			if(!carrier)
+				for(const shared_ptr<Ship> &it : player.Ships())
+				{
+					if(!it->IsDestroyed() && it->BaysTotal(playerShipCategory) && it->GetSystem() == player.Flagship()->GetSystem())
+					{
+						carrier = it;
+						break;
+					}
+				}
+
+			// If there aren't any available carriers, the player can't dock.
+			if(!carrier)
+				return false;
+
+			// If the carrier is full, tell it to deploy a ship to make room.
+			if(carrier->BaysFree(playerShipCategory) < 1)
+			{
+				for(auto bay : carrier->Bays())
+				{
+					if(bay.category == playerShipCategory && bay.ship)
+					{
+						bay.ship->SetCommands(Command::DEPLOY);
+						break;
+					}
+				}
+			}
+
+			player.Flagship()->SetTargetShip(carrier);
+			player.Flagship()->SetCommands(Command::BOARD);
+			return true;
+		}
+
+		// Check if the player selected any carried ships.
 		for(const weak_ptr<Ship> &it : player.SelectedShips())
 		{
 			shared_ptr<Ship> ship = it.lock();
@@ -235,7 +284,7 @@ namespace {
 		// If needed, check the player's fleet for deployable ships.
 		if(toDeploy.empty() && toRecall.empty())
 			for(const shared_ptr<Ship> &ship : player.Ships())
-				if(isCandidate(ship) && ship.get() != player.Flagship())
+				if(isCandidate(ship))
 					(ship->HasDeployOrder() ? toRecall : toDeploy).emplace_back(ship.get());
 
 		// If any ships were not yet ordered to deploy, deploy them.
@@ -243,6 +292,10 @@ namespace {
 		{
 			for(Ship *ship : toDeploy)
 				ship->SetDeployOrder(true);
+
+			if(transferPlayer)
+				player.JoinFighterDeployment(toDeploy);
+
 			string ship = (toDeploy.size() == 1 ? "ship" : "ships");
 			Messages::Add("Deployed " + to_string(toDeploy.size()) + " carried " + ship + ".", Messages::Importance::High);
 		}
@@ -254,6 +307,8 @@ namespace {
 			string ship = (toRecall.size() == 1 ? "ship" : "ships");
 			Messages::Add("Recalled " + to_string(toRecall.size()) + " carried " + ship + ".", Messages::Importance::High);
 		}
+
+		return false;
 	}
 
 	// Check if the ship contains a carried ship that needs to launch.
@@ -541,12 +596,18 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 	if(player.Ships().size() < 2)
 		return;
 
+	const bool shift = activeCommands.Has(Command::SHIFT);
+
 	// Toggle the "deploy" command for the fleet or selected ships.
+	// If shift is held, attempts to transfer the player to or from one
+	// of the fighters deployed from the flagship.
 	if(activeCommands.Has(Command::DEPLOY))
-		IssueDeploy(player);
+	{
+		if(IssueDeploy(player, shift))
+			activeCommands |= Command::BOARD;
+	}
 
 	// The gather command controls formation flying when combined with shift.
-	const bool shift = activeCommands.Has(Command::SHIFT);
 	if(shift && activeCommands.Has(Command::GATHER))
 		IssueFormationChange(player);
 
@@ -3664,7 +3725,7 @@ bool AI::DoPlundering(Ship &ship, Command &command)
 
 	// Move to the target ship and board it.
 	ship.SetTargetShip(target);
-	if(!ship.Board(autoPlunder, true, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>()))
+	if(!ship.Board(autoPlunder, false, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>()))
 	{
 		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
 		command |= Command::BOARD;

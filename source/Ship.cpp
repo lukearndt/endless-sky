@@ -1771,7 +1771,7 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 
 // Used for boarding another ship, or for returning to a carrier.
-shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking, const vector<shared_ptr<Ship>> &attackerFleet)
+shared_ptr<Ship> Ship::Board(bool autoPlunder, bool isPlayerFlagship, const vector<shared_ptr<Ship>> &attackerFleet)
 {
 	if(!hasBoarded)
 		return shared_ptr<Ship>();
@@ -1783,11 +1783,15 @@ shared_ptr<Ship> Ship::Board(bool autoPlunder, bool nonDocking, const vector<sha
 
 	// For a fighter or drone, "board" means "return to ship" if the "victim"
 	// is an ally and the ship isn't explicitly of the nonDocking type.
-	if(CanBeCarried() && !nonDocking && victim->GetGovernment() == government)
+	if(CanBeCarried() && victim->GetGovernment() == government)
 	{
 		SetTargetShip(shared_ptr<Ship>());
 		if(!victim->IsDisabled())
+		{
 			victim->Carry(shared_from_this());
+			if(isPlayerFlagship)
+				return victim;
+		}
 		return shared_ptr<Ship>();
 	}
 

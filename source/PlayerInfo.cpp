@@ -4889,6 +4889,77 @@ bool PlayerInfo::DisplayCarrierHelp() const
 
 
 
+/**
+ * Attempts to transfer the player to one of the flagship's fighters.
+ * Selects the first available fighter from the carrier that the player
+ * is currently on, if any are available.
+ *
+ * @param toDeploy The list of ships that are being deployed.
+ * @return Whether or not the player was successfully transferred.
+ */
+bool PlayerInfo::JoinFighterDeployment(vector<Ship *> &toDeploy)
+{
+  if(Flagship()->Bays().empty())
+		return false;
+
+	Ship * playerFighter = nullptr;
+
+	for(Ship *candidate : toDeploy)
+	{
+		// The player cannot transfer to an unpilotable ship.
+		if(candidate->Crew() < 1)
+			continue;
+
+		if(candidate->GetParent().get() == Flagship())
+		{
+			playerFighter = candidate;
+			break;
+		}
+	}
+
+	if(playerFighter)
+	{
+		// Keep track of which ship the player's fighter was deployed from.
+		// This lets us prioritise that ship when the player tries to return.
+		carrierDeployedFrom = flagship;
+		// If we don't assign the system here, the game crashes because it tries
+		// to set the player's new system using a null reference.
+		playerFighter->SetSystem(Flagship()->GetSystem());
+		// Set the player's fighter as the fleet's flagship.
+		// Unfortunately, we can't just assign it to the flagship variable
+		// and preserve the fleet list because that causes the rest of the
+		// fleet to get confused and jump away to random systems.
+		SetFlagship(*playerFighter);
+		return true;
+	}
+
+	return false;
+}
+
+
+
+/**
+ * Transfers the player to a carrier upon docking with it,
+ * which designates that carrier as the player's new flagship.
+ *
+ * @param carrier The carrier that the player's fighter is docking with.
+ */
+void PlayerInfo::DockWithCarrier(shared_ptr<Ship> &carrier)
+{
+	SetFlagship(*carrier);
+
+	carrierDeployedFrom = nullptr;
+}
+
+
+
+std::shared_ptr<Ship> &PlayerInfo::CarrierDeployedFrom()
+{
+  return carrierDeployedFrom;
+}
+
+
+
 // Instantiate the given model and add it to the player's fleet.
 void PlayerInfo::AddStockShip(const Ship *model, const string &name)
 {
