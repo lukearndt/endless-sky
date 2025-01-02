@@ -18,6 +18,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Panel.h"
 
 #include "ClickZone.h"
+#include "Crew.h"
 #include "InfoPanelState.h"
 #include "text/layout.hpp"
 #include "Point.h"
@@ -82,6 +83,7 @@ private:
 
 private:
 	PlayerInfo &player;
+	std::shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis;
 
 	static const SortableColumn columns[];
 

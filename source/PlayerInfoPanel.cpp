@@ -176,7 +176,7 @@ PlayerInfoPanel::PlayerInfoPanel(PlayerInfo &player)
 }
 
 PlayerInfoPanel::PlayerInfoPanel(PlayerInfo &player, InfoPanelState panelState)
-	: player(player), panelState(panelState)
+	: player(player), fleetCrewAnalysis(player.FleetCrewAnalysis()), panelState(panelState)
 {
 	SetInterruptible(false);
 }
@@ -661,8 +661,6 @@ void PlayerInfoPanel::DrawPlayer(const Rectangle &bounds)
 		table.DrawTruncatedPair("fleet: " + deterrenceRating, dim,
 			"(-" + Format::Decimal(deterrenceLevel, 1) + ")", dim, Truncate::MIDDLE, false);
 	}
-
-	const shared_ptr<Crew::FleetAnalysis> fleetCrewAnalysis = player.FleetCrewAnalysis();
 
 	// Other special information:
 	vector<pair<int64_t, string>> dailyIncome;
