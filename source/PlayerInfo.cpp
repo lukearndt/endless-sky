@@ -561,12 +561,7 @@ void PlayerInfo::ApplyGameReloadFee()
 			assetGroupValue = Accounts().NetWorth();
 			break;
 		case Preferences::GameReloadFeeType::ACTIVE_WORTH :
-			assetGroupValue = assetGroupValue = Accounts().Credits()
-				- Accounts().TotalDebt()
-				- Accounts().CrewSalariesOwed()
-				- Accounts().MaintenanceDue()
-				- Accounts().SharedProfitsOwed()
-				- Accounts().DeathBenefitsOwed();
+			assetGroupValue = assetGroupValue = Accounts().Credits() - Accounts().TotalDebt();
 			for(const shared_ptr<Ship> &ship : Ships())
 				if(!ship->IsParked())
 					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
@@ -584,12 +579,7 @@ void PlayerInfo::ApplyGameReloadFee()
 			assetGroupValue = Accounts().Credits();
 			break;
 		case Preferences::GameReloadFeeType::NET_CREDITS :
-			assetGroupValue = Accounts().Credits()
-				- Accounts().TotalDebt()
-				- Accounts().CrewSalariesOwed()
-				- Accounts().MaintenanceDue()
-				- Accounts().SharedProfitsOwed()
-				- Accounts().DeathBenefitsOwed();
+			assetGroupValue = Accounts().Credits() - Accounts().TotalDebt();
 			break;
 	}
 

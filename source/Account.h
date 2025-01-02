@@ -62,7 +62,7 @@ public:
 	// Overdue profit owed to the fleet's non-player shareholders:
 	int64_t SharedProfitsOwed() const;
 	void PaySharedProfits(int64_t amount);
-	int64_t UpcomingSharedProfits(int64_t assets, int64_t playerShares, bool debtAccountedFor = false) const;
+	int64_t PendingSharedProfits(int64_t assets, int64_t playerShares) const;
 
 	// Call this whenever crew members die to add their death shares to the
 	// profit sharing liability for the day.
@@ -76,13 +76,13 @@ public:
 	void AddDebt(int64_t amount, std::optional<double> interest, int term);
 	int64_t Prequalify() const;
 	// Assets:
-	int64_t CalculateNetWorth(int64_t assets, bool debtAccountedFor = false) const;
+	int64_t CalculateNetWorth(int64_t assets) const;
 	int64_t NetWorth() const;
 
 	// Find out the player's credit rating.
 	int CreditScore() const;
 	// Get the total amount owed for a specific type of mortgage, or all
-	// mortgages if a blank string is provided.
+	// mortgages and owed funds if a blank string is provided.
 	int64_t TotalDebt(const std::string &type = "") const;
 
 

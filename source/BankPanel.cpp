@@ -51,8 +51,8 @@ namespace {
 // Constructor.
 BankPanel::BankPanel(PlayerInfo &player) :
 	player(player),
-	upcomingSharedProfits(
-		player.Accounts().UpcomingSharedProfits(
+	pendingSharedProfits(
+		player.Accounts().PendingSharedProfits(
 			player.TotalAssetValue(),
 			Crew::PlayerShares(player.CombatLevel(), player.Accounts().CreditScore(), player.Licenses().size())
 		)
@@ -260,11 +260,11 @@ void BankPanel::Draw()
 		table.Draw("(overdue)");
 		table.Advance(3);
 	}
-	if(upcomingSharedProfits)
+	if(pendingSharedProfits)
 	{
 		// Show the player how much shared profit they will pay during takeoff.
 		table.Draw("Shared Profits");
-		table.Draw(Format::Credits(upcomingSharedProfits));
+		table.Draw(Format::Credits(pendingSharedProfits));
 		table.Draw("(estimated; finalized during takeoff)");
 		table.Advance(3);
 	}

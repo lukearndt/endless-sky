@@ -269,7 +269,6 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 			else
 				debtPaid += payment;
 		}
-		assets -= mortgage.Principal();
 	}
 	// If any mortgage has been fully paid off, remove it from the list.
 	for(auto it = mortgages.begin(); it != mortgages.end(); )
@@ -281,12 +280,12 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance, int6
 	}
 
 	// Calculate the profit share owed to the fleet's non-player shareholders.
-	int64_t upcomingSharedProfits = UpcomingSharedProfits(assets, playerShares, true);
+	int64_t pendingSharedProfits = PendingSharedProfits(assets, playerShares);
 
 	// Update the sharedProfitsOwed account with today's required profit share.
 	// If the fleet has made a loss, that loss is also shared with the crew.
 	// The crew cannot owe the player money, so we cap sharedProfitsOwed at zero.
-	sharedProfitsOwed = max<int64_t>(sharedProfitsOwed + upcomingSharedProfits, 0);
+	sharedProfitsOwed = max<int64_t>(sharedProfitsOwed + pendingSharedProfits, 0);
 
 	// If you owe your fleet a share of profits, attempt to pay them.
 	int64_t sharedProfitsPaid = 0;
@@ -492,13 +491,16 @@ void Account::PaySharedProfits(int64_t amount)
 
 
 
-int64_t Account::UpcomingSharedProfits(int64_t assets, int64_t playerShares, bool debtAccountedFor) const
+int64_t Account::PendingSharedProfits(int64_t assets, int64_t playerShares) const
 {
   // Calculate the change in net worth since yesterday.
 	int64_t netWorthChange = 0;
 	// Avoid calling history.back() at the start of a new game.
 	if(history.size() > 0)
-		netWorthChange = CalculateNetWorth(assets, debtAccountedFor) - history.back();
+		// TODO: Something is causing profit shares to be calculated incorrectly.
+		// For some reason, days with no profit are turning up huge profit shares.
+		// This is likely due to the net worth change being calculated incorrectly.
+		netWorthChange = CalculateNetWorth(assets) - history.back();
 
 	// When your net worth changes, you must share a portion of the profit or loss
 	// with your fleet's other shareholders.
@@ -609,13 +611,16 @@ int Account::CreditScore() const
 
 
 // Get the total amount owed for a specific type of mortgage, or all
-// mortgages if a blank string is provided.
+// mortgages and other owed funds if a blank string is provided.
 int64_t Account::TotalDebt(const string &type) const
 {
 	int64_t total = 0;
 	for(const Mortgage &mortgage : mortgages)
 		if(type.empty() || mortgage.Type() == type)
 			total += mortgage.Principal();
+
+	if (type.empty())
+		total += crewSalariesOwed + deathBenefitsOwed + maintenanceDue + sharedProfitsOwed;
 
 	return total;
 }
@@ -627,14 +632,13 @@ int64_t Account::TotalDebt(const string &type) const
  * Use this when NetWorth is not up to date, such as during a calculation.
  *
  * @param assets The player's current assets.
- * @param debtAccountedFor If true, assumes that total debt has already been subtracted
  * 	from the player's assets. We use this during Step() as a performance optimization.
  *
  * @return The player's current net worth.
  */
-int64_t Account::CalculateNetWorth(int64_t assets, bool debtAccountedFor) const
+int64_t Account::CalculateNetWorth(int64_t assets) const
 {
-	return credits + assets - crewSalariesOwed - deathBenefitsOwed - sharedProfitsOwed - (debtAccountedFor ? 0 : TotalDebt());
+	return credits + assets - TotalDebt();
 }
 
 
