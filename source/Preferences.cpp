@@ -145,15 +145,24 @@ namespace {
 
 	// Start of difficulty settings
 
-	const vector<string> GAME_RELOAD_FEE_TYPE_SETTING = {
-		"off", "gross worth", "net worth", "active worth",
-		"total fleet", "active fleet", "gross credits", "net credits"
+	const vector<string> GAME_RELOAD_FEE_ASSET_GROUP_SETTING = {
+		"gross worth", "net worth", "active worth",
+		"total fleet", "active fleet",
+		"gross credits", "net credits"
 	};
-	int gameReloadFeeTypeIndex = 3; // Default to "active worth" as it's the recommended option.
+	// Default to "active worth" as it's the recommended option.
+	int gameReloadFeeAssetGroupIndex = 2;
 
+	const vector<string> GAME_RELOAD_FEE_TAPERING_SETTING = {"off", "on"};
+	// Default to "on" as it's the recommended option.
+	int gameReloadFeeTaperingIndex = 1;
+
+	// The percentage value of the game reload fee.
 	const int GAME_RELOAD_FEE_PERCENTAGE_MIN = 0;
 	const int GAME_RELOAD_FEE_PERCENTAGE_MAX = 100;
 	const int GAME_RELOAD_FEE_PERCENTAGE_INCREMENT = 1;
+
+	// Default to 0 so that we don't apply the game reload fee by default.
 	int gameReloadFeePercentage = 0;
 
 	const vector<string> CREW_SALARIES_SETTING = {"off", "on", "converted"};
@@ -249,13 +258,15 @@ void Preferences::Load()
 		else if(node.Token(0) == "alert indicator")
 			alertIndicatorIndex = max<int>(0, min<int>(node.Value(1), ALERT_INDICATOR_SETTING.size() - 1));
 		// Start of difficulty settings
-		else if(node.Token(0) == "Game reload fee type")
-			gameReloadFeeTypeIndex = max<int>(0, min<int>(node.Value(1), GAME_RELOAD_FEE_TYPE_SETTING.size() - 1));
 		else if(node.Token(0) == "Game reload fee percentage")
 			gameReloadFeePercentage = max<int>(
 				GAME_RELOAD_FEE_PERCENTAGE_MIN,
 				min<int>(node.Value(1), GAME_RELOAD_FEE_PERCENTAGE_MAX)
 			);
+		else if(node.Token(0) == "Game reload fee asset group")
+			gameReloadFeeAssetGroupIndex = max<int>(0, min<int>(node.Value(1), GAME_RELOAD_FEE_ASSET_GROUP_SETTING.size() - 1));
+		else if(node.Token(0) == "Game reload fee tapering")
+			gameReloadFeeTaperingIndex = max<int>(0, min<int>(node.Value(1), GAME_RELOAD_FEE_TAPERING_SETTING.size() - 1));
 		else if(node.Token(0) == "Crew salaries")
 			crewSalariesIndex = max<int>(0, min<int>(node.Value(1), CREW_SALARIES_SETTING.size() - 1));
 		else if(node.Token(0) == "Profit sharing")
@@ -333,8 +344,9 @@ void Preferences::Save()
 	out.Write("Extended jump effects", extendedJumpEffectIndex);
 	out.Write("alert indicator", alertIndicatorIndex);
 	out.Write("previous saves", previousSaveCount);
-	out.Write("Game reload fee type", gameReloadFeeTypeIndex);
 	out.Write("Game reload fee percentage", gameReloadFeePercentage);
+	out.Write("Game reload fee assets", gameReloadFeeAssetGroupIndex);
+	out.Write("Game reload fee tapering", gameReloadFeeTaperingIndex);
 	out.Write("Crew salaries", crewSalariesIndex);
 	out.Write("Profit sharing", profitSharingIndex);
 	out.Write("Death payments", deathPaymentsIndex);
@@ -786,24 +798,45 @@ bool Preferences::DoAlertHelper(Preferences::AlertIndicator toDo)
 
 
 
-// Game reload fee type setting, either "off", "net worth", "fleet worth", or "credits".
-void Preferences::ToggleGameReloadFeeType()
+// Game reload fee asset group setting.
+
+Preferences::GameReloadFeeAssetGroup Preferences::GetGameReloadFeeAssetGroup()
 {
-	gameReloadFeeTypeIndex = (gameReloadFeeTypeIndex + 1) % GAME_RELOAD_FEE_TYPE_SETTING.size();
+	return static_cast<GameReloadFeeAssetGroup>(gameReloadFeeAssetGroupIndex);
 }
 
 
 
-Preferences::GameReloadFeeType Preferences::GetGameReloadFeeType()
+const string &Preferences::GameReloadFeeAssetGroupSetting()
 {
-	return static_cast<GameReloadFeeType>(gameReloadFeeTypeIndex);
+	return GAME_RELOAD_FEE_ASSET_GROUP_SETTING[gameReloadFeeAssetGroupIndex];
+}
+
+
+void Preferences::ToggleGameReloadFeeAssetGroup()
+{
+	gameReloadFeeAssetGroupIndex = (gameReloadFeeAssetGroupIndex + 1) % GAME_RELOAD_FEE_ASSET_GROUP_SETTING.size();
+}
+
+
+// Game reload fee tapering setting.
+
+Preferences::GameReloadFeeTapering Preferences::GetGameReloadFeeTapering()
+{
+	return static_cast<GameReloadFeeTapering>(gameReloadFeeTaperingIndex);
 }
 
 
 
-const string &Preferences::GameReloadFeeTypeSetting()
+const string &Preferences::GameReloadFeeTaperingSetting()
 {
-	return GAME_RELOAD_FEE_TYPE_SETTING[gameReloadFeeTypeIndex];
+	return GAME_RELOAD_FEE_TAPERING_SETTING[gameReloadFeeTaperingIndex];
+}
+
+
+void Preferences::ToggleGameReloadFeeTapering()
+{
+	gameReloadFeeTaperingIndex = (gameReloadFeeTaperingIndex + 1) % GAME_RELOAD_FEE_TAPERING_SETTING.size();
 }
 
 
@@ -811,12 +844,14 @@ const string &Preferences::GameReloadFeeTypeSetting()
 // Game reload fee percentage setting.
 
 /*
- * Changes the game reload fee percentage by the given number of increments.
+ * Changes the percentage value of the game reload fee by the given
+ * number of increments.
  * If raised above the maximum, wraps around to the minimum.
  * If lowered below the minimum, wraps around to the maximum.
  *
- * @param increments The number of increments to change the game reload fee percentage by. If negative, decreases the percentage.
- * @return The new game reload fee percentage.
+ * @param increments The number of increments to change the game reload
+ * fee percentage by. Increases when positive, decreases when negative.
+ * @return The new value for the percentage game reload fee.
  */
 int Preferences::ChangeGameReloadFeePercentage(int increments)
 {

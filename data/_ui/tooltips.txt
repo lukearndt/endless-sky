@@ -1472,25 +1472,39 @@ tip "Show stored outfits on map"
 tip "System map sends move orders"
 	`Right-click on a location in the system mini-map on the galaxy map to send your escorts to that location in the selected system.`
 
-tip "Game reload fee type"
+tip `Game reload fee`
 	`If enabled, you take a financial loss each time you reload the game during a play session. The fee does not occur when you switch pilots or resume the game after closing it.`
-	`When you're able to reload the game whenever you want, it can be very tempting to rewind time as soon as you encounter a setback. This encourages odd gameplay like trying dozens of times to capture a powerful ship, or running a freight empire with no protection. Knowing that you will eventually succeed if you reload enough times can make your victories less satisfying.`
-	`That said, sometimes you die or fail a story mission. When that happens, you have to reload or it's game over. In that scenario, it's nice to have a reasonable middle ground.`
-	`Each option determines what the game reload fee is a percentage of:`
+	`Being able to reload the game whenever you want is nice, but it can also be a problem. Since the game saves automatically at each port, it can be very tempting to rewind time as soon as you encounter a setback. This encourages odd gameplay like trying dozens of times to capture a powerful ship, or amassing a fleet full of freighters with no protection. Knowing that you will eventually succeed at any goal if you reload enough times can make your victories less satisfying.`
+	`That said, sometimes a situation feels too awful to continue with. Plus, if you die or fail a story mission, you have to reload or it's game over. In these scenarios, it's nice to have a reasonable middle ground.`
+	`You can use the mouse wheel to increase or decrease the percentage value more quickly.`
+	`If you just want some motivation not to abuse the reload button, try 5% of your active worth or 50% of your gross credits.`
+	`For a tough but fair challenge, consider 10% of your active worth or 100% of your gross credits.`
+	`If you're after a punishing rogue-lite experience, you could choose something wild like 50% to 100% of your active fleet.`
+
+tip "    based on your"
+	`This option determines the assets that are included when calculating your game reload fee:`
+	``
 	`Gross worth: total fleet + gross credits. The most difficult option.`
 	`Net worth: total fleet + net credits.`
 	`Active worth: active fleet + net credits. The recommended option.`
 	`Total fleet: the value of your fleet.`
-	`Active fleet: the value of your fleet, excluding any parked ships.`
-	`Gross credits: your total credits.`
-	`Net credits: your total credits, minus any mortgages or other debts.`
+	`Active fleet: the value of your fleet excluding any parked ships, which allows you to manage your risk.`
+	`Gross credits: your current credits.`
+	`Net credits: your credits after accounting for any debts.
+	``
+	`If you choose an option that includes your fleet, we recommend that you limit the percentage to 10% or below. That said, it's your call!`
 
-tip `Game reload fee %`
-	`This setting lets you choose the percentage value of the game reload fee. The actual amount will be a percentage value of the assets selected by the "game reload fee type" setting.`
-	`You can use the mouse wheel to increase or decrease the value more quickly.`
-	`If you just want to motivate yourself not to abuse the reload button, try a fee of 2-5% of your active worth or 50% of your credits.`
-	`For a tough but fair challenge, consider a fee of 5-10% of your active worth or 100% of your gross credits.`
-	`If you're after a punishing semi-rogue-like experience, you could use something wild like 50-100% of your active worth or fleet.`
+tip "    scale down high values"
+	`If you enable this setting, the game reload fee percentage is reduced when applied to high asset values.`
+	`We recommend that you enable this option because it prevents the fee from becoming unreasonably high as you progress further in the game.`
+	`Below are some example asset values and their adjusted fees with this setting enabled. The scaling works the same way for any base fee percentage, so we'll use a base fee of 10% for clarity.`
+	`Up to 1.5M assets: fee is 10%.`
+	`5M assets: fee is 402k, about 8%.`
+	`12.5M assets: fee is 876k, about 7%.`
+	`40M assets: fee is 2.4M, about 6%.`
+	`200M assets: fee is 10M, about 5%.`
+	`1B assets: fee is 43M, about 4.3%.`
+	`3B assets: fee is 119M, about 4%.`
 
 tip "Crew salaries"
 	`You need to pay each crew member a salary at the start of every day. This adds a passive ongoing cost to your fleet so that you need to factor time into your money-making activities.`

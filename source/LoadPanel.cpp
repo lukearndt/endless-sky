@@ -624,16 +624,23 @@ void LoadPanel::LoadCallback()
 void LoadPanel::ConfirmGameLoadFeeCallback()
 {
 	// Check if the player has chosen to have a fee for reloading.
-	// If so, show a dialog asking if they want to pay it.
-	Preferences::GameReloadFeeType gameReloadFeeType = Preferences::GetGameReloadFeeType();
+	// If so, show a dialog confirming if they are willing to pay it.
 	int gameReloadFeePercentage = Preferences::GetGameReloadFeePercentage();
-
-	if(gameReloadFeeType != Preferences::GameReloadFeeType::OFF && gameReloadFeePercentage > 0)
-		GetUI()->Push(new Dialog(this, &LoadPanel::LoadCallback,
-			"Reloading the game will cost you " + to_string(gameReloadFeePercentage)
-				+ "% of your " + Preferences::GameReloadFeeTypeSetting() + ", as you specified in the difficulty settings. Do you want to proceed?"));
-	else
+	if(gameReloadFeePercentage < 1)
+	{
 		LoadCallback();
+		return;
+	}
+
+	string message = "Reloading the game will cost you ";
+	message += Format::Number(gameReloadFeePercentage) + "% of your " + Preferences::GameReloadFeeTaperingSetting();
+
+	if(Preferences::GetGameReloadFeeTapering() == Preferences::GameReloadFeeTapering::ON)
+		message += " (with high values adjusted)";
+
+	message += ", as you specified in the difficulty settings. Do you want to proceed?";
+
+	GetUI()->Push(new Dialog(this, &LoadPanel::LoadCallback, message));
 }
 
 

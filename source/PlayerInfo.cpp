@@ -539,60 +539,74 @@ void PlayerInfo::Save() const
 // Apply a game reload fee if the player has set one.
 void PlayerInfo::ApplyGameReloadFee()
 {
-	Preferences::GameReloadFeeType feeType = Preferences::GetGameReloadFeeType();
+	Preferences::GameReloadFeeAssetGroup assetGroup = Preferences::GetGameReloadFeeAssetGroup();
+	Preferences::GameReloadFeeTapering feeType = Preferences::GetGameReloadFeeTapering();
 	int feePercentage = Preferences::GetGameReloadFeePercentage();
 
 	// If the fee percentage is zero, do nothing.
-	if(feePercentage == 0)
+	if(feePercentage < 1)
 		return;
 
 	int64_t assetGroupValue = 0;
 
-	switch(feeType)
+	switch(assetGroup)
 	{
-		case Preferences::GameReloadFeeType::OFF :
-			return;
-		case Preferences::GameReloadFeeType::GROSS_WORTH :
+		case Preferences::GameReloadFeeAssetGroup::GROSS_WORTH :
 			assetGroupValue = Accounts().Credits();
 			for(const shared_ptr<Ship> &ship : Ships())
 				assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
 			break;
-		case Preferences::GameReloadFeeType::NET_WORTH :
+		case Preferences::GameReloadFeeAssetGroup::NET_WORTH :
 			assetGroupValue = Accounts().NetWorth();
 			break;
-		case Preferences::GameReloadFeeType::ACTIVE_WORTH :
+		case Preferences::GameReloadFeeAssetGroup::ACTIVE_WORTH :
 			assetGroupValue = assetGroupValue = Accounts().Credits() - Accounts().TotalDebt();
 			for(const shared_ptr<Ship> &ship : Ships())
 				if(!ship->IsParked())
 					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
 			break;
-		case Preferences::GameReloadFeeType::TOTAL_FLEET :
+		case Preferences::GameReloadFeeAssetGroup::TOTAL_FLEET :
 			for(const shared_ptr<Ship> &ship : Ships())
 				assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
 			break;
-		case Preferences::GameReloadFeeType::ACTIVE_FLEET :
+		case Preferences::GameReloadFeeAssetGroup::ACTIVE_FLEET :
 			for(const shared_ptr<Ship> &ship : Ships())
 				if(!ship->IsParked())
 					assetGroupValue += depreciation.Value(*ship, GetDate().DaysSinceEpoch());
 			break;
-		case Preferences::GameReloadFeeType::GROSS_CREDITS :
+		case Preferences::GameReloadFeeAssetGroup::GROSS_CREDITS :
 			assetGroupValue = Accounts().Credits();
 			break;
-		case Preferences::GameReloadFeeType::NET_CREDITS :
+		case Preferences::GameReloadFeeAssetGroup::NET_CREDITS :
 			assetGroupValue = Accounts().Credits() - Accounts().TotalDebt();
 			break;
 	}
 
-	// Calculate the fee based on the percentage of the asset group value.
+	// Do not apply a fee if the asset group value is negative.
+	if(assetGroupValue < 0)
+		return;
+
+	// Start with a flat percentage based fee.
 	int64_t fee = assetGroupValue * feePercentage / 100;
 
-	// Do not apply a fee if it would be zero or negative.
+	// If the player has selected a logarithmic fee, apply it if it's lower.
+	// The logarithmic formula breaks if the asset group value is not above 10000.
+	if(feeType == Preferences::GameReloadFeeTapering::ON && assetGroupValue > 10000)
+		fee = min(
+			fee,
+			static_cast<int64_t>((assetGroupValue * feePercentage / 20) / (log(assetGroupValue / 10000)))
+		);
+
+	// Do not apply the fee if it would be zero or negative.
 	if(fee <= 0)
 		return;
 
+	double actualFeePercentage = fee / assetGroupValue * 100;
+
 	string feeMessage = "You incurred a game reload fee of "
-		+ Format::Number(feePercentage) + "% of your " + Preferences::GameReloadFeeTypeSetting()
-		+ ", for a total of " + Format::Credits(fee) + " credits.";
+		+ Format::Credits(fee) + " credits, which was "
+		+ Format::Number(actualFeePercentage) + "% of your "
+		+ Preferences::GameReloadFeeAssetGroupSetting()+ ".";
 
 	// Attempt to pay the fee from the player's current credits. If the player
 	// does not have enough credits, add the rest as a mortgage.

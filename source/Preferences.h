@@ -134,8 +134,7 @@ public:
 		SHARES_ONLY
 	};
 
-	enum class GameReloadFeeType : int_fast8_t {
-		OFF = 0,
+	enum class GameReloadFeeAssetGroup : int_fast8_t {
 		GROSS_WORTH,
 		NET_WORTH,
 		ACTIVE_WORTH,
@@ -143,6 +142,11 @@ public:
 		ACTIVE_FLEET,
 		GROSS_CREDITS,
 		NET_CREDITS
+	};
+
+	enum class GameReloadFeeTapering : int_fast8_t {
+		OFF = 0,
+		ON,
 	};
 
 public:
@@ -230,10 +234,15 @@ public:
 
 	// Difficulty settings
 
-	// Game reload fee type setting, either "off", "net worth", "fleet worth", or "credits".
-	static void ToggleGameReloadFeeType();
-	static GameReloadFeeType GetGameReloadFeeType();
-	static const std::string &GameReloadFeeTypeSetting();
+	// Game reload fee asset group setting.
+	static void ToggleGameReloadFeeAssetGroup();
+	static GameReloadFeeAssetGroup GetGameReloadFeeAssetGroup();
+	static const std::string &GameReloadFeeAssetGroupSetting();
+
+	// Game reload fee tapering setting.
+	static void ToggleGameReloadFeeTapering();
+	static GameReloadFeeTapering GetGameReloadFeeTapering();
+	static const std::string &GameReloadFeeTaperingSetting();
 
 	// Game reload fee percentage setting.
 	static int ChangeGameReloadFeePercentage(int increments);

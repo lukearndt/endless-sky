@@ -81,8 +81,9 @@ namespace {
 	const string EXTENDED_JUMP_EFFECTS = "Extended jump effects";
 	const string ALERT_INDICATOR = "Alert indicator";
 	const string HUD_SHIP_OUTLINES = "Ship outlines in HUD";
-	const string GAME_RELOAD_FEE_TYPE = "Game reload fee type";
-	const string GAME_RELOAD_FEE_PERCENTAGE = "Game reload fee %";
+	const string GAME_RELOAD_FEE_PERCENTAGE = "Game reload fee";
+	const string GAME_RELOAD_FEE_ASSET_GROUP = "    based on your";
+	const string GAME_RELOAD_FEE_TAPERING = "    scale down high values";
 	const string CREW_SALARIES = "Crew salaries";
 	const string PROFIT_SHARING = "Profit sharing";
 	const string DEATH_PAYMENTS = "Death payments";
@@ -705,8 +706,9 @@ void PreferencesPanel::DrawSettings()
 		"System map sends move orders",
 		"\t",
 		"Difficulty",
-		GAME_RELOAD_FEE_TYPE,
 		GAME_RELOAD_FEE_PERCENTAGE,
+		GAME_RELOAD_FEE_ASSET_GROUP,
+		GAME_RELOAD_FEE_TAPERING,
 		CREW_SALARIES,
 		PROFIT_SHARING,
 		DEATH_PAYMENTS,
@@ -954,15 +956,22 @@ void PreferencesPanel::DrawSettings()
 			isOn = Preferences::GetParkedShipCrew() != Preferences::ParkedShipCrew::OFF;
 			text = Preferences::ParkedShipCrewSetting();
 		}
-		else if(setting == GAME_RELOAD_FEE_TYPE)
-		{
-			isOn = Preferences::GetGameReloadFeeType() != Preferences::GameReloadFeeType::OFF;
-			text = Preferences::GameReloadFeeTypeSetting();
-		}
 		else if(setting == GAME_RELOAD_FEE_PERCENTAGE)
 		{
-			isOn = Preferences::GetGameReloadFeeType() != Preferences::GameReloadFeeType::OFF && Preferences::GetGameReloadFeePercentage() > 0;
-			text = Format::Number(Preferences::GameReloadFeePercentageSetting());
+			isOn = Preferences::GetGameReloadFeePercentage() > 0;
+			text = Preferences::GameReloadFeePercentageSetting() > 0
+				? Format::Number(Preferences::GameReloadFeePercentageSetting()) + "%"
+				: "off";
+		}
+		else if(setting == GAME_RELOAD_FEE_ASSET_GROUP)
+		{
+			isOn = Preferences::GetGameReloadFeePercentage() > 0;
+			text = Preferences::GameReloadFeeAssetGroupSetting();
+		}
+		else if(setting == GAME_RELOAD_FEE_TAPERING)
+		{
+			isOn = Preferences::GetGameReloadFeePercentage() > 0 && Preferences::GetGameReloadFeeTapering() != Preferences::GameReloadFeeTapering::OFF;
+			text = Preferences::GameReloadFeeTaperingSetting();
 		}
 		else
 			text = isOn ? "on" : "off";
@@ -1305,6 +1314,12 @@ void PreferencesPanel::HandleSettingsString(const string &str, Point cursorPosit
 	else if(str == ALERT_INDICATOR)
 		Preferences::ToggleAlert();
 	// Difficulty settings
+	else if(str == GAME_RELOAD_FEE_PERCENTAGE)
+		Preferences::ChangeGameReloadFeePercentage(1);
+	else if(str == GAME_RELOAD_FEE_ASSET_GROUP)
+		Preferences::ToggleGameReloadFeeAssetGroup();
+	else if(str == GAME_RELOAD_FEE_TAPERING)
+		Preferences::ToggleGameReloadFeeTapering();
 	else if(str == CREW_SALARIES)
 		Preferences::ToggleCrewSalaries();
 	else if(str == PROFIT_SHARING)
@@ -1315,10 +1330,6 @@ void PreferencesPanel::HandleSettingsString(const string &str, Point cursorPosit
 		Preferences::ToggleRankedCrewMembers();
 	else if(str == PARKED_SHIP_CREW)
 		Preferences::ToggleParkedShipCrew();
-	else if(str == GAME_RELOAD_FEE_TYPE)
-		Preferences::ToggleGameReloadFeeType();
-	else if(str == GAME_RELOAD_FEE_PERCENTAGE)
-		Preferences::ChangeGameReloadFeePercentage(1);
 	// All other options are handled by just toggling the boolean state.
 	else
 		Preferences::Set(str, !Preferences::Has(str));
