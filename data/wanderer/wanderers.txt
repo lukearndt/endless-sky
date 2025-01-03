@@ -204,6 +204,7 @@ outfitter "Wanderer Advanced"
 	"Fuel Pod"
 	"Wanderer Ramscoop"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Outfits Expansion"
 	"Small Bunk Room"
 	"Bunk Room"
@@ -448,7 +449,7 @@ phrase "friendly wanderer"
 		"wrecked"
 	word
 		"."
-		
+
 phrase "friendly wanderer"
 	word
 		"Wanderer "
@@ -566,7 +567,7 @@ phrase "hostile wanderer"
 		"ways"
 	word
 		"."
-		
+
 phrase "hostile wanderer"
 	word
 		"Your "
@@ -597,7 +598,7 @@ phrase "hostile wanderer"
 		"remain"
 	word
 		"."
-		
+
 phrase "hostile wanderer"
 	word
 		"You "
@@ -629,7 +630,7 @@ phrase "hostile wanderer"
 		"and learn [wisdom, balance]"
 	word
 		"."
-		
+
 phrase "hostile disabled wanderer"
 	word
 		"It is not too late "
@@ -651,7 +652,7 @@ phrase "hostile disabled wanderer"
 		"put a stop to this"
 	word
 		"."
-		
+
 phrase "hostile disabled wanderer"
 	word
 		"We "
@@ -667,7 +668,7 @@ phrase "hostile disabled wanderer"
 	word
 		"."
 		"!"
-		
+
 phrase "hostile disabled wanderer"
 	word
 		"Our people "

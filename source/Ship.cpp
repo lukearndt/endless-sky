@@ -2588,7 +2588,7 @@ void Ship::Recharge(int rechargeType, bool hireCrew)
 		return;
 
 	if(hireCrew)
-		crew = min<int>(max(crew, RequiredCrew()), attributes.Get("bunks"));
+		crew = min<int>(max(DesiredCrew(), RequiredCrew()), attributes.Get("bunks"));
 	pilotError = 0;
 	pilotOkay = 0;
 
@@ -3034,6 +3034,16 @@ double Ship::DragForce() const
 
 
 
+int Ship::DesiredCrew() const
+{
+	if(attributes.Get("hires extra crew") && !IsParked())
+		return attributes.Get("bunks");
+
+	return max(crew, RequiredCrew());
+}
+
+
+
 int Ship::RequiredCrew() const
 {
 	if(attributes.Get("automaton"))
@@ -3064,7 +3074,7 @@ void Ship::AddCrew(int count)
 
 void Ship::ResetCrew()
 {
-	crew = min<int>(RequiredCrew(), attributes.Get("bunks"));
+	crew = min<int>(DesiredCrew(), attributes.Get("bunks"));
 }
 
 

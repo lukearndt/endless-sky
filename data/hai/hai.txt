@@ -95,6 +95,7 @@ outfitter "Hai Intermediate"
 	"Supercapacitor"
 	"Outfits Expansion"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Small Bunk Room"
 	"Bunk Room"
 	"Fuel Pod"
@@ -138,6 +139,7 @@ outfitter "Hai Advanced"
 	"Supercapacitor"
 	"Outfits Expansion"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Small Bunk Room"
 	"Bunk Room"
 	"Fuel Pod"
@@ -178,6 +180,7 @@ outfitter "Hai Security"
 	"Supercapacitor"
 	"Outfits Expansion"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Small Bunk Room"
 	"Bunk Room"
 	"Fuel Pod"
@@ -197,6 +200,7 @@ outfitter "Unfettered Basics"
 	"Hai Fissure Batteries"
 	"Supercapacitor"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Small Bunk Room"
 	"Fuel Pod"
 	"Hai Corundum Regenerator"
@@ -408,7 +412,7 @@ phrase "friendly hai"
 		"to visit us."
 		"to coexist with us."
 		"in our space."
-		
+
 phrase "friendly hai"
 	word
 		"To be welcome "
@@ -441,7 +445,7 @@ phrase "friendly hai"
 		"good intentions "
 		"friendly intentions "
 		"empathy "
-		
+
 	word
 		"and "
 	word
@@ -568,7 +572,7 @@ phrase "hostile disabled hai"
 		" We were nothing but peaceful to you but you did not reciprocate."
 		" We live only in peace yet you come bringing war."
 		" Have you no soul?"
-		
+
 
 phrase "friendly unfettered"
 	word
@@ -654,7 +658,7 @@ phrase "friendly disabled unfettered"
 	word
 		"!"
 		"."
-		
+
 phrase "hostile unfettered"
 	word
 		"Peace"

@@ -16,7 +16,7 @@ shipyard "Successor Basics"
 
 shipyard "Successor Civilian"
 	"Kvelqde (Naive)"
-	
+
 	"Stolsaqra (Naive)"
 	"Myaede (Naive)"
 	"Ejniisde"
@@ -92,6 +92,7 @@ outfitter "Successor Civilian"
 	"Fuel Pod"
 	"Cargo Expansion"
 	"Outfits Expansion"
+	"Barracks Conversion"
 	"Successor Cooling"
 
 outfitter "Successor Heavy"

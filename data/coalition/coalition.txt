@@ -374,6 +374,7 @@ outfitter "Coalition Advanced"
 	"Small Steering Module"
 	"Large Steering Module"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Outfits Expansion"
 	"Luxury Accommodations"
 	"Small Bunk Room"
@@ -530,7 +531,7 @@ phrase "arach"
 	phrase
 		"arach middle"
 		"arach empty"
-		
+
 phrase "kimek start"
 	word
 		"I"
@@ -588,7 +589,7 @@ phrase "kimek"
 		"kimek middle"
 	phrase
 		"kimek middle"
-		
+
 phrase "saryd start"
 	word
 		"Lo"

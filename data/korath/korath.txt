@@ -192,7 +192,7 @@ phrase "kor mereti"
 		":"
 	phrase
 		"digit"
-		
+
 phrase "korath probes"
 	word
 		"X'x"
@@ -885,6 +885,7 @@ outfitter "Korath Basics"
 	"Fuel Processor"
 	"Outfits Expansion"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Local Map"
 
 outfitter "Korath Exiles"
@@ -914,6 +915,7 @@ outfitter "Korath Exiles"
 	"Systems Core (Large)"
 	"Outfits Expansion"
 	"Cargo Expansion"
+	"Barracks Conversion"
 	"Local Map"
 	"Thermal Repeater Rifle"
 

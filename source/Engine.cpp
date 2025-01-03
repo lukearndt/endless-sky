@@ -438,9 +438,6 @@ void Engine::Place(const list<NPC> &npcs, shared_ptr<Ship> flagship)
 			if(ship->IsDestroyed())
 				continue;
 
-			// Avoid the exploit where the player can wear down an NPC's
-			// crew by attrition over the course of many days.
-			ship->ResetCrew();
 			if(!ship->IsDisabled())
 				ship->Recharge();
 

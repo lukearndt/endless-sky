@@ -299,6 +299,18 @@ outfit "Cargo Expansion"
 	"unplunderable" 1
 	description "If being able to carry more cargo is more important to you than having advanced weapons or other systems, a cargo expansion will significantly increase the size of your cargo hold."
 
+outfit "Barracks Conversion"
+	category "Systems"
+	cost 100000
+	thumbnail "outfit/red screwdriver"
+	"mass" 20
+	"bunks" 10
+	"outfit space" -50
+	"hires extra crew" 1
+	"unplunderable" 1
+	description "This reconfigures the ship's living quarters into military barracks, adding several more bunks in the process."
+	description "A ship with this outfit installed will automatically hire the maximum number of extra crew members, allowing it to capture other ships. Note that this will increase your fleet's operating costs and prevent the ship from carrying any passengers."
+
 outfit "Bunk Room"
 	category "Systems"
 	cost 40000
