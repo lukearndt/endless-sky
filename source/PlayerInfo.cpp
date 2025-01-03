@@ -1801,9 +1801,6 @@ bool PlayerInfo::TakeOff(UI *ui, const bool distributeCargo)
 	for(const shared_ptr<Ship> &ship : ships)
 		if(!ship->IsParked() && !ship->IsDisabled())
 		{
-			// Make sure that escort ships have the correct number crew members.
-			if(ship != flagship)
-				ship->ResetCrew();
 			// Recalculate the weapon cache in case a mass-less change had an effect.
 			ship->GetAICache().Calibrate(*ship.get());
 			if(ship->GetSystem() != system)
