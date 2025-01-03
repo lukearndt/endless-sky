@@ -146,6 +146,8 @@ public:
 	// Get the name of this particular ship.
 	const std::string &Name() const;
 
+	// Get the ship's name surrounded by quotation marks.
+	const std::string &QuotedName() const;
 	// Set / Get the name of this model of ship.
 	void SetTrueModelName(const std::string &model);
 	const std::string &TrueModelName() const;
@@ -192,6 +194,9 @@ public:
 	// The player can selectively deploy their carried ships, rather than just all / none.
 	void SetDeployOrder(bool shouldDeploy = true);
 	bool HasDeployOrder() const;
+	// The player can deploy from a carrier in a fighter.
+	void SetIsPlayerFighter(bool isFighter = true);
+	bool IsPlayerFighter() const;
 
 	// Access the ship's personality, which affects how the AI behaves.
 	const Personality &GetPersonality() const;
@@ -572,6 +577,8 @@ private:
 	// Characteristics of this particular ship:
 	EsUuid uuid;
 	std::string name;
+	// We cache the quoted name to help with performance.
+	std::string quotedName;
 	bool canBeCarried = false;
 
 	int forget = 0;
@@ -581,6 +588,7 @@ private:
 	bool isSpecial = false;
 	bool isYours = false;
 	bool isParked = false;
+	bool isPlayerFighter = false;
 	bool shouldDeploy = false;
 	bool isOverheated = false;
 	bool isDisabled = false;

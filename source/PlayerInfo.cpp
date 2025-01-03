@@ -4890,48 +4890,92 @@ bool PlayerInfo::DisplayCarrierHelp() const
 
 
 /**
- * Attempts to transfer the player to one of the flagship's fighters.
- * Selects the first available fighter from the carrier that the player
- * is currently on, if any are available.
+ * Attempts to deploy the player to one of the flagship's carried ships.
+ * Iterates through the current flagship's carried ships and chooses the
+ * first one that is pilotable and passes some basic flight checks.
  *
- * @param toDeploy The list of ships that are being deployed.
- * @return Whether or not the player was successfully transferred.
+ * If a suitable carried ship is found, that ship is ordered to deploy and
+ * set as the new flagship. The carrier that the player was piloting is
+ * stored as carrierDeployedFrom so that the player can find it later.
+ *
+ * @return Whether or not the player was successfully deployed.
  */
-bool PlayerInfo::JoinFighterDeployment(vector<Ship *> &toDeploy)
+bool PlayerInfo::DeployInCarriedShip()
 {
-  if(Flagship()->Bays().empty())
-		return false;
+	shared_ptr<Ship> carriedShip;
 
-	Ship * playerFighter = nullptr;
-
-	for(Ship *candidate : toDeploy)
+	if(FlagshipPtr()->Bays().size() < 1)
 	{
+		Messages::Add("You couldn't deploy to a carried ship because " + FlagshipPtr()->QuotedName() + " is not a carrier.", Messages::Importance::Highest);
+		return false;
+	}
+
+	bool pilotableInBay = false;
+	bool shipInBay = false;
+	// We use a for loop here because iterating through the flagship's bays
+	// directly kept returning nullptrs instead of ships. Not sure why.
+	for(int i = 0; i < FlagshipPtr()->Bays().size(); ++i)
+	{
+		auto candidate = FlagshipPtr()->Bays().at(i).ship;
+		if(!candidate)
+			continue;
+
+		shipInBay = true;
+
 		// The player cannot transfer to an unpilotable ship.
 		if(candidate->Crew() < 1)
 			continue;
 
-		if(candidate->GetParent().get() == Flagship())
-		{
-			playerFighter = candidate;
-			break;
-		}
+		pilotableInBay = true;
+
+		auto attributes = candidate->Attributes();
+
+		if(candidate->GetParent().get() != Flagship())
+			continue;
+
+		// Disqualify any ships that cannot fly well enough.
+		if(candidate->Hull() < candidate->DisabledHull())
+			continue;
+		if(candidate->Heat() >= candidate->MaximumHeat())
+			continue;
+		if(attributes.Get("thrust") <= 0 || attributes.Get("turn") <= 0)
+			continue;
+		if(
+			attributes.Get("energy capacity") <= 0 &&
+			attributes.Get("energy generation") < attributes.Get("thrusting energy") + attributes.Get("turning energy")
+		)
+			continue;
+
+		carriedShip = candidate;
+		break;
 	}
 
-	if(playerFighter)
+	if(carriedShip)
 	{
 		// Keep track of which ship the player's fighter was deployed from.
 		// This lets us prioritise that ship when the player tries to return.
 		carrierDeployedFrom = flagship;
 		// If we don't assign the system here, the game crashes because it tries
 		// to set the player's new system using a null reference.
-		playerFighter->SetSystem(Flagship()->GetSystem());
+		carriedShip->SetSystem(Flagship()->GetSystem());
+		// Launch the player's fighter immediately.
+		carriedShip->SetDeployOrder(true);
 		// Set the player's fighter as the fleet's flagship.
 		// Unfortunately, we can't just assign it to the flagship variable
 		// and preserve the fleet list because that causes the rest of the
 		// fleet to get confused and jump away to random systems.
-		SetFlagship(*playerFighter);
+		SetFlagship(*carriedShip);
+		Messages::Add("You are now piloting " + carriedShip->QuotedName() + ". You can dock with a carrier by boarding it. To return to your previous carrier, issue the Deploy command while holding shift.", Messages::Importance::High);
 		return true;
 	}
+
+	if(shipInBay && !pilotableInBay)
+		Messages::Add("You couldn't deploy because none of the ships carried by your flagship " + FlagshipPtr()->QuotedName() + " are pilotable.", Messages::Importance::Highest);
+	else if(pilotableInBay)
+		Messages::Add("You couldn't deploy because none of the pilotable ships carried by your flagship " + FlagshipPtr()->QuotedName() + " passed the pre-flight checks.", Messages::Importance::Highest);
+	else
+		Messages::Add("You couldn't deploy because your flagship " + FlagshipPtr()->QuotedName() +
+		" is not carrying any other ships in its bays.", Messages::Importance::Highest);
 
 	return false;
 }
@@ -4946,7 +4990,15 @@ bool PlayerInfo::JoinFighterDeployment(vector<Ship *> &toDeploy)
  */
 void PlayerInfo::DockWithCarrier(shared_ptr<Ship> &carrier)
 {
+	Flagship()->SetDeployOrder(false);
 	SetFlagship(*carrier);
+
+	if(!carrierDeployedFrom)
+		Messages::Add("You are now piloting " + carrier->QuotedName() + ", which has become your flagship. You can redeploy by issuing the Deploy command while holding shift.", Messages::Importance::High);
+	else if(carrier == carrierDeployedFrom)
+		Messages::Add("You have returned to your flagship " + carrier->QuotedName() + ". You can redeploy by issuing the Deploy command while holding shift.", Messages::Importance::High);
+	else
+		Messages::Add("You are now piloting " + carrier->QuotedName() + ". It has been set as your fleet's new flagship, replacing " + carrierDeployedFrom->QuotedName() + ".", Messages::Importance::High);
 
 	carrierDeployedFrom = nullptr;
 }

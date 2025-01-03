@@ -268,7 +268,10 @@ void Ship::Load(const DataNode &node)
 		else if(child.Token(0) == "thumbnail" && child.Size() >= 2)
 			thumbnail = SpriteSet::Get(child.Token(1));
 		else if(key == "name" && child.Size() >= 2)
+		{
 			name = child.Token(1);
+			quotedName = "\"" + child.Token(1) + "\"";
+		}
 		else if(key == "display name" && child.Size() >= 2)
 			displayModelName = child.Token(1);
 		else if(key == "plural" && child.Size() >= 2)
@@ -1170,6 +1173,13 @@ const string &Ship::Name() const
 
 
 
+const std::string &Ship::QuotedName() const
+{
+	return quotedName;
+}
+
+
+
 // Set / Get the name of this class of ships, e.g. "Marauder Raven."
 void Ship::SetTrueModelName(const string &model)
 {
@@ -1419,6 +1429,7 @@ void Ship::Place(Point position, Point velocity, Angle angle, bool isDeparting)
 void Ship::SetName(const string &name)
 {
 	this->name = name;
+	this->quotedName = "\"" + name + "\"";
 }
 
 
@@ -1494,6 +1505,20 @@ bool Ship::IsParked() const
 bool Ship::HasDeployOrder() const
 {
 	return shouldDeploy;
+}
+
+
+
+void Ship::SetIsPlayerFighter(bool isFighter)
+{
+	isPlayerFighter = isFighter;
+}
+
+
+
+bool Ship::IsPlayerFighter() const
+{
+	return isPlayerFighter;
 }
 
 
@@ -1703,8 +1728,11 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 	for(Bay &bay : bays)
 		if(bay.ship
-			&& ((bay.ship->Commands().Has(Command::DEPLOY) && !Random::Int(40 + 20 * !bay.ship->attributes.Get("automaton")))
-			|| (ejecting && !Random::Int(6))))
+			&& (
+				bay.ship->IsPlayerFighter()
+				|| (bay.ship->Commands().Has(Command::DEPLOY) && !Random::Int(40 + 20 * !bay.ship->attributes.Get("automaton")))
+				|| (ejecting && !Random::Int(6))
+			))
 		{
 			// Resupply any ships launching of their own accord.
 			if(!ejecting)

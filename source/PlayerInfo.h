@@ -356,11 +356,11 @@ public:
 	// Should help dialogs relating to carriers be displayed?
 	bool DisplayCarrierHelp() const;
 
-	// Attempts to move the player to one of the flagship's fighters.
-	bool JoinFighterDeployment(std::vector<Ship *> &toDeploy);
-	// When the player's fighter docks with a carrier, make that carrier the flagship.
+	// Attempts to transfer the player to one of the flagship's carried ships.
+	bool DeployInCarriedShip();
+	// When the player docks with a carrier, make that carrier the flagship.
 	void DockWithCarrier(std::shared_ptr<Ship> &carrier);
-	// Get the carrier that the player's fighter most recently deployed from.
+	// Get the carrier that the player's ship most recently deployed from.
 	std::shared_ptr<Ship> &CarrierDeployedFrom();
 
 private:
