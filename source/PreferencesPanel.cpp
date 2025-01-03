@@ -82,8 +82,8 @@ namespace {
 	const string ALERT_INDICATOR = "Alert indicator";
 	const string HUD_SHIP_OUTLINES = "Ship outlines in HUD";
 	const string GAME_RELOAD_FEE_PERCENTAGE = "Game reload fee";
-	const string GAME_RELOAD_FEE_ASSET_GROUP = "    based on your";
-	const string GAME_RELOAD_FEE_TAPERING = "    scale down high values";
+	const string GAME_RELOAD_FEE_ASSET_GROUP = "   based on your";
+	const string GAME_RELOAD_FEE_TAPERING = "   scale down high values";
 	const string CREW_SALARIES = "Crew salaries";
 	const string PROFIT_SHARING = "Profit sharing";
 	const string DEATH_PAYMENTS = "Death payments";
