@@ -169,7 +169,12 @@ int CaptureOdds::Index(int attackingCrew, int defendingCrew) const
 vector<double> CaptureOdds::Power(const Ship &ship, bool isDefender)
 {
 	vector<double> power;
-	if(!ship.Crew())
+
+	int effectiveCrewMembers = isDefender
+		? ship.Crew() + static_cast<int>(ship.Attributes().Get("automated defenders"))
+		: ship.Crew() + static_cast<int>(ship.Attributes().Get("automated invaders"));
+
+	if(!effectiveCrewMembers)
 		return power;
 
 	// Check for any outfits that assist with attacking or defending:
@@ -188,8 +193,8 @@ vector<double> CaptureOdds::Power(const Ship &ship, bool isDefender)
 	// Use the best weapons first.
 	sort(power.begin(), power.end(), greater<double>());
 
-	// Resize the vector to have exactly one entry per crew member.
-	power.resize(ship.Crew(), 0.);
+	// Resize the vector to have exactly one entry per effective crew member.
+	power.resize(effectiveCrewMembers, 0.);
 
 	// Calculate partial sums. That is, power[N - 1] should be your total crew
 	// power when you have N crew left.

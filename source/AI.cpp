@@ -621,6 +621,8 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 	}
 
 	// The gather command controls formation flying when combined with shift.
+	// The shift key also makes the "capture" and "plunder" commands more aggressive.
+	const bool shift = activeCommands.Has(Command::SHIFT);
 	if(shift && activeCommands.Has(Command::GATHER))
 		IssueFormationChange(player);
 
@@ -651,18 +653,71 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 		newOrders.type = Orders::MINING;
 		IssueOrders(newOrders, "mining nearby asteroids.");
 	}
-	if(activeCommands.Has(Command::PLUNDER) && !shift)
+	if(activeCommands.Has(Command::CAPTURE))
 	{
 		string message;
-		if(target && !target->IsYours())
+		if(target)
 		{
-			newOrders.type = Orders::PLUNDER_TARGET;
-			newOrders.target = target;
-			IssueOrders(newOrders, target->IsDisabled()
+			bool hostileAction = !target->IsYours()
+				&& (shift || target->GetGovernment()->IsEnemy(GameData::PlayerGovernment()));
+
+			if(hostileAction)
+			{
+				newOrders.target = target;
+				newOrders.type = Orders::CAPTURE_TARGET;
+				IssueOrders(newOrders, target->IsDisabled()
+				? "capturing \"" + target->Name() + "\"."
+				: "attempting to disable and capture \"" + target->Name() + "\".");
+			}
+			else if(target->IsDisabled())
+			{
+				newOrders.target = target;
+				newOrders.type = Orders::REPAIR_TARGET;
+				IssueOrders(newOrders, "repairing \"" + target->Name() + "\".");
+			}
+			else
+			  Messages::Add(
+					"Cannot repair an target that is not disabled."
+					+ target->IsYours() ? "" : " Hold shift if you mean to attack and capture a friendly ship.",
+					Messages::Importance::High
+				);
+		}
+		else // No target selected, so just capture hostiles in general.
+		{
+			newOrders.type = Orders::CAPTURE_HOSTILES;
+			IssueOrders(newOrders, "attacking hostile ships and capturing them once disabled.");
+		}
+	}
+	if(activeCommands.Has(Command::PLUNDER))
+	{
+		string message;
+		if(target)
+		{
+			bool hostileAction = !target->IsYours()
+				&& (shift || target->GetGovernment()->IsEnemy(GameData::PlayerGovernment()));
+
+			if(hostileAction)
+			{
+				newOrders.target = target;
+				newOrders.type = Orders::PLUNDER_TARGET;
+				IssueOrders(newOrders, target->IsDisabled()
 				? "plundering " + target->QuotedName() + "."
 				: "attempting to disable and plunder " + target->QuotedName() + ".");
+			}
+			else if(target->IsDisabled())
+			{
+				newOrders.target = target;
+				newOrders.type = Orders::REPAIR_TARGET;
+				IssueOrders(newOrders, "repairing " + target->QuotedName() + ".");
+			}
+			else
+			  Messages::Add(
+					"Cannot repair an target that is not disabled."
+					+ target->IsYours() ? "" : " Hold shift if you mean to attack and plunder a friendly ship.",
+					Messages::Importance::High
+				);
 		}
-		else
+		else // No target selected, so just plunder hostiles in general.
 		{
 			newOrders.type = Orders::PLUNDER_HOSTILES;
 			IssueOrders(newOrders, "attacking hostile ships and plundering them once disabled.");
@@ -1885,6 +1940,22 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 		else
 			return false;
 	}
+	else if(type == Orders::CAPTURE_HOSTILES || type == Orders::CAPTURE_TARGET)
+	{
+		// If the target is an enemy and not disabled, setting it as a target
+		// is enough to make the ship attack it.
+		if(type == Orders::CAPTURE_TARGET)
+			ship.SetTargetShip(target);
+
+		if(DoCapturing(ship, command))
+		{
+			ship.SetCommands(command);
+			ship.SetCommands(firingCommands);
+			return true;
+		}
+		else
+			return false;
+	}
 	else if(type == Orders::PLUNDER_HOSTILES || type == Orders::PLUNDER_TARGET)
 	{
 		// If the target is an enemy and not disabled, setting it as a target
@@ -1900,6 +1971,18 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 		}
 		else
 			return false;
+	}
+	else if(type == Orders::REPAIR_TARGET)
+	{
+		// If the target is an enemy and not disabled, setting it as a target
+		// is enough to make the ship attack it.
+		if(!target->IsDisabled())
+			return false;
+
+		ship.SetTargetShip(target);
+		command |= Command::BOARD;
+		ship.SetCommands(command);
+		ship.SetCommands(firingCommands);
 	}
 	else if(!target)
 	{
@@ -3664,7 +3747,95 @@ void AI::DoPatrol(Ship &ship, Command &command) const
 	}
 }
 
+/**
+ * A ship can use this routine to evaluate its current target for capture.
+ *
+ * If the ship given this command does not have any extra crew members
+ * beyond its required crew, it will not attempt to capture any ships.
+ *
+ * If the ship doesn't have a target yet, it searches for a disabled
+ * enemy ship that it hasn't boarded yet.
+ *
+ * If it can't find a suitable enemy, it searches for a disabled friendly
+ * ship that it can repair.
+ *
+ * @param ship The ship that is capturing.
+ * @param command The command being executed.
+ *
+ * @return Whether or not the ship has chosen an action.
+ */
+bool AI::DoCapturing(Ship &ship, Command &command, bool useExtraAggression)
+{
+	shared_ptr<Ship> target = ship.GetTargetShip();
 
+	bool hasExtraCrew = ship.Crew() > ship.RequiredCrew();
+
+	// If the ship doesn't have a target yet and it has extra crew members,
+	// it searches for a disabled enemy ship that it hasn't boarded yet.
+	if(!target && hasExtraCrew)
+	{
+		auto enemies = GetShipsList(ship, true);
+		for(auto &foe : enemies)
+			if(foe->IsDisabled())
+			{
+				auto foePtr = foe->shared_from_this();
+				if(!Has(ship, foePtr, ShipEvent::BOARD))
+				{
+					target = foePtr;
+					break;
+				}
+			}
+	}
+
+	// If there aren't any enemies, it searches for a disabled ally to repair.
+	if(!target)
+	{
+		auto allies = GetShipsList(ship, false);
+		for(auto &ally : allies)
+			if(ally->IsDisabled())
+			{
+				target = ally->shared_from_this();
+				break;
+			}
+	}
+
+	// If it still doesn't have a disabled target, it can't board anything.
+	if(!target || !target->IsDisabled())
+		return false;
+
+	// From this point onward, we know that the ship has a disabled target.
+
+	bool autoPlunder = false;
+	bool considerCapture = false;
+	bool nonDocking = true;
+	// If the disabled target is an enemy, or it's been told to be more
+	// aggressive and the target is not in the same faction, the ship
+	// considers capturing it.
+	if(
+		ship.GetGovernment()->IsEnemy(target->GetGovernment())
+		|| (useExtraAggression && ship.GetGovernment() != target->GetGovernment())
+	)
+	{
+		// Abort if the ship doesn't have any extra crew members, or if it has
+		// already boarded this target.
+		if(!hasExtraCrew || Has(ship, target, ShipEvent::BOARD))
+		{
+			target.reset();
+			return false;
+		}
+
+		considerCapture = true;
+	}
+
+	// Move to the target ship and board it.
+	ship.SetTargetShip(target);
+	if(!ship.Board(autoPlunder, considerCapture, nonDocking, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>(), useExtraAggression))
+	{
+		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
+		command |= Command::BOARD;
+	}
+	return true;
+}
 
 /**
  * A ship can use this routine to evaluate its current target for boarding.
@@ -3680,7 +3851,7 @@ void AI::DoPatrol(Ship &ship, Command &command) const
  *
  * @return Whether or not the ship has chosen an action.
  */
-bool AI::DoPlundering(Ship &ship, Command &command)
+bool AI::DoPlundering(Ship &ship, Command &command, bool useExtraAggression)
 {
 	shared_ptr<Ship> target = ship.GetTargetShip();
 
@@ -3722,7 +3893,15 @@ bool AI::DoPlundering(Ship &ship, Command &command)
 	// From this point onward, we know that the ship has a disabled target.
 
 	bool autoPlunder = false;
-	// If the disabled target is an enemy, the ship considers plundering it.
+	bool considerCapture = false;
+	bool nonDocking = true;
+	// If the disabled target is an enemy, or it's been told to be more
+	// aggressive and the target is not in the same faction, the ship
+	// considers plundering it.
+	if(
+		ship.GetGovernment()->IsEnemy(target->GetGovernment())
+		|| (useExtraAggression && ship.GetGovernment() != target->GetGovernment())
+	)
 	if(ship.GetGovernment()->IsEnemy(target->GetGovernment()))
 	{
 		// Abort if the ship doesn't have any free cargo space, or if it has

@@ -75,17 +75,19 @@ const Command Command::MESSAGE_LOG(ONE << 24, "View message log");
 const Command Command::FULLSCREEN(ONE << 25, "Toggle fullscreen");
 const Command Command::FASTFORWARD(ONE << 26, "Toggle fast-forward");
 const Command Command::HELP(ONE << 27, "Show help");
-const Command Command::FIGHT(ONE << 28, "Fleet: Fight my target");
-const Command Command::GATHER(ONE << 29, "Fleet: Gather around me");
-const Command Command::HOLD(ONE << 30, "Fleet: Hold position");
-const Command Command::HARVEST(ONE << 31, "Fleet: Harvest flotsam");
-const Command Command::MINING(ONE << 32, "Fleet: Mine asteroids");
-const Command Command::PLUNDER(ONE << 33, "Fleet: Plunder enemy ship(s)");
-const Command Command::AMMO(ONE << 34, "Fleet: Toggle ammo usage");
-const Command Command::AUTOSTEER(ONE << 35, "Auto steer");
-const Command Command::WAIT(ONE << 36, "");
-const Command Command::STOP(ONE << 37, "");
-const Command Command::SHIFT(ONE << 38, "");
+const Command Command::CAPTURE(ONE << 28, "Fleet: Capture enemy ship(s)");
+const Command Command::FIGHT(ONE << 29, "Fleet: Fight my target");
+const Command Command::GATHER(ONE << 30, "Fleet: Gather around me");
+const Command Command::HOLD(ONE << 31, "Fleet: Hold position");
+const Command Command::HARVEST(ONE << 32, "Fleet: Harvest flotsam");
+const Command Command::MINING(ONE << 33, "Fleet: Mine asteroids");
+const Command Command::PLUNDER(ONE << 34, "Fleet: Plunder enemy ship(s)");
+const Command Command::AMMO(ONE << 35, "Fleet: Toggle ammo usage");
+const Command Command::TRANSFER_CREW(ONE << 36, "Fleet: Transfer crew members");
+const Command Command::AUTOSTEER(ONE << 37, "Auto steer");
+const Command Command::WAIT(ONE << 38, "");
+const Command Command::STOP(ONE << 39, "");
+const Command Command::SHIFT(ONE << 40, "");
 
 
 
@@ -284,10 +286,14 @@ void Command::Load(const DataNode &node)
 			{"info", Command::INFO},
 			{"fullscreen", Command::FULLSCREEN},
 			{"fastforward", Command::FASTFORWARD},
+			{"capture", Command::CAPTURE},
 			{"fight", Command::FIGHT},
 			{"gather", Command::GATHER},
 			{"hold", Command::HOLD},
+			{"mining", Command::MINING},
+			{"plunder", Command::PLUNDER},
 			{"ammo", Command::AMMO},
+			{"transfer crew", Command::TRANSFER_CREW},
 			{"nearest asteroid", Command::NEAREST_ASTEROID},
 			{"wait", Command::WAIT},
 			{"stop", Command::STOP},

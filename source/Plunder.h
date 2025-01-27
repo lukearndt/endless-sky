@@ -38,6 +38,9 @@ public:
 		Session(std::shared_ptr<Ship> &victim, Ship * attacker, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 
 		// Get the list of items that can be plundered from the victim ship.
+		static std::vector<Plunder> BuildPlunderList(const std::shared_ptr<Ship> &ship);
+
+		// Get the list of items that can be plundered from the victim ship.
 		const std::vector<Plunder> &GetPlunder() const;
 		const Plunder &GetPlunder(int index) const;
 
@@ -54,6 +57,9 @@ public:
 
 		// Get a list of all of the plunder that was taken.
 		const std::vector<Plunder> &GetTaken() const;
+
+		// Refresh the list of plunder that can be taken. Call this if the victim
+		// has been successfully boarded and all its crew members killed.
 
 		// Get the total mass of the plunder that was taken.
 		int64_t TotalCommodityMassTaken() const;
@@ -77,6 +83,10 @@ public:
 		int64_t totalMassTaken;
 		int64_t totalOutfitsTaken;
 		int64_t totalValueTaken;
+		// This is used to keep track of whether or not the list of plunder
+		// was generated assuming that the victim had crew to defend it.
+		// If the victim has no crew, the attacker can plunder everything.
+		bool usedLimitedAccess;
 	};
 
 	// Sort by value per ton of mass.

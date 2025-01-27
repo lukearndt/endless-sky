@@ -223,10 +223,10 @@ public:
 
 	// Launch any ships that are ready to launch.
 	void Launch(std::list<std::shared_ptr<Ship>> &ships, std::vector<Visual> &visuals);
-	// Check if this ship is boarding another ship. If not, returns a null pointer.
-	// If the boarder is the player's flagship, returns the ship that is being boarded.
-	// If the boarder is not the player's flagship, plunders the target if autoPlunder is true.
-	std::shared_ptr<Ship> Board(bool autoPlunder, bool isPlayerFlaship, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
+	// Check if this ship is boarding another ship. If it is, it either plunders
+	// it, captures it, or if this is the player's flagship, returns the ship it is
+	// plundering so that the boarding panel can be displayed.
+	std::shared_ptr<Ship> Board(bool isPlayerFlagship, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 	// Scan the target, if able and commanded to. Return a ShipEvent bitmask
 	// giving the types of scan that succeeded.
 	int Scan(const PlayerInfo &player);
@@ -256,6 +256,7 @@ public:
 
 	// Check the status of this ship.
 	bool IsCapturable() const;
+	bool IsConquered() const;
 	bool IsTargetable() const;
 	bool IsOverheated() const;
 	bool IsDisabled() const;
@@ -266,6 +267,17 @@ public:
 	bool CanLand() const;
 	// What kind of action this is we are trying to do.
 	enum class ActionType {AFTERBURNER, BOARD, COMMUNICATION, FIRE, PICKUP, SCAN};
+
+	// The ship needs to know what to do if it successfully boards its target.
+	// This objective is determined by the AI when the ship begins trying to
+	// board its target, but the ship's Board() function might be called by
+	// the Engine several frames later when the ship reaches its target.
+	// Since we try not to expose this kind of AI logic to the Engine, we
+	// need to store it on the ship so that it's available during Board().
+	enum class BoardingObjective {CAPTURE, CAPTURE_RISKY, DOCK, PLUNDER, PLUNDER_RISKY, REPAIR};
+	BoardingObjective GetBoardingObjective() const;
+	void SetBoardingObjective(BoardingObjective objective);
+
 	// Check if some condition is keeping this ship from acting. (That is, it is
 	// landing, hyperspacing, cloaking without "cloaked ActionType", disabled, or under-crewed.)
 	bool CannotAct(ActionType actionType) const;
@@ -384,6 +396,7 @@ public:
 	// Access how many crew members this ship has or needs.
 	int Crew() const;
 	int DesiredCrew() const;
+	int ExtraCrew() const;
 	int RequiredCrew() const;
 	// Get the reputational value of this ship's crew, which depends
 	// on its crew size and "crew equivalent" attribute.
@@ -452,8 +465,10 @@ public:
 	int OutfitCount(const Outfit *outfit) const;
 	// Add or remove outfits. (To remove, pass a negative number.)
 	void AddOutfit(const Outfit *outfit, int count);
-	// List of outfits that can be plundered from this ship.
+	// List of outfits that can be plundered from this ship without conquering it.
 	std::shared_ptr<std::map<const Outfit *, int>> PlunderableOutfits() const;
+	// List of outfits that cannot be plundered from this ship unless it is conquered.
+	std::shared_ptr<std::map<const Outfit *, int>> ProtectedOutfits() const;
 
 	// Get the list of weapons.
 	Armament &GetArmament();
@@ -602,6 +617,7 @@ private:
 	double steeringDirection = 0.;
 	bool neverDisabled = false;
 	bool isCapturable = true;
+	bool isConquered = true;
 	bool isInvisible = false;
 	int customSwizzle = -1;
 	double cloak = 0.;
@@ -626,6 +642,10 @@ private:
 	Personality personality;
 	const Phrase *hail = nullptr;
 	ShipAICache aiCache;
+
+	// This should be set by the AI when it directs the ship to board a target.
+	// If that fails, repair seems like the least problematic default.
+	BoardingObjective boardingObjective = BoardingObjective::REPAIR;
 
 	// Installed outfits, cargo, etc.:
 	Outfit attributes;

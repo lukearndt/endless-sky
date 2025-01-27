@@ -142,7 +142,8 @@ private:
 	bool DoHarvesting(Ship &ship, Command &command) const;
 	bool DoCloak(Ship &ship, Command &command);
 	void DoPatrol(Ship &ship, Command &command) const;
-	bool DoPlundering(Ship &ship, Command &command);
+	bool DoCapturing(Ship &ship, Command &command, bool useExtraAggression = false);
+	bool DoPlundering(Ship &ship, Command &command, bool useExtraAggression = false);
 	// Prevent ships from stacking on each other when many are moving in sync.
 	void DoScatter(Ship &ship, Command &command);
 	bool DoSecretive(Ship &ship, Command &command);
@@ -196,14 +197,17 @@ private:
 		// ATTACK.
 		static const int HARVEST = 0x003;
 		static const int MINING = 0x004;
+		// Attack nearby enemies, and capture them once they are disabled.
+		static const int CAPTURE_HOSTILES = 0x005;
 		// Attack nearby enemies, and plunder them once they are disabled.
-		static const int PLUNDER_HOSTILES = 0x005;
+		static const int PLUNDER_HOSTILES = 0x006;
 		static const int KEEP_STATION = 0x100;
 		static const int GATHER = 0x101;
 		static const int ATTACK = 0x102;
 		static const int FINISH_OFF = 0x103;
-		// Plunder a specific target.
-		static const int PLUNDER_TARGET = 0x105;
+		static const int CAPTURE_TARGET = 0x105;
+		static const int PLUNDER_TARGET = 0x106;
+		static const int REPAIR_TARGET = 0x107;
 		// MINE is for fleet targeting the asteroid for mining. ATTACK is used
 		// to chase and attack the asteroid.
 		static const int MINE = 0x104;

@@ -560,6 +560,46 @@ shared_ptr<Crew::Report<shared_ptr<Crew::Manifest>>> Crew::BuildManifestReport(
 
 
 /**
+ * Estimates the average cost of a crew member dying.
+ *
+ * Can be used to evaluate whether or not it will be financially worth
+ * the risk of some crew members dying to achieve an objective,
+ * such as capturing a ship.
+ *
+ * This is a somewhat flawed estimate because it doesn't account for all
+ * of the factors involved.
+ *
+ * It can't know how much profit will be made that day, so the credits
+ * lost to death shares are a limited guess at best.
+ *
+ * It also doesn't know the actual ranks of the crew members that will
+ * die, so the actual cost may be worse if any high ranked crew members
+ * are killed instead of marines or regulars. To help mitigate this, it
+ * takes the worst case scenario between those two types of crew members.
+ *
+ * @param hasExtraCrew A boolean indicating if the ship has extra crew members.
+ *
+ * @return The possible financial cost of a crew member dying.
+ */
+int64_t Crew::ExpectedCostPerCasualty(bool hasExtraCrew)
+{
+	int64_t expectedDeathBenefit = max(
+		GameData::CrewMembers().Get("regular")->DeathBenefit(),
+		hasExtraCrew ? GameData::CrewMembers().Get("marine")->DeathBenefit() : 0
+	);
+
+	int64_t expectedDeathShares = max(
+		GameData::CrewMembers().Get("regular")->DeathShares(),
+		hasExtraCrew ? GameData::CrewMembers().Get("marine")->DeathShares() : 0
+	);
+
+	return expectedDeathBenefit
+		+ expectedDeathShares * CrewSetting::SalaryPerShare() * CrewSetting::DeathBenefitSalaryMultiplier();
+}
+
+
+
+/**
  * Generate a manifest of the crew members that are in manifest a but not
  * in manifest b.
  *
@@ -570,9 +610,8 @@ shared_ptr<Crew::Report<shared_ptr<Crew::Manifest>>> Crew::BuildManifestReport(
  * or make a list of casualties after a boarding action.
  */
 shared_ptr<Crew::Manifest> Crew::ManifestDifference(
-	const shared_ptr<Crew::Manifest> &a,
-	const shared_ptr<Crew::Manifest> &b
-)
+    const shared_ptr<Crew::Manifest> &a,
+    const shared_ptr<Crew::Manifest> &b)
 {
 	shared_ptr<Manifest> manifest = make_shared<Manifest>();
 

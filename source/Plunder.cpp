@@ -169,26 +169,13 @@ Plunder::Session::Session(shared_ptr<Ship> &victim, Ship * attacker, const vecto
 	attacker(attacker),
 	attackerFleet(attackerFleet),
 	victim(victim),
-	plunder({}),
+	plunder(BuildPlunderList(victim)),
 	taken({}),
 	totalCommodityMassTaken(0),
 	totalMassTaken(0),
 	totalOutfitsTaken(0),
 	totalValueTaken(0)
 {
-	// Add all the commodities that the victim is carrying.
-	for(const auto &it : victim->Cargo().Commodities())
-		if(it.second)
-			plunder.emplace_back(it.first, it.second, victim->GetSystem()->Trade(it.first));
-
-	// Add all the outfits that can be plundered from the victim.
-	auto outfits = victim->PlunderableOutfits();
-	for(const auto &it : *outfits)
-		if(it.second)
-			plunder.emplace_back(it.first, it.second);
-
-	// Sort by value per ton of mass.
-	sort(plunder.begin(), plunder.end());
 }
 
 
@@ -439,4 +426,35 @@ int64_t Plunder::Session::TotalOutfitsTaken() const
 int64_t Plunder::Session::TotalValueTaken() const
 {
 	return totalValueTaken;
+}
+
+
+
+/**
+ * Get a list of items that can be plundered from the victim ship.
+ * This list is sorted by value per ton of mass, with the most valuable
+ * items first.
+ *
+ * @param ship The ship from which to plunder.
+ * @return A vector of Plunder objects representing the items that can be plundered.
+ */
+std::vector<Plunder> Plunder::Session::BuildPlunderList(const std::shared_ptr<Ship> &ship)
+{
+	std::vector<Plunder> plunder;
+
+	// Add all the commodities that the ship is carrying.
+	for(const auto &it : ship->Cargo().Commodities())
+		if(it.second)
+			plunder.emplace_back(it.first, it.second, ship->GetSystem()->Trade(it.first));
+
+	// Add all the outfits that can be plundered from the ship.
+	auto outfits = ship->PlunderableOutfits();
+	for(const auto &it : *outfits)
+		if(it.second)
+			plunder.emplace_back(it.first, it.second);
+
+	// Sort by value per ton of mass.
+	sort(plunder.begin(), plunder.end());
+
+	return plunder;
 }

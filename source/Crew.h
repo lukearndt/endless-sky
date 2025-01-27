@@ -141,6 +141,9 @@ public:
 	// Create a Crew::ManifestReport for a single ship.
 	static std::shared_ptr<Report<std::shared_ptr<Manifest>>> BuildManifestReport(const std::shared_ptr<Ship> &ship, const bool isFlagship = false);
 
+	// Estimates the financial cost of a crew member dying in a profit-making activity.
+	static int64_t ExpectedCostPerCasualty(bool hasExtraCrew);
+
 	// Generate a manifest of the crew members that are in manifest a manifest but not in manifest b
 	static std::shared_ptr<Manifest> ManifestDifference(
 		const std::shared_ptr<Manifest> &a,

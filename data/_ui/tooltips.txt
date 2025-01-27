@@ -1308,6 +1308,13 @@ tip "View message log"
 tip "Deploy / recall fighters"
 	`Deploy or recall carried ships (e.g. fighters, drones) in your fleet. Requires carriers with space to hold the carried ships.`
 
+tip "Fleet: Capture enemy ship(s)"
+	`Command your fleet to attack, disable, board, and capture the selected target. If only some escorts are selected, only sends the command to those ships.`
+	`Each escort that has extra crew members available will board the target once it becomes disabled. The ship will then execute the current boarding combat strategy that you have set. If they take control of the ship, it will be captured and added to your fleet.`
+	`If you don't have a target selected, your fleet will fight hostile ships as normal, but escorts that have extra crew members board will any enemy ships that become disabled and assess them for capture.`
+	`Ships with this command will also attempt to board and repair any disabled friendly ships in the system, at a lower priority than defending themselves. If you target a specific disabled friendly ship, your fleet will attempt to board and repair it instead of capturing.`
+	`If you hold <shift> while issuing this command against a target, your fleet will attack it even if it's friendly, although they won't attack a member of your fleet. When an escort boards the target, the Boarding Panel will open and you can choose what to do next.`
+
 tip "Fleet: Fight my target"
 	`Command your entire fleet to focus fire on the selected target. If only some escorts are selected, only sends the command to those escorts. This command can also be sent by right clicking on a hostile ship.`
 
@@ -1321,13 +1328,24 @@ tip "Fleet: Hold position"
 tip "Fleet: Toggle ammo usage"
 	`Toggle the "Escorts expend ammo" setting.`
 
+tip "Fleet: Change boarding strategy"
+	`Change the strategy that your escorts use when they board an enemy ship. This cycles through the following options:`
+	``
+
 tip "Fleet: Harvest flotsam"
 	`Command your fleet to harvest nearby flotsam (e.g. dropped cargo). The "Flotsam collection" setting must allow your escorts to pick up flotsam in order to harvest it.`
 
 tip "Fleet: Plunder enemy ship(s)"
-	`Command your fleet to attack, disable, board, and plunder the selected target. If only some escorts are selected, only sends the command to those escorts.`
-	`If you don't have a target selected, your fleet will fight hostile ships as normal, but they will also board them once disabled. They will also attempt to board and repair any friendly disabled ships that 't  w ill also board and repair any friendly ships that they  and then board them once disabled.`
+	`Command your fleet to attack, disable, board, and plunder the selected target. If only some escorts are selected, only sends the command to those ships.`
+	`If the boarding ship has extra crew members available and doesn't expect any casualties, they will attempt to gain full control over the target ship and plunder its internal systems.`
+	`If you don't have a target selected, your fleet will fight hostile ships as normal, but escorts that have free cargo space will also plunder enemy ships that become disabled.`
+	`Ships with this command will also attempt to board and repair any disabled friendly ships in the system, at a lower priority than defending themselves. If you target a specific disabled friendly ship, your fleet will attempt to board and repair it instead of capturing.`
+	`If you hold <shift> while issuing this command against a target, your fleet will attack it even if it's friendly, although they won't attack a member of your fleet. Your escorts will also be willing to accept casualties when they board it, as long as those casualties don't exceed the number of extra crew members.`
 
+tip "Fleet: Transfer crew members"
+	`Command your fleet to transfer their extra crew members to any other ships in the fleet that don't enough crew to function properly. If only some escorts are selected, only sends the command to those escorts.`
+	`An escort can only follow this command if it has extra crew members to spare. To complete the transfer, the escort must board the target ship. Ships that normally hire extra crew members will only be transferred enough crew members to meet their required amounts.`
+	`If you hold <shift>, this instead commands your entire fleet to transfer its extra crew members to only the target escorts. If you don't have an escort selected, they will transfer their extra crew to your flagship. With this mode active, ships that hire extra crew members will be given as many as possible.`
 
 
 # Settings

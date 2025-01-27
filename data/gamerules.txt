@@ -22,12 +22,12 @@ gamerules
 	# DEFAULT: true
 	# ALLOWABLE VALUES: false, true, 0, 1
 	"universal ramscoop" true
-	
+
 	# An attempt to spawn a person ship happens on average every this many frames.
 	# DEFAULT: 72000 frames (twenty minutes)
 	# ALLOWABLE VALUES: any integer >= 1
 	"person spawn period" 72000
-	
+
 	# While an attempt to spawn a person ship is made on average every number of frames specified
 	# above, a person ship may still not spawn. Each person ship has a "weight" associated with them
 	# which determines their chance of spawning. The chance of any single person ship spawning is their
@@ -36,7 +36,7 @@ gamerules
 	# DEFAULT: 1000
 	# ALLOWABLE VALUES: any integer >= 0
 	"no person spawn weight" 1000
-	
+
 	# NPC ships with the mining personality will spend this many frames mining in the current system
 	# before deciding to do something else. The purpose of this limit is so that NPC ships can be seen
 	# by the player to show how to mine without also stripping the system bare of minable asteroids.
@@ -44,7 +44,7 @@ gamerules
 	# DEFAULT: 3600 frames (one minute)
 	# ALLOWABLE VALUES: any integer >= 0
 	"npc max mining time" 3600
-	
+
 	# Ships with the "frugal" personality will only use weapons that consume ammo or fuel while their
 	# health is at or below this fraction.
 	# DEFAULT: .75 (75 percent)
@@ -88,3 +88,44 @@ gamerules
 	# DEFAULT: 1000 (1000 days)
 	# ALLOWABLE VALUES: any integer >= 0.
 	"depreciation max age" 1000
+
+	# Boarding related game rules:
+
+	# Enable or disable negotiations during boarding combat, allowing for combatants that share a language to
+	# resolve the situation without any further violence.
+	#
+	# DEFAULT: false (this feature is not implemented yet)
+	# ALLOWABLE VALUES: true or false.
+	"boarding negotiations" false
+
+	# During a boarding combat, the game scales the number of casualty rolls to perform each turn with the number
+	# of crew members that each combatant has. This helps prevent the combat from becoming tedious when the
+	# combatants have a lot of crew members, and lets us scale the time taken for other actions like Plunder,
+	# Negotiate, and SelfDestruct so that they are rolled once per turn instead of once per casualty.
+	#
+	# This setting determines the number of casualty rolls to perform when a combatant takes the Attack action,
+	# or takes the Defend action while its enemy is invading its vessel.
+	#
+	# If both combatants take an action that might kill enemy crew members, casualties are for both.
+	# Otherwise, casualties are only rolled for the combatant that takes such an action.
+	#
+	#	Higher values make the combat resolve more quickly by allowing more crew members to be killed per turn.
+	# As a side effect, this makes other actions like Plunder, Negotiate, and SelfDestruct more costly and less
+	# likely to succeed before the combat can be resolved by one combatant conquering the other.
+	#
+	# Lower values make the combat take longer, and make it more difficult for the player to plunder or capture
+	# ships that have self destruct systems.
+	#
+	# DEFAULT: 0.25
+	# ALLOWABLE VALUES: any value between 0.01 and 1.
+	"boarding casualty percentage per action" 0.25
+
+	# When a combatant successfully self destructs while being invaded, the game rolls for additional casualties during
+	# that turn. This is to account for the possibility of their vessel exploding before the enemy troops can withdraw.
+	#
+	# During that turn, the self-destructing combatant receives a multiplier to their defensive combat power. This setting
+	# determines that multiplier.
+	#
+	# DEFAULT: 3.0
+	# ALLOWABLE VALUES: any non-negative decimal value.
+	"boarding self destruct casualty power multiplier" 3.0

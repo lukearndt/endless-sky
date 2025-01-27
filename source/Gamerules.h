@@ -40,6 +40,9 @@ public:
 	int PersonSpawnPeriod() const;
 	int NoPersonSpawnWeight() const;
 	int NPCMaxMiningTime() const;
+	bool BoardingNegotiations() const;
+	double BoardingCasualtyPercentagePerAction() const;
+	double BoardingSelfDestructCasualtyPowerMultiplier() const;
 	double UniversalFrugalThreshold() const;
 	double DepreciationMin() const;
 	double DepreciationDaily() const;
@@ -53,6 +56,9 @@ private:
 	int personSpawnPeriod = 36000;
 	int noPersonSpawnWeight = 1000;
 	int npcMaxMiningTime = 3600;
+	bool boardingNegotiations = false; // This feature is not implemented yet
+	double boardingCasualtyPercentagePerAction = 0.25;
+	double boardingSelfDestructCasualtyPowerMultiplier = 3.0;
 	double universalFrugalThreshold = .75;
 	double depreciationMin = 0.25;
 	double depreciationDaily = 0.997;

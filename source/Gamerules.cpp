@@ -44,6 +44,12 @@ void Gamerules::Load(const DataNode &node)
 			noPersonSpawnWeight = max<int>(0, child.Value(1));
 		else if(key == "npc max mining time")
 			npcMaxMiningTime = max<int>(0, child.Value(1));
+		else if(key == "boarding negotiations")
+			boardingNegotiations = child.BoolValue(1);
+		else if(key == "boarding casualty percentage per action")
+			boardingCasualtyPercentagePerAction = min<double>(1., max<double>(0.01, child.Value(1)));
+		else if(key == "boarding self destruct casualty power multiplier")
+			boardingSelfDestructCasualtyPowerMultiplier = max<double>(0.0, child.Value(1));
 		else if(key == "universal frugal threshold")
 			universalFrugalThreshold = min<double>(1., max<double>(0., child.Value(1)));
 		else if(key == "depreciation min")
@@ -97,6 +103,27 @@ int Gamerules::NoPersonSpawnWeight() const
 int Gamerules::NPCMaxMiningTime() const
 {
 	return npcMaxMiningTime;
+}
+
+
+
+bool Gamerules::BoardingNegotiations() const
+{
+  return boardingNegotiations;
+}
+
+
+
+double Gamerules::BoardingCasualtyPercentagePerAction() const
+{
+  return boardingCasualtyPercentagePerAction;
+}
+
+
+
+double Gamerules::BoardingSelfDestructCasualtyPowerMultiplier() const
+{
+  return boardingSelfDestructCasualtyPowerMultiplier;
 }
 
 

@@ -21,17 +21,32 @@ class Ship;
 
 
 
-// This class stores the odds that one ship will be able to capture another, and
-// can report the odds for any number of crew up to what each ship starts out
-// with (because the odds change each time a crew member is lost). If either
-// ship has hand-to-hand weapons available, the crew members will make use of
-// them starting with whatever weapon is most useful to them. In each round of
-// combat, one ship will lose one crew member. Which ship loses depends on the
-// ratio of the strengths of the two crews (plus weapons), and whether each crew
-// is attacking or defending; defending crew get a +1 power bonus.
+/**
+ * This class stores the odds that one ship will be able to conquer another,
+ * and can report the odds for any number of crew up to the number that each
+ * ship starts out with; the odds change each time a crew member is lost.
+ *
+ * During each round of combat, a number of rolls will occur depending on
+ * the overall population of the ships and the boarding combat action
+ * chosen by each combatant. Each roll is based on the ratio of power
+ * between the combatants in carrying out their resective actions.
+ *
+ * The winner of each roll makes progress toward their chosen action's
+ * goal. For the Attack and Defense actions, this means killing one of
+ * the enemy ship's crew members. Successful Plunder actions allow the
+ * combatant take plunderable items from their enemy's ship. Winning a
+ * roll for the SelfDestruct action brings the ship closer to exploding.
+ *
+ * Each crew members will also make use of up to one boarding-related
+ * outfit installed on their ship, such as a hand-to-hand weapon or
+ * defensive implacement. Each outfit can only be used by one crew member.
+ * More powerful outfits are chosen first, in order to gain the highest
+ * possible power for their current action. Defending also grants each
+ * crew member a +1 power bonus.
+ */
 class CaptureOdds {
 public:
-	// Calculate odds that the first given ship can capture the second, assuming
+	// Calculate odds that the first given ship can conquer the second, assuming
 	// the first ship always attacks and the second one always defends.
 	CaptureOdds(const Ship &attacker, const Ship &defender);
 

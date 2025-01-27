@@ -1799,73 +1799,99 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 
 // Used for boarding another ship, or for returning to a carrier.
-shared_ptr<Ship> Ship::Board(bool autoPlunder, bool isPlayerFlagship, const vector<shared_ptr<Ship>> &attackerFleet)
+shared_ptr<Ship> Ship::Board(bool isPlayerFlagship, const vector<shared_ptr<Ship>> &attackerFleet)
 {
+	shared_ptr<Ship> nullShip(nullptr);
+
 	if(!hasBoarded)
-		return shared_ptr<Ship>();
+		return nullShip;
+
 	hasBoarded = false;
 
-	shared_ptr<Ship> victim = GetTargetShip();
-	if(CannotAct(Ship::ActionType::BOARD) || !victim || victim->IsDestroyed() || victim->GetSystem() != GetSystem())
-		return shared_ptr<Ship>();
+	shared_ptr<Ship> other = GetTargetShip();
+	if(CannotAct(Ship::ActionType::BOARD) || !other || other->IsDestroyed() || other->GetSystem() != GetSystem())
+		return nullShip;
 
-	// For a fighter or drone, "board" means "return to ship" if the "victim"
-	// is an ally and the ship isn't explicitly of the nonDocking type.
-	if(CanBeCarried() && victim->GetGovernment() == government)
-	{
-		SetTargetShip(shared_ptr<Ship>());
-		if(!victim->IsDisabled())
+	// For a fighter or drone, "board" could mean "return to carrier ship".
+	// We try this before the player flagship check because the player might
+	// be piloting a carryable ship and trying to dock with one of their carriers.
+	if(boardingObjective == BoardingObjective::DOCK)
+		if(CanBeCarried() && other->GetGovernment() == government && !other->IsDisabled())
 		{
-			victim->Carry(shared_from_this());
-			if(isPlayerFlagship)
-				return victim;
+			SetTargetShip(nullShip);
+			other->Carry(shared_from_this());
 		}
-		return shared_ptr<Ship>();
+		return isPlayerFlagship ? other : nullShip;
 	}
 
+	// If the player is boarding a ship personally, they will choose what to do
+	// via the Boarding Panel. This is handled by the ShipEvent system, so
+	// we just return the other ship here.
+	if(isPlayerFlagship)
+		return other;
+
 	// Board a friendly ship, to repair or refuel it.
-	if(!government->IsEnemy(victim->GetGovernment()))
+	if(boardingObjective == BoardingObjective::REPAIR)
 	{
-		SetShipToAssist(shared_ptr<Ship>());
-		SetTargetShip(shared_ptr<Ship>());
-		bool helped = victim->isDisabled;
-		victim->hull = min(max(victim->hull, victim->MinimumHull() * 1.5), victim->MaxHull());
-		victim->isDisabled = false;
+		SetShipToAssist(nullShip);
+		SetTargetShip(nullShip);
+		bool helped = other->isDisabled;
+		other->hull = min(max(other->hull, other->MinimumHull() * 1.5), other->MaxHull());
+		other->isDisabled = false;
 		// Transfer some fuel if needed.
-		if(victim->NeedsFuel() && CanRefuel(*victim))
+		if(other->NeedsFuel() && CanRefuel(*other))
 		{
 			helped = true;
-			TransferFuel(victim->JumpFuelMissing(), victim.get());
+			TransferFuel(other->JumpFuelMissing(), other.get());
 		}
 		// Transfer some energy, if needed.
-		if(victim->Attributes().Get("energy capacity") > 0 && victim->energy < 200.)
+		if(other->Attributes().Get("energy capacity") > 0 && other->energy < 200.)
 		{
 			helped = true;
-			double toGive = max(attributes.Get("energy capacity") * 0.1, victim->Attributes().Get("energy capacity") * 0.2);
-			TransferEnergy(max(200., toGive), victim.get());
+			double toGive = max(attributes.Get("energy capacity") * 0.1, other->Attributes().Get("energy capacity") * 0.2);
+			TransferEnergy(max(200., toGive), other.get());
 		}
 		if(helped)
 		{
 			pilotError = 120;
-			victim->pilotError = 120;
+			other->pilotError = 120;
 		}
-		return victim;
+		return other;
 	}
-	if(!victim->IsDisabled())
-		return shared_ptr<Ship>();
 
-	// We now know that we are boarding a hostile disabled ship.
+	if(!other->IsDisabled())
+		return nullptr;
 
-	// First take any fuel or energy that the victim has.
-	victim->TransferFuel(victim->fuel, this);
-	victim->TransferEnergy(victim->energy, this);
+	// First take any fuel or energy that the other has.
+	other->TransferFuel(other->fuel, this);
+	other->TransferEnergy(other->energy, this);
+
+	if(boardingObjective == BoardingObjective::CAPTURE)
+	{
+		CaptureSession captureSession(other, this);
+
+		// Take as much valuable plunder as possible from the other.
+		captureSession.SafeAttack();
+
+		// Pause for one frame per ton of mass taken in the raid.
+		// This adds up to one second per 60 tons of mass.
+		pilotError = captureSession.TotalMassTaken();
+
+		if(captureSession.TotalValueTaken() > 0)
+		{
+			if(IsYours())
+				Messages::Add(captureSession.GetSummary(), Messages::Importance::High);
+			else if (other->IsYours())
+				Messages::Add(captureSession.GetSummary(), Messages::Importance::Highest);
+		}
+	}
 
 	// If the boarding ship is the player's flagship, they will choose what to plunder.
-	if(autoPlunder)
+	if(boardingObjective == BoardingObjective::PLUNDER)
 	{
-		Plunder::Session plunderSession(victim, this, attackerFleet);
+		Plunder::Session plunderSession(other, this, attackerFleet);
 
-		// Take as much valuable plunder as possible from the victim.
+		// Take as much valuable plunder as possible from the other.
 		plunderSession.Raid();
 
 		// Pause for one frame per ton of mass taken in the raid.
@@ -1876,15 +1902,15 @@ shared_ptr<Ship> Ship::Board(bool autoPlunder, bool isPlayerFlagship, const vect
 		{
 			if(IsYours())
 				Messages::Add(plunderSession.GetSummary(), Messages::Importance::High);
-			else if (victim->IsYours())
+			else if (other->IsYours())
 				Messages::Add(plunderSession.GetSummary(), Messages::Importance::Highest);
 		}
 	}
 
 	// Stop targeting this ship (so you will not board it again right away).
 	if(!autoPlunder || personality.Disables())
-		SetTargetShip(shared_ptr<Ship>());
-	return victim;
+		SetTargetShip(nullShip);
+	return other;
 }
 
 
@@ -2241,6 +2267,17 @@ bool Ship::IsCapturable() const
 
 
 
+bool Ship::IsConquered() const
+{
+	if(RequiredCrew() < 0)
+		return Crew() > 0;
+
+
+}
+
+
+
+
 bool Ship::IsTargetable() const
 {
 	return (zoom == 1.f && !explosionRate && !forget && !isInvisible && !IsCloaked()
@@ -2305,6 +2342,20 @@ bool Ship::CanLand() const
 	double speed = velocity.Length();
 
 	return (speed < 1. && distance.Length() < GetTargetStellar()->Radius());
+}
+
+
+
+BoardingObjective Ship::GetBoardingObjective() const
+{
+  return boardingObjective;
+}
+
+
+
+void Ship::SetBoardingObjective(BoardingObjective objective)
+{
+	boardingObjective = objective;
 }
 
 
@@ -3044,6 +3095,13 @@ int Ship::DesiredCrew() const
 
 
 
+int Ship::ExtraCrew() const
+{
+	return max(0, crew - RequiredCrew());
+}
+
+
+
 int Ship::RequiredCrew() const
 {
 	if(attributes.Get("automaton"))
@@ -3584,8 +3642,10 @@ void Ship::AddOutfit(const Outfit *outfit, int count)
  * Get a list of the outfits that can be plundered from this ship.
  * While many outfits can be taken from a ship by boarding it, some are
  * contained wholly within the vessel and cannot be taken externally.
- * To obtain these outfits, the attacker must invade the ship and defeat
- * the crew, capturing the entire vessel it in the process.
+ * To obtain these outfits, the attacker must first invade the ship and
+ * defeat its crew.
+ *
+ * If the ship has no crew members, all outfits are considered plunderable.
  *
  * @return A map of plunderable outfits and their quantities.
  */
@@ -3609,7 +3669,8 @@ shared_ptr<map<const Outfit *, int>> Ship::PlunderableOutfits() const
 			outfit = sit->first;
 			// Don't include outfits that are installed and unplunderable,
 			// but "unplunderable" outfits can still be stolen from cargo.
-			if(!sit->first->Get("unplunderable"))
+			// If the ship has been conquered, all of its outfits become plunderable.
+			if(IsConquered() || !sit->first->Get("unplunderable"))
 				count += sit->second;
 			++sit;
 		}
@@ -3624,6 +3685,33 @@ shared_ptr<map<const Outfit *, int>> Ship::PlunderableOutfits() const
 	}
 
 	return plunderableOutfits;
+}
+
+
+
+/**
+ * Get a list of the outfits that are contained wholly within the vessel
+ * and cannot be taken externally. To obtain these outfits, an attacker
+ * must first invade the ship and defeat its crew.
+ *
+ * @return A map of plunderable outfits and their quantities.
+ */
+std::shared_ptr<std::map<const Outfit *, int>> Ship::ProtectedOutfits() const
+{
+	auto protectedOutfits = make_shared<map<const Outfit *, int>>();
+
+	// If the ship has been conquered or has no outfits, none are protected.
+	if(IsConquered() || Outfits().empty())
+		return protectedOutfits;
+
+	auto it = Outfits().begin();
+	for(auto it : Outfits().begin())
+	{
+		if(it->first && it->second && it->first->Get("unplunderable"))
+			(*protectedOutfits)[it->first] = it->second;
+	}
+
+	return protectedOutfits;
 }
 
 
