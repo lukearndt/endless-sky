@@ -288,8 +288,8 @@ BoardingCombat::Turn::Turn(BoardingCombat &combat, Offer &agreement) :
  * @param target The combatant that is being boarded.
  */
 BoardingCombat::Turn::Turn(
-	const shared_ptr<Combatant> &boarder,
-	const shared_ptr<Combatant> &target
+	shared_ptr<Combatant> &boarder,
+	shared_ptr<Combatant> &target
 ) :
 	boarderAction(Action::Null),
 	targetAction(Action::Null),
@@ -1543,7 +1543,7 @@ BoardingCombat::BoardingCombat(
 		usingBoardingPanel,
 		player.Ships()
 	)),
-	history(make_shared<History>(make_shared<Turn>(boarder, target)))
+	history(make_shared<History>())
 {
 	// Determine whether or not the combatants share a language, and can therefore negotiate.
 	string boarderLanguage = boarderShip->GetGovernment()->Language();
@@ -1555,6 +1555,8 @@ BoardingCombat::BoardingCombat(
 		isLanguageShared = boarderLanguage.empty() || player.Conditions().Get("language: " + boarderLanguage);
 	else
 		isLanguageShared = boarderLanguage == targetLanguage;
+
+	history->push_back(make_shared<Turn>(boarder, target));
 }
 
 

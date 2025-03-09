@@ -245,6 +245,8 @@ const vector<shared_ptr<Plunder>> &Plunder::Session::RemainingPlunder() const
 
 
 /**
+ * TODO: Make this part of BoardingCombat.
+ *
  * Take as much valuable plunder as possible from the target ship.
  * This function performs the entire plundering process in one go, such
  * as when one AI-controlled ship plunders another.
@@ -253,22 +255,22 @@ const vector<shared_ptr<Plunder>> &Plunder::Session::RemainingPlunder() const
  * mass, and takes as much as possible from each item. Stops when the
  * attacker's cargo hold is full or there is no more plunder to take.
  */
-void Plunder::Session::Raid()
-{
-	for(size_t i = 0; i < plunder.size(); ++i)
-	{
-		Take(i);
+// void Plunder::Session::Raid()
+// {
+// 	for(size_t i = 0; i < plunder.size(); ++i)
+// 	{
+// 		Take(i);
 
-		if(attacker->Cargo().Free() < 1)
-			break;
-	}
+// 		if(attacker->Cargo().Free() < 1)
+// 			break;
+// 	}
 
-	for(size_t i = 0; i < plunder.size(); ++i)
-	{
-		if(plunder[i].Count() < 1)
-			plunder.erase(plunder.begin() + i--);
-	}
-}
+// 	for(size_t i = 0; i < plunder.size(); ++i)
+// 	{
+// 		if(plunder[i].Count() < 1)
+// 			plunder.erase(plunder.begin() + i--);
+// 	}
+// }
 
 
 

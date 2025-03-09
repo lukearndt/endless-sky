@@ -2497,7 +2497,7 @@ void PlayerInfo::HandleEvent(const ShipEvent &event, UI *ui)
 
 		if(ship->Crew() > 0)
 		{
-			Crew::ShipAnalysis shipAnalysis(ship, false);
+			auto shipAnalysis = make_shared<Crew::ShipAnalysis>(ship, false);
 			Crew::CasualtyAnalysis casualtyAnalysis(shipAnalysis, ship);
 
 			if(casualtyAnalysis.casualtyCount)

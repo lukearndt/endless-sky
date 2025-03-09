@@ -103,8 +103,8 @@ public:
 		Turn(BoardingCombat &combat, Offer &agreement);
 
 		Turn(
-			const std::shared_ptr<Combatant> &boarder,
-			const std::shared_ptr<Combatant> &target
+			std::shared_ptr<Combatant> &boarder,
+			std::shared_ptr<Combatant> &target
 		);
 
 		Action boarderAction;

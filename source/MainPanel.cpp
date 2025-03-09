@@ -674,7 +674,8 @@ void MainPanel::StepEvents(bool &isActive)
 					&& boardedShip->GetGovernment()->IsEnemy())
 			{
 				// Either no mission activated, or the one that did was "silent."
-				GetUI()->Push(new BoardingPanel(player, boardedShip));
+				auto boarder = player.Flagship()->shared_from_this();
+				GetUI()->Push(make_shared<BoardingPanel>(player, boarder, boardedShip));
 				isActive = false;
 			}
 		}
