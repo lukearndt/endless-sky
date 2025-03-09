@@ -37,6 +37,9 @@ target_sources(EndlessSkyLib PRIVATE
 	BatchShader.h
 	Bitset.cpp
 	Bitset.h
+	Boarding.h
+	BoardingCombat.h
+	BoardingCombat.cpp
 	BoardingPanel.cpp
 	BoardingPanel.h
 	Body.cpp

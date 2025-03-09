@@ -894,7 +894,7 @@ const Sprite *System::Haze() const
 int System::Trade(const string &commodity) const
 {
 	auto it = trade.find(commodity);
-	return (it == trade.end()) ? 0 : it->second.price;
+	return (it == trade.end()) ? 0 : it->second.Current();
 }
 
 
@@ -1099,4 +1099,11 @@ void System::Price::SetBase(int base)
 void System::Price::Update()
 {
 	price = base + static_cast<int>(-100. * erf(supply / LIMIT));
+}
+
+
+
+int System::Price::Current() const
+{
+  return price * GameData::GetGamerules().CommodityPriceMultiplier();
 }

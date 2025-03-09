@@ -15,10 +15,11 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "Crew.h"
 #include "Panel.h"
 
+#include "BoardingCombat.h"
 #include "CaptureOdds.h"
+#include "Crew.h"
 #include "Plunder.h"
 
 #include <memory>
@@ -37,7 +38,11 @@ class Ship;
 // capture is "turn-based" combat where each "turn" one or both ships lose crew.
 class BoardingPanel : public Panel {
 public:
-	BoardingPanel(PlayerInfo &player, std::shared_ptr<Ship> &victim);
+	BoardingPanel(
+		PlayerInfo &player,
+		std::shared_ptr<Ship> &boarder,
+		std::shared_ptr<Ship> &target
+	);
 
 	virtual void Draw() override;
 
@@ -51,55 +56,31 @@ protected:
 
 
 private:
-	// You can't exit this dialog if you are in the middle of combat.
-	bool CanExit() const;
-	// Check if you can raid the ship for valuables.
-	bool CanRaid(bool alreadyCheckedPlunder = false, bool canTakeSomething = false) const;
-	// Check if you can take the outfit at the given position in the list.
-	bool CanTake() const;
-	// Check if you can initiate hand to hand combat.
-	bool CanCapture() const;
-	// Check if you are in the midst of hand to hand combat.
 	bool CanAttack() const;
+	bool CanCapture() const;
+	bool CanDefend() const;
+	bool CanLeave() const;
+	bool CanPlunderSelected() const;
+	bool CanRaid() const;
 
-	// Handle the keyboard scrolling and selection in the panel list.
 	void DoKeyboardNavigation(const SDL_Keycode key);
 
-	// Build a list of casualties from the boarding action and trigger any
-	// consequences that result from them, such as death benefits and death shares.
-	void ResolveCasualties();
+	bool TakeTurn(Boarding::Action action, Boarding::ActionDetails details = 0);
 
-private:
+	BoardingCombat combat;
 	PlayerInfo &player;
-	std::shared_ptr<Ship> you;
-	std::shared_ptr<Ship> victim;
+	std::shared_ptr<Ship> boarder;
+	std::shared_ptr<Ship> target;
+	bool isPlayerBoarder;
+	std::shared_ptr<BoardingCombat::SituationReport> report;
 
-	int selected = 0;
+	int plunderIndex = 0;
+	std::shared_ptr<Plunder> selectedPlunder;
 	double scroll = 0.;
 
-	bool playerDied = false;
-	bool isCapturing = false;
-	bool isFirstCaptureAction = true;
-	// Calculating the odds of combat success, and the expected casualties, is
-	// non-trivial. So, cache the results for all crew amounts up to full.
-	CaptureOdds attackOdds;
-	CaptureOdds defenseOdds;
-	// These messages are shown to report the results of hand to hand combat.
+	// These messages are shown to report activity as it occurs.
 	std::vector<std::string> messages;
-
-	// Allows us to list plunderable items and take them from the victim.
-	Plunder::Session plunderSession;
 
 	// Whether or not the ship can be captured.
 	bool canCapture = false;
-
-	// Over the course of the boaring action, you may lose crew members.
-	// We need to keep track of them and enforce death benefits and death shares.
-	// This is the crew manifest at the start of the boarding action.
-	Crew::ShipAnalysis shipAnalysisBefore;
-
-	// If you lose crew members during boarding and then give up, we still
-	// need to trigger consequences for the lost crew members. We use this
-	// flag when we close the panel to check if we need to do that.
-	bool hasUnresolvedCasualties = false;
 };

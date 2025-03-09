@@ -37,6 +37,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
+class BoardingCombat;
 class DamageDealt;
 class DataNode;
 class DataWriter;
@@ -188,6 +189,8 @@ public:
 	// If a ship belongs to the player, the player can give it commands.
 	void SetIsYours(bool yours = true);
 	bool IsYours() const;
+	// We often need to check if a ship is the player's flagship.
+	bool IsPlayerFlagship() const;
 	// A parked ship stays on a planet and requires no daily salary payments.
 	void SetIsParked(bool parked = true);
 	bool IsParked() const;
@@ -223,10 +226,14 @@ public:
 
 	// Launch any ships that are ready to launch.
 	void Launch(std::list<std::shared_ptr<Ship>> &ships, std::vector<Visual> &visuals);
-	// Check if this ship is boarding another ship. If it is, it either plunders
-	// it, captures it, or if this is the player's flagship, returns the ship it is
-	// plundering so that the boarding panel can be displayed.
-	std::shared_ptr<Ship> Board(bool isPlayerFlagship, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
+
+	// If this ship is boarding another ship, applies the current BoardingObjective.
+	// Non-hostile objectives like Repair are resolved automatically.
+	// Hostile objectives like Capture are resolved via a BoardingCombat.
+	// Some objectives or situations require the BoardingPanel. When that
+	// happens, this function returns a pointer to the other ship.
+	std::shared_ptr<Ship> Board(PlayerInfo &player);
+
 	// Scan the target, if able and commanded to. Return a ShipEvent bitmask
 	// giving the types of scan that succeeded.
 	int Scan(const PlayerInfo &player);
@@ -268,13 +275,17 @@ public:
 	// What kind of action this is we are trying to do.
 	enum class ActionType {AFTERBURNER, BOARD, COMMUNICATION, FIRE, PICKUP, SCAN};
 
-	// The ship needs to know what to do if it successfully boards its target.
+	// The ship needs to know what to do when it boards a target.
+	//
 	// This objective is determined by the AI when the ship begins trying to
 	// board its target, but the ship's Board() function might be called by
 	// the Engine several frames later when the ship reaches its target.
+	//
 	// Since we try not to expose this kind of AI logic to the Engine, we
 	// need to store it on the ship so that it's available during Board().
-	enum class BoardingObjective {CAPTURE, CAPTURE_RISKY, DOCK, PLUNDER, PLUNDER_RISKY, REPAIR};
+	//
+	// When the ship completes or aborts a boarding action, set this to NONE.
+	enum class BoardingObjective {NONE, CAPTURE, CAPTURE_MANUALLY, DOCK, PLUNDER, PLUNDER_MANUALLY, REPAIR, TRANSFER_CREW, TRANSFER_PLAYER};
 	BoardingObjective GetBoardingObjective() const;
 	void SetBoardingObjective(BoardingObjective objective);
 

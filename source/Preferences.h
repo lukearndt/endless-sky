@@ -76,6 +76,20 @@ public:
 		MIXED
 	};
 
+	// These are repeated here so that we don't have to include BoardingCombat.h
+	// and so that we can more easily limit the options available to the player,
+	// but the downside is that we need to keep them in sync.
+	enum class BoardingAttackStrategy : int_fast8_t {
+		CAUTIOUS = 0,
+		AGGRESSIVE,
+		RECKLESS
+	};
+
+	enum class BoardingDefenseStrategy : int_fast8_t {
+		REPEL = 0,
+		COUNTER
+	};
+
 	enum class FlotsamCollection : int_fast8_t {
 		OFF = 0,
 		ON,
@@ -161,6 +175,16 @@ public:
 	static void ToggleAmmoUsage();
 	static std::string AmmoUsage();
 
+	// Boarding attack strategy, cycles between "Cautious", "Aggressive", and "Reckless".
+	static void ToggleBoardingAttackStrategy();
+	static BoardingAttackStrategy GetBoardingAttackStrategy();
+	static const std::string &BoardingAttackStrategySetting();
+
+	// Boarding defense strategy, cycles between "Repel" and "Counter".
+	static void ToggleBoardingDefenseStrategy();
+	static BoardingDefenseStrategy GetBoardingDefenseStrategy();
+	static const std::string &BoardingDefenseStrategySetting();
+
 	// Date format preferences.
 	static void ToggleDateFormat();
 	static DateFormat GetDateFormat();
@@ -214,10 +238,10 @@ public:
 	static ExtendedJumpEffects GetExtendedJumpEffects();
 	static const std::string &ExtendedJumpEffectsSetting();
 
-	// Boarding target setting, either "proximity", "value" or "mixed".
+	// Boarding target priority setting, either "proximity", "value" or "mixed".
 	static void ToggleBoarding();
 	static BoardingPriority GetBoardingPriority();
-	static const std::string &BoardingSetting();
+	static const std::string &BoardingPrioritySetting();
 
 	// Flotsam setting, either "off", "on", "flagship only", or "escorts only".
 	static void ToggleFlotsam();

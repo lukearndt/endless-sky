@@ -193,7 +193,7 @@ ship "Albatross" "Albatross (Shield)"
 		"Systems Core (Large)" 3
 		"Small Heat Shunt" 1
 		"Large Heat Shunt" 1
-		
+
 		"Tuning Rifle" 75
 
 		"Crucible-Class Thruster"
@@ -219,7 +219,7 @@ ship "Albatross" "Albatross (Ember Shield)"
 		"Systems Core (Large)" 4
 		"Large Heat Shunt"
 		"Thermoelectric Cooler"
-		
+
 		"Tuning Rifle" 47
 
 		"Crucible-Class Thruster"
@@ -384,11 +384,11 @@ ship "Modified Dromedary" "Modified Dromedary Ghost"
 		"Ramscoop"
 		"NDR-114 Android" 100
 		"Laser Rifle" 100
-		
+
 		"X4700 Ion Thruster"
 		"X5200 Ion Steering"
 		"Hyperdrive"
-		
+
 
 ship "Modified Dromedary" "Modified Dromedary Specter"
 	sprite "ship/modified dromedary specter"
@@ -424,7 +424,7 @@ ship "Modified Dromedary" "Modified Dromedary Specter"
 		"Ramscoop"
 		"NDR-114 Android" 100
 		"Laser Rifle" 15
-		
+
 		"X4700 Ion Thruster"
 		"X5200 Ion Steering"
 		"Hyperdrive"
@@ -452,7 +452,7 @@ ship "Modified Dromedary" "Modified Dromedary Wreck"
 		"Laser Turret" 2
 		"Quad Blaster Turret"
 		"Anti-Missile Turret" 2
-		
+
 		"Fusion Reactor"
 		"LP144a Battery Pack"
 		"D94-YV Shield Generator"
@@ -460,7 +460,7 @@ ship "Modified Dromedary" "Modified Dromedary Wreck"
 		"Ramscoop"
 		"NDR-114 Android" 100
 		"Laser Rifle" 150
-		
+
 		"X4700 Ion Thruster"
 		"X5200 Ion Steering"
 		"Hyperdrive"
@@ -691,14 +691,14 @@ ship "Heron"
 		"Quantum Key Stone"
 		"Salvage Scanner" 5
 		"Thermoelectric Cooler" 5
-		
+
 		"Bellows-Class Afterburner" 3
 		"Smelter-Class Thruster" 4
 		"Smelter-Class Steering" 5
 		"Hyperdrive"
 		"Jump Drive"
 		"Scram Drive"
-		
+
 	engine -111 307.5
 	engine 112 307.5
 	engine -86 289 1.5
@@ -838,7 +838,7 @@ ship "Ibis"
 		"Inhibitor Cannon" 3
 		"Point Defense Turret"
 		"Thrasher Turret"
-		
+
 		"Epoch Cell"
 		"Millennium Cell"
 		"Crystal Capacitor" 2
@@ -847,11 +847,11 @@ ship "Ibis"
 		"Quantum Key Stone"
 		"Salvage Scanner"
 		"Tuning Rifle" 20
-		
+
 		"Forge-Class Thruster"
 		"Forge-Class Steering" 2
 		"Scram Drive"
-		
+
 	bay "Drone" 0 30 over
 		"launch effect" "remnant external"
 	bay "Drone" -34 68 over
@@ -938,7 +938,7 @@ ship "Merganser"
 		"reverse flare sprite" "effect/remnant flare/small"
 			"frame rate" 5
 		"reverse flare sound" "plasma tiny"
-		
+
 		weapon
 			"blast radius" 10
 			"shield damage" 100
@@ -946,17 +946,17 @@ ship "Merganser"
 			"hit force" 250
 	outfits
 		"Inhibitor Cannon" 2
-		
+
 		"Millennium Cell" 2
 		"Crystal Capacitor"
 		"Small Heat Shunt"
 		"Quantum Key Stone"
-		
+
 		"Crucible-Class Thruster"
 		"Crucible-Class Steering"
 		"Bellows-Class Afterburner"
 		"Hyperdrive"
-		
+
 	gun 0 -48.5
 	gun -6 -41 "Inhibitor Cannon"
 	gun 6 -41 "Inhibitor Cannon"
@@ -975,17 +975,17 @@ ship "Merganser" "Merganser (II)"
 		"Inhibitor Cannon" 2
 		"Teciimach Pod"
 		"Teciimach Canister" 3
-		
+
 		"Millennium Cell" 2
 		"Crystal Capacitor"
 		"Small Heat Shunt"
 		"Quantum Key Stone"
-		
+
 		"Crucible-Class Thruster"
 		"Crucible-Class Steering"
 		"Bellows-Class Afterburner"
 		"Hyperdrive"
-		
+
 	gun 0 -48.5 "Teciimach Pod"
 	gun -6 -41 "Inhibitor Cannon"
 	gun 6 -41 "Inhibitor Cannon"
@@ -1144,11 +1144,11 @@ ship "Penguin"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
 		"Tuning Rifle" 1
-		
+
 		"Crucible-Class Thruster"
 		"Crucible-Class Steering"
 		"Hyperdrive"
-	
+
 	engine 0 30
 	"reverse engine" -11 -17
 		zoom 0.25
@@ -1183,9 +1183,9 @@ ship "Penguin"
 	explode "small explosion" 7
 	description "Inspired by close contact with void sprites and the reinvigoration of xenobiology, the Penguin is a prototype designed to serve the dual roles of testing new starship technology while exploring hostile planets throughout the Ember Waste. One of this ship's distinguishing features is that it is truly alive and has a mind that approaches self-awareness."
 	description "	The cloaking technology is built into the Penguin's hull; it cannot be removed or transferred to another ship."
-	
-	
-	
+
+
+
 ship "Peregrine"
 	sprite "ship/peregrine/peregrine"
 		"frame rate" 3
@@ -1234,7 +1234,7 @@ ship "Peregrine"
 		"Point Defense Turret"
 		"Thrasher Turret"
 		"EMP Torpedo" 9
-		
+
 		"Aeon Cell"
 		"Crystal Capacitor" 2
 		"Thermoelectric Cooler" 2
@@ -1242,12 +1242,12 @@ ship "Peregrine"
 		"Quantum Key Stone"
 		"Salvage Scanner"
 		"Tuning Rifle" 11
-		
+
 		"Bellows-Class Afterburner"
 		"Smelter-Class Thruster"
 		"Smelter-Class Steering"
 		"Scram Drive"
-		
+
 	gun 0 -133.5 "EMP Torpedo Bay"
 	gun -12.5 -105 "Thrasher Cannon"
 	gun 12.5 -105 "Thrasher Cannon"
@@ -1269,7 +1269,7 @@ ship "Peregrine"
 	description "The Peregrine is the first capital warship designed by Taely using fresh insights garnered from recent experimentation as well as renewed studies of the void sprites. Encompassing over a century of development since the last generation of warships was built, it is the forerunner of a new breed of Remnant ships."
 	description "	The Peregrine was designed along the lines of old-earth's fast-attack cruisers. Drawing on inspiration from its namesake, famed for being the fastest self-propelled lifeform on Earth, it is designed to strike hard and fast. It closes quickly with enemies to unleash devastating barrages in the opening seconds of combat."
 	description "	The cloaking technology is built into the Peregrine's hull; it cannot be removed or transferred to another ship."
-	
+
 ship "Peregrine" "Peregrine (II)"
 	outfits
 		"Thrasher Cannon" 4
@@ -1277,7 +1277,7 @@ ship "Peregrine" "Peregrine (II)"
 		"Point Defense Turret"
 		"Thrasher Turret"
 		"Teciimach Canister" 9
-		
+
 		"Aeon Cell"
 		"Crystal Capacitor" 2
 		"Thermoelectric Cooler" 2
@@ -1285,12 +1285,12 @@ ship "Peregrine" "Peregrine (II)"
 		"Quantum Key Stone"
 		"Salvage Scanner"
 		"Tuning Rifle" 11
-		
+
 		"Bellows-Class Afterburner"
 		"Smelter-Class Thruster"
 		"Smelter-Class Steering"
 		"Scram Drive"
-		
+
 	gun 0 -133.5 "Teciimach Bay"
 	gun -12.5 -105 "Thrasher Cannon"
 	gun 12.5 -105 "Thrasher Cannon"
@@ -1338,14 +1338,15 @@ ship "Petrel"
 			"hit force" 350
 	outfits
 		"Inhibitor Cannon" 2
-		
+
 		"Millennium Cell" 2
 		"Crystal Capacitor"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+		"Tuning Rifle" 2
+
 		"Anvil-Class Engine"
-		
+
 	gun 0 -38.5
 	gun -10.5 -24 "Inhibitor Cannon"
 	gun 10.5 -24 "Inhibitor Cannon"
@@ -1401,10 +1402,10 @@ ship "Puffin"
 		"Millennium Cell"
 		"Emergency Ramscoop"
 		"Quantum Key Stone"
-		
+
 		"Anvil-Class Engine"
 		"Hyperdrive"
-		
+
 	engine 0 30
 	leak "remnant leak sparkle" 20 2
 	explode "tiny explosion" 8
@@ -1454,7 +1455,8 @@ ship "Smew"
 		"Millennium Cell"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+		"Tuning Rifle" 1
+
 		"Anvil-Class Engine"
 
 	engine 0 48.5
@@ -1469,11 +1471,11 @@ ship "Smew"
 ship "Smew" "Smew (Miner)"
 	outfits
 		"Thrasher Cannon"
-		
+
 		"Millennium Cell"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+
 		"Anvil-Class Engine"
 
 ship "Smew" "Smew (Runabout)"
@@ -1481,7 +1483,7 @@ ship "Smew" "Smew (Runabout)"
 		"Millennium Cell"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+
 		"Anvil-Class Engine"
 		"Hyperdrive"
 
@@ -1489,11 +1491,11 @@ ship "Smew" "Smew (Teciimach Ferry)"
 	outfits
 		"Teciimach Canister" 3
 		"Teciimach Pod"
-		
+
 		"Millennium Cell"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+
 		"Anvil-Class Engine"
 
 
@@ -1537,14 +1539,15 @@ ship "Starling"
 	outfits
 		"Inhibitor Cannon" 3
 		"Point Defense Turret"
-		
+
 		"Epoch Cell"
 		"Crystal Capacitor"
 		"Emergency Ramscoop" 2
 		"Quantum Key Stone"
 		"Salvage Scanner"
 		"Thermoelectric Cooler"
-		
+		"Tuning Rifle" 6
+
 		"Forge-Class Thruster"
 		"Forge-Class Steering"
 		"Crucible-Class Steering"
@@ -1667,6 +1670,7 @@ ship "Tern"
 		"shields" 500
 		"hull" 2500
 		"automaton" 1
+		"automated defenders" 1
 		"crew equivalent" 1
 		"cargo space" 5
 		"mass" 32
@@ -1695,13 +1699,14 @@ ship "Tern"
 			"hit force" 250
 	outfits
 		"Inhibitor Cannon"
-		
+
 		"Millennium Cell"
 		"Quantum Key Stone"
 		"Thermoelectric Cooler"
-		
+		"Tuning Rifle" 1
+
 		"Anvil-Class Engine"
-		
+
 	gun 0 -22 "Inhibitor Cannon"
 	engine -5 20.5
 	engine 5 20.5

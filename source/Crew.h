@@ -126,7 +126,7 @@ public:
 
 	class CasualtyAnalysis {
 		public:
-			CasualtyAnalysis(const ShipAnalysis &shipAnalysisBefore, const std::shared_ptr<Ship> &shipAfter);
+			CasualtyAnalysis(const std::shared_ptr<ShipAnalysis> &shipAnalysisBefore, const std::shared_ptr<Ship> &shipAfter);
 
 			std::shared_ptr<Manifest> manifestAfter;
 			std::shared_ptr<Manifest> casualtyManifest;

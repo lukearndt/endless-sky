@@ -362,6 +362,32 @@ void Government::Load(const DataNode &node)
 			defaultAttitude = child.Value(valueIndex);
 		else if(key == "player reputation")
 			initialPlayerReputation = add ? initialPlayerReputation + child.Value(valueIndex) : child.Value(valueIndex);
+		else if(key == "boarding attack strategy")
+		{
+			auto value = child.Token(valueIndex);
+			if(value == "cautious")
+				boardingAttackStrategy = Boarding::AttackStrategy::Cautious;
+			else if(value == "aggressive")
+				boardingAttackStrategy = Boarding::AttackStrategy::Aggressive;
+			else if(value == "reckless")
+				boardingAttackStrategy = Boarding::AttackStrategy::Reckless;
+			else if(value == "fanatical")
+				boardingAttackStrategy = Boarding::AttackStrategy::Fanatical;
+			else
+				child.PrintTrace("Skipping unrecognized attribute value:");
+		}
+		else if(key == "boarding defense strategy")
+		{
+			auto value = child.Token(valueIndex);
+			if(value == "repel")
+				boardingDefenseStrategy = Boarding::DefenseStrategy::Repel;
+			else if(value == "counter")
+				boardingDefenseStrategy = Boarding::DefenseStrategy::Counter;
+			else if(value == "deny")
+				boardingDefenseStrategy = Boarding::DefenseStrategy::Deny;
+			else
+				child.PrintTrace("Skipping unrecognized attribute value:");
+		}
 		else if(key == "crew attack")
 			crewAttack = max(0., add ? child.Value(valueIndex) + crewAttack : child.Value(valueIndex));
 		else if(key == "crew defense")
@@ -742,6 +768,20 @@ void Government::AddReputation(double value) const
 void Government::SetReputation(double value) const
 {
 	GameData::GetPolitics().SetReputation(this, value);
+}
+
+
+
+Boarding::AttackStrategy Government::BoardingAttackStrategy() const
+{
+  return Boarding::AttackStrategy();
+}
+
+
+
+Boarding::DefenseStrategy Government::BoardingDefenseStrategy() const
+{
+  return Boarding::DefenseStrategy();
 }
 
 

@@ -1250,6 +1250,19 @@ tip "View star map"
 tip "View player info"
 	`Open the player info panel.`
 
+tip "Toggle boarding attack strategy"
+	`Changes the strategy used by your escorts to determine whether or not they will attack during boarding actions:`
+	`Cautious: Only attack if victory is assured and no friendly casualties are expected.`
+	`Aggressive: Attack if victory is assured and expected casualties don't exceed extra crew.`
+	`Reckless: Attack if victory is likely, regardless of the casualties.`
+	`This setting is only used when boarding actions are resolved automatically, not when you direct them yourself with the Boarding Panel."
+
+tip "Toggle boarding defense strategy"
+	`Changes the strategy that your escorts defend themselves during boarding actions:`
+	`Repel: Focus on preventing enemy invaders from taking over the ship.`
+	`Counter: As Repel, but also try to lure enemies into the ship's defenses before attacking.`
+	`This setting is only used when boarding actions are resolved automatically, not when you direct them yourself with the Boarding Panel."
+
 tip "Select nearest hostile ship"
 	`Select the nearest hostile ship.`
 	`With <shift>, select the nearest ship regardless of hostility.`
@@ -1313,7 +1326,7 @@ tip "Fleet: Capture enemy ship(s)"
 	`Each escort that has extra crew members available will board the target once it becomes disabled. The ship will then execute the current boarding combat strategy that you have set. If they take control of the ship, it will be captured and added to your fleet.`
 	`If you don't have a target selected, your fleet will fight hostile ships as normal, but escorts that have extra crew members board will any enemy ships that become disabled and assess them for capture.`
 	`Ships with this command will also attempt to board and repair any disabled friendly ships in the system, at a lower priority than defending themselves. If you target a specific disabled friendly ship, your fleet will attempt to board and repair it instead of capturing.`
-	`If you hold <shift> while issuing this command against a target, your fleet will attack it even if it's friendly, although they won't attack a member of your fleet. When an escort boards the target, the Boarding Panel will open and you can choose what to do next.`
+	`If you hold <shift>, you can control each boarding action directly via the boarding panel. If you target a disabled ship, your escorts will board it even if it's friendly.`
 
 tip "Fleet: Fight my target"
 	`Command your entire fleet to focus fire on the selected target. If only some escorts are selected, only sends the command to those escorts. This command can also be sent by right clicking on a hostile ship.`
@@ -1340,12 +1353,13 @@ tip "Fleet: Plunder enemy ship(s)"
 	`If the boarding ship has extra crew members available and doesn't expect any casualties, they will attempt to gain full control over the target ship and plunder its internal systems.`
 	`If you don't have a target selected, your fleet will fight hostile ships as normal, but escorts that have free cargo space will also plunder enemy ships that become disabled.`
 	`Ships with this command will also attempt to board and repair any disabled friendly ships in the system, at a lower priority than defending themselves. If you target a specific disabled friendly ship, your fleet will attempt to board and repair it instead of capturing.`
-	`If you hold <shift> while issuing this command against a target, your fleet will attack it even if it's friendly, although they won't attack a member of your fleet. Your escorts will also be willing to accept casualties when they board it, as long as those casualties don't exceed the number of extra crew members.`
+	`If you hold <shift>, you can each boarding attempt will open the boarding panel so that you can control it. If you target a disabled ship, your escorts will board it even if it's friendly.`
 
 tip "Fleet: Transfer crew members"
 	`Command your fleet to transfer their extra crew members to any other ships in the fleet that don't enough crew to function properly. If only some escorts are selected, only sends the command to those escorts.`
-	`An escort can only follow this command if it has extra crew members to spare. To complete the transfer, the escort must board the target ship. Ships that normally hire extra crew members will only be transferred enough crew members to meet their required amounts.`
-	`If you hold <shift>, this instead commands your entire fleet to transfer its extra crew members to only the target escorts. If you don't have an escort selected, they will transfer their extra crew to your flagship. With this mode active, ships that hire extra crew members will be given as many as possible.`
+	`An escort can only follow this command if it has extra crew members to spare. To complete the transfer, the escort must board the other ship. Ships that normally hire extra crew members will only be transferred enough crew members to meet their required amounts.`
+	`With <shift>, this instead commands the selected escorts to transfer their extra crew members to your current flagship.`
+	`If hold <shift> with a single escort selected, this instead commands your flagship to board that escort and transfer you to it. This turns that escort into your flagship, allowing you to pilot it directly. If your new flagship normally hires extra crew members, they will transfer with you to fill any empty bunks on the new flagship.`
 
 
 # Settings

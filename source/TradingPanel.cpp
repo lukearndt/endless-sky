@@ -170,6 +170,8 @@ void TradingPanel::Draw()
 
 		if(price)
 		{
+			int low = commodity.Low();
+			int high = commodity.High();
 			canBuy |= isSelected;
 			font.Draw(to_string(price), Point(MIN_X + PRICE_X, y), color);
 
@@ -180,13 +182,13 @@ void TradingPanel::Draw()
 				font.Draw(profit, Point(MIN_X + PROFIT_X, y), color);
 				showProfit = true;
 			}
-			int level = (price - commodity.low);
+			int level = (price - low);
 			if(level < 0)
 				level = 0;
-			else if(level >= (commodity.high - commodity.low))
+			else if(level >= (high - low))
 				level = 4;
 			else
-				level = (5 * level) / (commodity.high - commodity.low);
+				level = (5 * level) / (high - low);
 			font.Draw(TRADE_LEVEL[level], Point(MIN_X + LEVEL_X, y), color);
 
 			font.Draw("[buy]", Point(MIN_X + BUY_X, y), color);

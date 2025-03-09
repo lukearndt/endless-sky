@@ -41,20 +41,20 @@ ship "Rano'erek"
 		"Banisher Grav-Turret"
 		"Warder Anti-Missile"
 		"Digger Mining Turret" 3
-		
+
 		"Systems Core (Large)"
 		"Triple Plasma Core"
 		"Large Heat Shunt" 2
 		"Small Heat Shunt"
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 190
-		
+
 		"Reverser (Lunar Class)"
 		"Steering (Planetary Class)"
 		"Thruster (Planetary Class)"
 		"Scram Drive"
 		"Jump Drive"
-		
+
 	turret 0 -153 "Grab-Strike Turret"
 	turret -37.5 -152.5 "Digger Mining Turret"
 	turret 37.5 -152.5 "Grab-Strike Turret"
@@ -125,7 +125,7 @@ ship "Palavret"
 		"Firelight Missile Bank" 2
 		"Firelight Storage Rack"
 		"Firelight Missile" 50
-		
+
 		"Double Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Medium)"
@@ -133,12 +133,12 @@ ship "Palavret"
 		"Small Heat Shunt" 3
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 196
-		
+
 		"Thruster (Planetary Class)"
 		"Steering (Planetary Class)"
 		"Bow Drive (Meteor Class)"
 		"Jump Drive"
-	
+
 	engine -20 127
 	engine 20 127
 	"reverse engine" -9 -154
@@ -201,19 +201,19 @@ ship "Tubfalet"
 		"Fire-Lance"
 		"Firelight Missile Bank" 2
 		"Firelight Missile" 40
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Medium)"
 		"Large Heat Shunt" 2
 		"Small Heat Shunt" 2
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 196
-		
+
 		"Thruster (Planetary Class)"
 		"Thruster (Lunar Class)"
 		"Steering (Planetary Class)"
 		"Jump Drive"
-	
+
 	engine -20 132
 		over
 	engine 20 132
@@ -380,14 +380,14 @@ ship "'olofez"
 			"hit force" 480
 	outfits
 		"Fire-Lance"
-		
+
 		"Generator (Furnace Class)"
 		"Small Heat Shunt"
 		"Thermal Repeater Rifle"
-		
+
 		"Thruster (Asteroid Class)"
 		"Steering (Asteroid Class)"
-	
+
 	engine -7 23
 	engine 7 23
 	gun 0 -28 "Fire-Lance"
@@ -405,6 +405,7 @@ ship "Kas'ik Tek 7"
 		"shields" 1400
 		"hull" 800
 		"automaton" 1
+		"automated defenders" 1
 		"crew equivalent" 1
 		"mass" 21
 		"drag" 0.6
@@ -428,6 +429,7 @@ ship "Kas'ik Tek 7"
 		"Generator (Candle Class)"
 		"Small Heat Shunt"
 		"Engine (Meteor Class)"
+		"Thermal Repeater Rifle" 1
 	engine 0 22.5
 	engine -8.5 25
 	engine 8.5 25
@@ -623,7 +625,7 @@ ship "Lor'kas Ik 577"
 		"Warder Anti-Missile" 4
 		"Grab-Strike Turret" 2
 		"Expeller Grav-Ray" 2
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Medium)"
 		"Large Heat Shunt" 2
@@ -631,11 +633,11 @@ ship "Lor'kas Ik 577"
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 238
 		"Microbot Defense Station" 15
-		
+
 		"Thruster (Stellar Class)"
 		"Steering (Planetary Class)"
 		"Scram Drive"
-	
+
 	engine -37 333 .8
 	engine 0 333 .8
 	engine 37 333 .8
@@ -703,7 +705,7 @@ ship "Ra'gru Ik 618"
 		"Blaze-Pike Turret" 2
 		"Firelight Missile Bank" 2
 		"Firelight Missile" 36
-		
+
 		"Triple Plasma Core"
 		"Plasma Core"
 		"Systems Core (Large)"
@@ -713,11 +715,11 @@ ship "Ra'gru Ik 618"
 		"Brig"
 		"Microbot Defense Station" 13
 		"Thermal Repeater Rifle" 794
-		
+
 		"Thruster (Stellar Class)"
 		"Steering (Stellar Class)"
 		"Jump Drive"
-	
+
 	engine -37 333 .7
 	engine 0 333 .7
 	engine 37 333 .7
@@ -784,18 +786,18 @@ ship "Kas'lor Ik 582"
 		"Langrage Hyper-Heaver" 2
 		"Banisher Grav-Turret" 3
 		"Warder Anti-Missile" 3
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Large)"
 		"Liquid Sodium Cooler"
 		"Fuel Processor" 6
 		"Thermal Repeater Rifle" 317
 		"Microbot Defense Station" 4
-		
+
 		"Thruster (Planetary Class)"
 		"Steering (Planetary Class)"
 		"Scram Drive"
-	
+
 	engine -37 333 .8
 	engine 0 333 .8
 	engine 37 333 .8
@@ -858,7 +860,7 @@ ship "Lor'nag Ik 590"
 		"Banisher Grav-Turret" 3
 		"Warder Anti-Missile" 2
 		"Digger Mining Beam" 2
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Large)"
 		"Large Heat Shunt" 2
@@ -867,11 +869,11 @@ ship "Lor'nag Ik 590"
 		"Brig"
 		"Microbot Defense Station" 17
 		"Thermal Repeater Rifle" 272
-		
+
 		"Thruster (Stellar Class)"
 		"Steering (Planetary Class)"
 		"Scram Drive"
-	
+
 	engine -37 333 .8
 	engine 0 333 .8
 	engine 37 333 .8
@@ -933,7 +935,7 @@ ship "Ra'at Ik 621"
 		"Banisher Grav-Turret" 2
 		"Warder Anti-Missile" 2
 		"Fire-Lance" 3
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Large)"
 		"Large Heat Shunt" 2
@@ -941,12 +943,12 @@ ship "Ra'at Ik 621"
 		"Fuel Processor"
 		"Microbot Defense Station" 12
 		"Thermal Repeater Rifle" 799
-		
+
 		"Reverser (Lunar Class)"
 		"Thruster (Stellar Class)"
 		"Steering (Stellar Class)"
 		"Jump Drive"
-	
+
 	engine -42 343 .6
 	engine -22 343 .6
 	engine -22 343 .6
@@ -1020,7 +1022,7 @@ ship "Kasichara A'awoj"
 		"Banisher Grav-Turret" 3
 		"Warder Anti-Missile" 3
 		"Grab-Strike Turret" 2
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Large)"
 		"Systems Core (Small)"
@@ -1030,13 +1032,13 @@ ship "Kasichara A'awoj"
 		"Luxury Accommodations"
 		"Microbot Defense Station" 23
 		"Thermal Repeater Rifle" 548
-		
+
 		"Afterburner (Comet Class)"
 		"Reverser (Lunar Class)"
 		"Thruster (Stellar Class)"
 		"Steering (Planetary Class)"
 		"Scram Drive"
-	
+
 	engine -37 343 .8
 	engine 0 343 .8
 	engine 37 343 .8
@@ -1103,7 +1105,7 @@ ship "Korsmanath A'awoj"
 		"Fuel Processor" 7
 		"Thermal Repeater Rifle" 1954
 		"Microbot Defense Station" 214
-		
+
 		"Afterburner (Stellar Class)"
 		"Reverser (Stellar Class)"
 		"Thruster (Stellar Class)"
@@ -1325,14 +1327,14 @@ ship "Echo-Galleon"
 		"Grab-Strike Turret" 2
 		"Banisher Grav-Turret"
 		"Warder Anti-Missile" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Large)"
 		"Large Heat Shunt"
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 246
-		
+
 		"Nelmeb GP Hybrid Thruster"
 		"Nelmeb GP Hybrid Steering"
 		"Scram Drive"
@@ -1389,14 +1391,14 @@ ship "Arch-Carrack"
 		"Banisher Grav-Turret" 1
 		"Digger Mining Beam" 2
 		"Warder Anti-Missile" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Furnace Class)"
 		"Systems Core (Large)"
 		"Large Heat Shunt"
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 55
-		
+
 		"Gaktem GP Hybrid Thruster"
 		"Farves GP Hybrid Thruster"
 		"Gaktem GP Hybrid Steering"
@@ -1452,14 +1454,14 @@ ship "Charm-Shallop"
 		"Digger Mining Beam" 3
 		"Warder Anti-Missile"
 		"Banisher Grav-Turret"
-		
+
 		"Double Plasma Core"
 		"Generator (Candle Class)"
 		"Systems Core (Medium)"
 		"Large Heat Shunt"
 		"Fuel Processor"
 		"Thermal Repeater Rifle" 66
-		
+
 		"Gaktem GP Hybrid Thruster"
 		"Gaktem GP Hybrid Steering"
 		"Scram Drive"
@@ -1490,6 +1492,7 @@ ship "Kar Ik Vot 349"
 		"shields" 57200
 		"hull" 65400
 		"automaton" 1
+		"automated defenders" 150
 		"crew equivalent" 150
 		"mass" 3754
 		"drag" 33.6
@@ -1513,18 +1516,19 @@ ship "Kar Ik Vot 349"
 		"Piercer Missile Rack" 2
 		"Warder Anti-Missile" 2
 		"Thermal Repeater Turret" 6
-		
+
 		"Triple Plasma Core"
 		"Plasma Core"
 		"Systems Core (Large)"
 		"Large Heat Shunt" 4
 		"Small Heat Shunt" 2
 		"Control Transceiver"
-		
+		"Thermal Repeater Rifle" 150
+
 		"Thruster (Planetary Class)"
 		"Steering (Stellar Class)"
 		Hyperdrive
-	
+
 	engine -24 237
 	engine 24 237
 	gun -8 -212 "Korath Detainer"
@@ -1557,6 +1561,7 @@ ship "Tek Far 71 - Lek"
 		"shields" 25400
 		"hull" 29500
 		"automaton" 1
+		"automated defenders" 50
 		"crew equivalent" 50
 		"mass" 1240
 		"drag" 14.9
@@ -1579,17 +1584,18 @@ ship "Tek Far 71 - Lek"
 		"Piercer Missile" 62
 		"Banisher Grav-Turret"
 		"Warder Anti-Missile" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Furnace Class)"
 		"Systems Core (Medium)"
 		"Large Heat Shunt"
 		"Control Transceiver"
-		
+		"Thermal Repeater Rifle" 50
+
 		"Thruster (Lunar Class)"
 		"Steering (Lunar Class)"
-		"Hyperdrive"
-	
+		Hyperdrive
+
 	engine -9 219
 	engine 9 219
 	gun 10 -180 "Korath Detainer"
@@ -1637,6 +1643,7 @@ ship "Tek Far 78 - Osk"
 		"shields" 27600
 		"hull" 34100
 		"automaton" 1
+		"automated defenders" 50
 		"crew equivalent" 50
 		"mass" 1471
 		"drag" 16.3
@@ -1659,17 +1666,18 @@ ship "Tek Far 78 - Osk"
 		"Piercer Missile" 93
 		"Banisher Grav-Turret"
 		"Warder Anti-Missile" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Medium)"
 		"Large Heat Shunt"
 		"Control Transceiver"
-		
+		"Thermal Repeater Rifle" 50
+
 		"Thruster (Lunar Class)"
 		"Steering (Planetary Class)"
 		Hyperdrive
-	
+
 	engine -9 245
 	engine 9 245
 	gun 0 -239 "Korath Detainer"
@@ -1717,6 +1725,7 @@ ship "Tek Far 109"
 		"shields" 17900
 		"hull" 15800
 		"automaton" 1
+		"automated defenders" 100
 		"crew equivalent" 100
 		"mass" 1056
 		"drag" 13.7
@@ -1738,16 +1747,17 @@ ship "Tek Far 109"
 		"Piercer Missile Launcher" 2
 		"Piercer Missile" 62
 		"Banisher Grav-Turret" 2
-		
+
 		"Double Plasma Core"
 		"Systems Core (Medium)"
 		"Small Heat Shunt" 2
 		"Control Transceiver"
-		
+		"Thermal Repeater Rifle" 100
+
 		"Thruster (Lunar Class)"
 		"Steering (Planetary Class)"
 		Hyperdrive
-	
+
 	engine -9 205
 	engine 9 205
 	gun 0 -214 "Korath Detainer"
@@ -1805,6 +1815,7 @@ ship "Met Par Tek 53"
 		"shields" 15100
 		"hull" 22200
 		"automaton" 1
+		"automated defenders" 25
 		"crew equivalent" 25
 		"mass" 935
 		"drag" 8.6
@@ -1824,17 +1835,18 @@ ship "Met Par Tek 53"
 	outfits
 		"Thermal Repeater" 3
 		"Thermal Repeater Turret" 6
-		
+
 		"Double Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Medium)"
 		"Large Heat Shunt" 3
 		"Control Transceiver"
-		
+		"Thermal Repeater Rifle" 25
+
 		"Thruster (Lunar Class)"
 		"Steering (Planetary Class)"
-		"Hyperdrive"
-	
+		Hyperdrive
+
 	engine -24 132
 	engine 24 132
 	gun 0 -92 "Thermal Repeater"
@@ -1864,6 +1876,7 @@ ship "Far Lek 14"
 		"shields" 900
 		"hull" 1600
 		"automaton" 1
+		"automated defenders" 1
 		"crew equivalent" 1
 		"mass" 26
 		"drag" .8
@@ -1879,13 +1892,14 @@ ship "Far Lek 14"
 			"hit force" 75
 	outfits
 		"Thermal Repeater"
-		
+
 		"Generator (Candle Class)"
 		"Small Heat Shunt"
-		
+		"Thermal Repeater Rifle" 1
+
 		"Thruster (Asteroid Class)"
 		"Steering (Asteroid Class)"
-		
+
 	engine -2 28
 	engine 8 28
 	gun 0 -30
@@ -1904,6 +1918,7 @@ ship "Far Osk 27"
 		"shields" 1500
 		"hull" 2400
 		"automaton" 1
+		"automated defenders" 2
 		"crew equivalent" 2
 		"mass" 34
 		"drag" 1.1
@@ -1919,13 +1934,15 @@ ship "Far Osk 27"
 			"hit force" 180
 	outfits
 		"Thermal Repeater" 2
-		
+
 		"Generator (Furnace Class)"
 		"Small Heat Shunt" 2
-		
+		"Thermal Repeater Rifle" 2
+
 		"Thruster (Asteroid Class)"
 		"Steering (Asteroid Class)"
-		
+
+
 	engine -4 37
 	engine 4 37
 	gun 7 -15
@@ -1946,6 +1963,7 @@ ship "Model 8"
 		"shields" 5450
 		"hull" 3320
 		"automaton" 1
+		"automated defenders" 5
 		"crew equivalent" 5
 		"mass" 160
 		"drag" 3.7
@@ -1964,16 +1982,17 @@ ship "Model 8"
 			"hit force" 1800
 	outfits
 		"Husk-Slice"
-		
+
 		"Generator (Furnace Class)"
 		"Generator (Candle Class)"
 		"Systems Core (Small)"
 		"Reasoning Node"
-		
+		"Thermal Repeater Rifle" 5
+
 		"Thruster (Comet Class)"
 		"Steering (Lunar Class)"
 		Hyperdrive
-	
+
 	engine -11 49
 	engine 11 49
 	gun 9 -36 "Husk-Slice"
@@ -1993,6 +2012,7 @@ ship "Model 16"
 		"shields" 15700
 		"hull" 9800
 		"automaton" 1
+		"automated defenders" 10
 		"crew equivalent" 10
 		"mass" 390
 		"drag" 8.3
@@ -2014,17 +2034,18 @@ ship "Model 16"
 		"Cluster Mine" 17
 		"Shield Disruptor Turret"
 		"Husk-Slice Turret"
-		
+
 		"Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Small)"
 		"Small Heat Shunt"
 		"Reasoning Node"
-		
+		"Thermal Repeater Rifle" 10
+
 		"Thruster (Planetary Class)"
 		"Steering (Lunar Class)"
 		Hyperdrive
-	
+
 	engine -10 99
 	engine 10 99
 	gun 0 -99 "Cluster Mine Layer"
@@ -2047,6 +2068,7 @@ ship "Model 32"
 		"shields" 27900
 		"hull" 13400
 		"automaton" 1
+		"automated defenders" 25
 		"crew equivalent" 25
 		"mass" 625
 		"drag" 11.7
@@ -2068,13 +2090,14 @@ ship "Model 32"
 		"Cluster Mine" 17
 		"Shield Disruptor Turret"
 		"Husk-Slice Turret" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Candle Class)"
 		"Systems Core (Small)"
 		"Small Heat Shunt"
 		"Reasoning Node"
-		
+		"Thermal Repeater Rifle" 25
+
 		"Thruster (Planetary Class)"
 		"Steering (Lunar Class)"
 		Hyperdrive
@@ -2102,6 +2125,7 @@ ship "Model 64"
 		"shields" 41700
 		"hull" 18000
 		"automaton" 1
+		"automated defenders" 50
 		"crew equivalent" 50
 		"mass" 1096
 		"drag" 16.1
@@ -2124,17 +2148,18 @@ ship "Model 64"
 		"Cluster Mine Rack" 2
 		"Shield Disruptor Turret" 2
 		"Husk-Slice Turret" 2
-		
+
 		"Double Plasma Core"
 		"Generator (Furnace Class)"
 		"Systems Core (Medium)"
 		"Reasoning Node" 2
-		
+		"Thermal Repeater Rifle" 50
+
 		"Thruster (Lunar Class)"
 		"Thruster (Asteroid Class)"
 		"Steering (Planetary Class)"
 		Hyperdrive
-	
+
 	engine -19 159
 	engine 19 159
 	gun 0 -159 "Cluster Mine Layer"
@@ -2159,6 +2184,7 @@ ship "Model 128"
 		"shields" 57000
 		"hull" 23100
 		"automaton" 1
+		"automated defenders" 75
 		"crew equivalent" 75
 		"mass" 1601
 		"drag" 20.5
@@ -2180,12 +2206,13 @@ ship "Model 128"
 		"Cluster Mine" 34
 		"Shield Disruptor Turret" 2
 		"Husk-Slice Turret" 3
-		
+
 		"Double Plasma Core"
 		"Generator (Inferno Class)"
 		"Systems Core (Medium)"
 		"Reasoning Node" 2
-		
+		"Thermal Repeater Rifle" 75
+
 		"Thruster (Planetary Class)"
 		"Steering (Planetary Class)"
 		"Steering (Asteroid Class)"
@@ -2217,6 +2244,7 @@ ship "Model 256"
 		"shields" 71700
 		"hull" 28700
 		"automaton" 1
+		"automated defenders" 100
 		"crew equivalent" 100
 		"mass" 2340
 		"drag" 26.8
@@ -2239,12 +2267,13 @@ ship "Model 256"
 		"Cluster Mine Rack" 3
 		"Shield Disruptor Turret" 3
 		"Husk-Slice Turret" 3
-		
+
 		"Triple Plasma Core"
 		"Systems Core (Large)"
 		"Large Heat Shunt"
 		"Reasoning Node" 3
-		
+		"Thermal Repeater Rifle" 100
+
 		"Thruster (Planetary Class)"
 		"Steering (Planetary Class)"
 		"Steering (Comet Class)"
@@ -2277,6 +2306,7 @@ ship "Model 512"
 		"shields" 86400
 		"hull" 34200
 		"automaton" 1
+		"automated defenders" 150
 		"crew equivalent" 150
 		"mass" 3186
 		"drag" 33.9
@@ -2299,14 +2329,15 @@ ship "Model 512"
 		"Cluster Mine Rack" 2
 		"Shield Disruptor Turret" 3
 		"Husk-Slice Turret" 4
-		
+
 		"Triple Plasma Core"
 		"Plasma Core"
 		"Systems Core (Large)"
 		"Large Heat Shunt"
 		"Small Heat Shunt" 2
 		"Reasoning Node" 3
-		
+		"Thermal Repeater Rifle" 150
+
 		"Thruster (Planetary Class)"
 		"Steering (Stellar Class)"
 		Hyperdrive

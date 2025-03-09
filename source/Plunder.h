@@ -26,7 +26,7 @@ class Outfit;
 class Ship;
 
 
-// This class represents an item that can be plundered from a disabled ship.
+// This class represents an item that can be plundered from a ship.
 class Plunder {
 public:
 	// Plunder can be either outfits or commodities.
@@ -35,19 +35,18 @@ public:
 
 	class Session {
 	public:
-		Session(std::shared_ptr<Ship> &victim, Ship * attacker, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
+		Session(std::shared_ptr<Ship> &target, std::shared_ptr<Ship> &attacker, const std::vector<std::shared_ptr<Ship>> &attackerFleet);
 
-		// Get the list of items that can be plundered from the victim ship.
-		static std::vector<Plunder> BuildPlunderList(const std::shared_ptr<Ship> &ship);
+		static std::vector<std::shared_ptr<Plunder>> BuildPlunderList(const std::shared_ptr<Ship> &ship);
 
-		// Get the list of items that can be plundered from the victim ship.
-		const std::vector<Plunder> &GetPlunder() const;
-		const Plunder &GetPlunder(int index) const;
+		// Get the list of items that can be plundered from the target ship.
+		const std::vector<std::shared_ptr<Plunder>> &RemainingPlunder() const;
 
-		// Take as much valuable plunder as possible from the victim ship.
-		void Raid();
+		// Take as much valuable plunder as possible from the target ship.
+		// TODO: Move to BoardingCombat.
+		// void Raid();
 
-		// Take an item from the victim and give it on the attacker.
+		// Take an item from the target and give it on the attacker.
 		// If no quantity is specified, take as many as possible.
 		// Returns how many were successfully taken.
 		int Take(int index, bool pruneList = false, int quantity = -1);
@@ -55,10 +54,10 @@ public:
 		// Get a message describing the result of the plunder session.
 		const std::string GetSummary() const;
 
-		// Get a list of all of the plunder that was taken.
-		const std::vector<Plunder> &GetTaken() const;
+		// Get a list of all of the plunder that has been taken.
+		const std::vector<std::shared_ptr<Plunder>> &TakenPlunder() const;
 
-		// Refresh the list of plunder that can be taken. Call this if the victim
+		// Refresh the list of plunder that can be taken. Call this if the target
 		// has been successfully boarded and all its crew members killed.
 
 		// Get the total mass of the plunder that was taken.
@@ -74,19 +73,15 @@ public:
 		int64_t TotalValueTaken() const;
 
 	private:
-		Ship * attacker;
+		std::shared_ptr<Ship> attacker;
 		std::vector<std::shared_ptr<Ship>> attackerFleet;
-		std::shared_ptr<Ship> victim;
-		std::vector<Plunder> plunder;
-		std::vector<Plunder> taken;
+		std::shared_ptr<Ship> target;
+		std::vector<std::shared_ptr<Plunder>> remaining;
+		std::vector<std::shared_ptr<Plunder>> taken;
 		int64_t totalCommodityMassTaken;
 		int64_t totalMassTaken;
 		int64_t totalOutfitsTaken;
 		int64_t totalValueTaken;
-		// This is used to keep track of whether or not the list of plunder
-		// was generated assuming that the victim had crew to defend it.
-		// If the victim has no crew, the attacker can plunder everything.
-		bool usedLimitedAccess;
 	};
 
 	// Sort by value per ton of mass.
@@ -109,13 +104,13 @@ public:
 
 	// If this is an outfit, get the outfit. Otherwise, this returns null.
 	const Outfit *GetOutfit() const;
-	// Find out how many of these I can take if I have this amount of cargo
-	// space free.
-	bool CanTake(const Ship &ship) const;
+
+	bool HasEnoughSpace(const std::shared_ptr<Ship> &ship) const;
+
+	bool RequiresConquest() const;
 
 protected:
-	// Used by Plunder::Session to update the count when an item is taken.
-	void Remove(int count);
+	int UpdateCount(int amount);
 
 private:
 	void UpdateStrings();

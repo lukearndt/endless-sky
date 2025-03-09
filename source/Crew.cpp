@@ -377,16 +377,16 @@ Crew::FleetAnalysis::FleetAnalysis(int combatLevel, int creditScore, int license
  * @param shipAfter A shared pointer to the ship after the change.
  * @return A Crew::CasualtyAnalysis object containing an analysis of the lost crew.
  */
-Crew::CasualtyAnalysis::CasualtyAnalysis(const ShipAnalysis &shipAnalysisBefore, const std::shared_ptr<Ship> &shipAfter) :
+Crew::CasualtyAnalysis::CasualtyAnalysis(const shared_ptr<ShipAnalysis> &shipAnalysisBefore, const shared_ptr<Ship> &shipAfter) :
 	manifestAfter(
 		shipAfter->IsDestroyed()
 		?	make_shared<Manifest>()
-		:	BuildManifestReport(shipAfter, shipAnalysisBefore.isFlagship)->at(ReportDimension::Actual)
+		:	BuildManifestReport(shipAfter, shipAnalysisBefore->isFlagship)->at(ReportDimension::Actual)
 	),
 	casualtyManifest(
 		shipAfter->IsDestroyed()
-		?	shipAnalysisBefore.manifestReport->at(ReportDimension::Actual)
-		: ManifestDifference(shipAnalysisBefore.manifestReport->at(ReportDimension::Actual), manifestAfter)
+		?	shipAnalysisBefore->manifestReport->at(ReportDimension::Actual)
+		: ManifestDifference(shipAnalysisBefore->manifestReport->at(ReportDimension::Actual), manifestAfter)
 	),
 	casualtyCount(0),
 	deathBenefits(0),

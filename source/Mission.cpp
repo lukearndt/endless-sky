@@ -21,6 +21,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "DistanceMap.h"
 #include "text/Format.h"
 #include "GameData.h"
+#include "Gamerules.h"
 #include "Government.h"
 #include "Logger.h"
 #include "Messages.h"
@@ -716,6 +717,13 @@ bool Mission::FailIfDiscovered() const
 int Mission::Passengers() const
 {
 	return passengers;
+}
+
+
+
+int64_t Mission::ApparentPayment() const
+{
+	return paymentApparent * GameData::GetGamerules().MissionPaymentMultiplier();
 }
 
 

@@ -106,6 +106,7 @@ public:
 	std::string FineMessage() const;
 	bool FailIfDiscovered() const;
 	int Passengers() const;
+	int64_t ApparentPayment() const;
 	int64_t DisplayedPayment() const;
 	// The mission should take this many jumps.
 	// Only matters to available jobs (not saved to file)

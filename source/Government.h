@@ -15,6 +15,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Boarding.h"
 #include "Color.h"
 #include "ExclusiveItem.h"
 #include "LocationFilter.h"
@@ -135,6 +136,10 @@ public:
 	void AddReputation(double value) const;
 	void SetReputation(double value) const;
 
+	// Get the government's boarding attack/defense strategy.
+	Boarding::AttackStrategy BoardingAttackStrategy() const;
+	Boarding::DefenseStrategy BoardingDefenseStrategy() const;
+
 	// Get the government's crew attack/defense values
 	double CrewAttack() const;
 	double CrewDefense() const;
@@ -177,6 +182,8 @@ private:
 	std::string language;
 	bool sendUntranslatedHails = false;
 	std::vector<RaidFleet> raidFleets;
+	Boarding::AttackStrategy boardingAttackStrategy = Boarding::AttackStrategy::Cautious;
+	Boarding::DefenseStrategy boardingDefenseStrategy = Boarding::DefenseStrategy::Repel;
 	double crewAttack = 1.;
 	double crewDefense = 2.;
 	bool provokedOnScan = false;

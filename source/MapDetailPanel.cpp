@@ -541,14 +541,14 @@ void MapDetailPanel::DrawKey()
 		// Each system is colored by the selected commodity's price. Draw
 		// four distinct colors and the price each color represents.
 		const vector<Trade::Commodity> &commodities = GameData::Commodities();
-		const auto &range = commodities[commodity];
+		const auto &com = commodities[commodity];
 		if(static_cast<unsigned>(commodity) >= commodities.size())
 			return;
 
 		for(int i = 0; i <= 3; ++i)
 		{
 			RingShader::Draw(pos, OUTER, INNER, MapColor(i * (2. / 3.) - 1.));
-			int price = range.low + ((range.high - range.low) * i) / 3;
+			int price = com.Low() + ((com.High() - com.Low()) * i) / 3;
 			font.Draw(to_string(price), pos + textOff, dim);
 			pos.Y() += 20.;
 		}

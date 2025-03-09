@@ -29,6 +29,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Government.h"
 #include "Information.h"
 #include "Interface.h"
+#include "Logger.h"
 #include "Messages.h"
 #include "PlayerInfo.h"
 #include "Preferences.h"
@@ -60,15 +61,26 @@ namespace {
 
 
 // Constructor.
-BoardingPanel::BoardingPanel(PlayerInfo &player, shared_ptr<Ship> &victim)
-	: player(player), you(player.FlagshipPtr()), victim(victim),
-	attackOdds(*you, *victim), defenseOdds(*victim, *you), plunderSession(victim, player.Flagship(), player.Ships()),
-	shipAnalysisBefore(player.FlagshipPtr(), true)
+BoardingPanel::BoardingPanel(
+	PlayerInfo &player,
+	shared_ptr<Ship> &boarder,
+	shared_ptr<Ship> &target
+) :
+	combat(BoardingCombat(player, boarder, target)),
+	player(player),
+	boarder(boarder),
+	target(target),
+	isPlayerBoarder(boarder->IsYours()),
+	report(
+		isPlayerBoarder
+			? combat.GetHistory()->back()->boarderSituationReport
+			: combat.GetHistory()->back()->targetSituationReport
+	)
 {
 	// The escape key should close this panel rather than bringing up the main menu.
 	SetInterruptible(false);
 
-	canCapture = victim->IsCapturable() || player.CaptureOverriden(victim);
+	canCapture = target->IsCapturable() || player.CaptureOverriden(target);
 	// Some "ships" do not represent something the player could actually pilot.
 	if(!canCapture)
 		messages.emplace_back("This is not a ship that you can capture.");
@@ -86,6 +98,7 @@ void BoardingPanel::Draw()
 	const Color &opaque = *GameData::Colors().Get("panel background");
 	const Color &back = *GameData::Colors().Get("faint");
 	const Color &dim = *GameData::Colors().Get("dim");
+	const Color &dimmer = *GameData::Colors().Get("dimmer");
 	const Color &medium = *GameData::Colors().Get("medium");
 	const Color &bright = *GameData::Colors().Get("bright");
 	FillShader::Fill(Point(-155., -60.), Point(360., 250.), opaque);
@@ -99,21 +112,29 @@ void BoardingPanel::Draw()
 	double fontOff = .5 * (20 - font.Height());
 	// TODO: Placeholder until the boarding UI png is updated.
 	// bool canTakeSomething = false;
-	for( ; y < endY && static_cast<unsigned>(index) < plunderSession.GetPlunder().size(); y += 20, ++index)
+
+
+	shared_ptr<Ship> playerShip = report->ship;
+
+	for( ; y < endY && static_cast<unsigned>(index) < report->plunderOptions.size(); y += 20, ++index)
 	{
-		const Plunder &item = plunderSession.GetPlunder(index);
+		const Plunder &item = *report->plunderOptions.at(index);
 
 		// Check if this is the selected row.
-		bool isSelected = (index == selected);
+		bool isSelected = (index == plunderIndex);
 		if(isSelected)
 			FillShader::Fill(Point(-155., y + 10.), Point(360., 20.), back);
 
 		// Color the item based on whether you have space for it.
-		bool canTake = item.CanTake(*you);
-		// TODO: Placeholder until the boarding UI png is updated.
-		// if(canTake)
-		// 	canTakeSomething = true;
-		const Color &color = canTake ? isSelected ? bright : medium : dim;
+		bool hasSpace = item.HasEnoughSpace(playerShip);
+		// Also color the item based on whether or not it's accessible.
+		bool isAccessible = report->isEnemyConquered || !item.RequiresConquest();
+
+		const Color &color = hasSpace
+			? isAccessible
+				? isSelected ? bright : medium
+				: dim
+			: dimmer;
 		Point pos(-320., y + fontOff);
 		font.Draw(item.Name(), pos, color);
 		font.Draw({item.Value(), {260, Alignment::RIGHT}}, pos, color);
@@ -122,58 +143,35 @@ void BoardingPanel::Draw()
 
 	// Set which buttons are active.
 	info.ClearConditions();
-	if(CanExit())
+	if(CanLeave())
 		info.SetCondition("can exit");
 	// TODO: The boarding UI png needs to be updated to include a "raid" button.
 	// This is a placeholder until that has been done.
 	// if(CanRaid(true, canTakeSomething))
 	// 	info.SetCondition("can raid");
-	if(CanTake())
+	if(CanPlunderSelected())
 		info.SetCondition("can take");
 	if(CanCapture())
 		info.SetCondition("can capture");
-	if(CanAttack() && (you->Crew() > 1 || !victim->RequiredCrew()))
+	if(CanAttack())
 		info.SetCondition("can attack");
 	if(CanAttack())
 		info.SetCondition("can defend");
 
-	// This should always be true, but double check.
-	int crew = 0;
-	if(you)
+	info.SetString("cargo space", to_string(report->cargoSpace));
+	info.SetString("your crew", to_string(report->crew));
+	info.SetString("your attack", Round(report->attackPower));
+	info.SetString("your defense", Round(report->defensePower));
+	info.SetString("enemy crew", to_string(report->enemyCrew));
+	info.SetString("enemy attack", Round(report->enemyAttackPower));
+	info.SetString("enemy defense", Round(report->enemyDefensePower));
+
+	if(!report->isEnemyConquered)
 	{
-		crew = you->Crew();
-		info.SetString("cargo space", to_string(you->Cargo().Free()));
-		info.SetString("your crew", to_string(crew));
-		info.SetString("your attack",
-			Round(attackOdds.AttackerPower(crew)));
-		info.SetString("your defense",
-			Round(defenseOdds.DefenderPower(crew)));
-	}
-	int vCrew = victim ? victim->Crew() : 0;
-	if(victim && (canCapture || victim->IsYours()))
-	{
-		info.SetString("enemy crew", to_string(vCrew));
-		info.SetString("enemy attack",
-			Round(defenseOdds.AttackerPower(vCrew)));
-		info.SetString("enemy defense",
-			Round(attackOdds.DefenderPower(vCrew)));
-	}
-	if(victim && canCapture && !victim->IsYours())
-	{
-		// If you haven't initiated capture yet, show the self destruct odds in
-		// the attack odds. It's illogical for you to have access to that info,
-		// but not knowing what your true odds are is annoying.
-		double odds = attackOdds.Odds(crew, vCrew);
-		if(!isCapturing)
-			odds *= (1. - victim->Attributes().Get("self destruct"));
-		info.SetString("attack odds",
-			Round(100. * odds) + "%");
-		info.SetString("attack casualties",
-			Round(attackOdds.AttackerCasualties(crew, vCrew)));
-		info.SetString("defense odds",
-			Round(100. * (1. - defenseOdds.Odds(vCrew, crew))) + "%");
-		info.SetString("defense casualties",
-			Round(defenseOdds.DefenderCasualties(vCrew, crew)));
+		info.SetString("attack odds", Round(100. * report->invasionVictoryProbability) + "%");
+		info.SetString("attack casualties", Round(report->expectedInvasionCasualties));
+		info.SetString("defense odds", Round(100. * report->defensiveVictoryProbability) + "%");
+		info.SetString("defense casualties", Round(report->expectedDefensiveCasualties));
 	}
 
 	const Interface *boarding = GameData::Interfaces().Get("boarding");
@@ -193,197 +191,193 @@ void BoardingPanel::Draw()
 // Handle key presses or button clicks that were mapped to key presses.
 bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, bool isNewPress)
 {
-	if((key == 'd' || key == 'x' || key == SDLK_ESCAPE || (key == 'w' && (mod & (KMOD_CTRL | KMOD_GUI)))) && CanExit())
+	if((key == 'd' || key == 'x' || key == SDLK_ESCAPE || (key == 'w' && (mod & (KMOD_CTRL | KMOD_GUI)))) && CanLeave())
 	{
-		// When closing the panel, mark the player dead if their ship was captured.
-		if(playerDied)
-			player.Die();
-		else // Resolve any casualties that occurred during the boarding action.
-			ResolveCasualties();
-		GetUI()->Pop(this);
+		if(TakeTurn(Boarding::Action::Leave))
+			GetUI()->Pop(this);
 	}
-	else if(playerDied)
-		return false;
-	else if(key == 't' && CanTake())
+	else if(key == 't' && CanPlunderSelected())
 	{
-		const Plunder &item = plunderSession.GetPlunder(selected);
-		int quantity = KMOD_SHIFT ? 1 : item.Count();
-		if(item.CanTake(*you))
-			plunderSession.Take(selected, true, quantity);
+		int quantity = KMOD_SHIFT ? 1 : selectedPlunder->Count();
+		return TakeTurn(Boarding::Action::Plunder, make_tuple(plunderIndex, quantity));
 	}
 	else if(key == 'r' && CanRaid())
-		plunderSession.Raid();
-	else if(!isCapturing &&
-			(key == SDLK_UP || key == SDLK_DOWN || key == SDLK_PAGEUP
-			|| key == SDLK_PAGEDOWN || key == SDLK_HOME || key == SDLK_END))
+		return TakeTurn(Boarding::Action::Raid);
+	else if(key == SDLK_UP || key == SDLK_DOWN || key == SDLK_PAGEUP
+			|| key == SDLK_PAGEDOWN || key == SDLK_HOME || key == SDLK_END)
 		DoKeyboardNavigation(key);
 	else if(key == 'c' && CanCapture())
 	{
+		return TakeTurn(Boarding::Action::Capture);
 		// A ship that self-destructs checks once when you board it, and again
 		// when you try to capture it, to see if it will self-destruct. This is
 		// so that capturing will be harder than plundering.
-		if(Random::Real() < victim->Attributes().Get("self destruct"))
-		{
-			victim->SelfDestruct();
-			GetUI()->Pop(this);
-			GetUI()->Push(new Dialog("The moment you blast through the airlock, a series of explosions rocks the enemy ship."
-				" They appear to have set off their self-destruct sequence..."));
-			return true;
-		}
-		isCapturing = true;
-		messages.push_back("The airlock blasts open. Combat has begun!");
-		messages.push_back("(It will end if you both choose to \"defend.\")");
+		// if(Random::Real() < target->Attributes().Get("self destruct"))
+		// {
+		// 	target->SelfDestruct();
+		// 	GetUI()->Pop(this);
+		// 	GetUI()->Push(new Dialog("The moment you blast through the airlock, a series of explosions rocks the enemy ship."
+		// 		" They appear to have set off their self-destruct sequence..."));
+		// 	return true;
+		// }
+		// isCapturing = true;
+		// messages.push_back("The airlock blasts open. Combat has begun!");
+		// messages.push_back("(It will end if you both choose to \"defend.\")");
 	}
-	else if((key == 'a' || key == 'd') && CanAttack())
-	{
-		int yourStartCrew = you->Crew();
-		int enemyStartCrew = victim->Crew();
+	else if(key == 'a' && CanAttack())
+		return TakeTurn(Boarding::Action::Attack);
+	else if(key == 'd' && CanDefend())
+		return TakeTurn(Boarding::Action::Defend);
+	// else if((key == 'a' || key == 'd') && CanAttack())
+	// {
+	// 	int yourStartCrew = you->Crew();
+	// 	int enemyStartCrew = target->Crew();
 
-		// Figure out what action the other ship will take. As a special case,
-		// if you board them but immediately "defend" they will let you return
-		// to your ship in peace. That is to allow the player to "cancel" if
-		// they did not really mean to try to capture the ship.
-		bool youAttack = (key == 'a' && (yourStartCrew > 1 || !victim->RequiredCrew()));
-		bool enemyAttacks = defenseOdds.Odds(enemyStartCrew, yourStartCrew) > .5;
-		if(isFirstCaptureAction && !youAttack)
-			enemyAttacks = false;
-		isFirstCaptureAction = false;
+	// 	// Figure out what action the other ship will take. As a special case,
+	// 	// if you board them but immediately "defend" they will let you return
+	// 	// to your ship in peace. That is to allow the player to "cancel" if
+	// 	// they did not really mean to try to capture the ship.
+	// 	bool youAttack = (key == 'a' && (yourStartCrew > 1 || !target->RequiredCrew()));
+	// 	bool enemyAttacks = defenseOdds.Odds(enemyStartCrew, yourStartCrew) > .5;
+	// 	if(isFirstCaptureAction && !youAttack)
+	// 		enemyAttacks = false;
+	// 	isFirstCaptureAction = false;
 
-		// If neither side attacks, combat ends.
-		if(!youAttack && !enemyAttacks)
-		{
-			messages.push_back("You retreat to your ships. Combat ends.");
-			isCapturing = false;
-		}
-		else
-		{
-			unsigned int yourCasualties = 0;
-			unsigned int enemyCasualties = 0;
+	// 	// If neither side attacks, combat ends.
+	// 	if(!youAttack && !enemyAttacks)
+	// 	{
+	// 		messages.push_back("You retreat to your ships. Combat ends.");
+	// 		isCapturing = false;
+	// 	}
+	// 	else
+	// 	{
+	// 		unsigned int yourCasualties = 0;
+	// 		unsigned int enemyCasualties = 0;
 
-			// To speed things up, have multiple rounds of combat each time you
-			// click the button, if you started with a lot of crew.
-			int rounds = max(1, yourStartCrew / 5);
-			for(int round = 0; round < rounds; ++round)
-			{
-				int yourCrew = you->Crew();
-				int enemyCrew = victim->Crew();
-				if(!yourCrew || !enemyCrew)
-					break;
+	// 		// To speed things up, have multiple rounds of combat each time you
+	// 		// click the button, if you started with a lot of crew.
+	// 		int rounds = max(1, yourStartCrew / 5);
+	// 		for(int round = 0; round < rounds; ++round)
+	// 		{
+	// 			int yourCrew = you->Crew();
+	// 			int enemyCrew = target->Crew();
+	// 			if(!yourCrew || !enemyCrew)
+	// 				break;
 
-				if(youAttack)
-				{
-					// Your chance of winning this round is equal to the ratio of
-					// your power to the enemy's power.
-					double yourAttackPower = attackOdds.AttackerPower(yourCrew);
-					double total = yourAttackPower + attackOdds.DefenderPower(enemyCrew);
+	// 			if(youAttack)
+	// 			{
+	// 				// Your chance of winning this round is equal to the ratio of
+	// 				// your power to the enemy's power.
+	// 				double yourAttackPower = attackOdds.AttackerPower(yourCrew);
+	// 				double total = yourAttackPower + attackOdds.DefenderPower(enemyCrew);
 
-					if(total)
-					{
-						if(Random::Real() * total >= yourAttackPower)
-						{
-							++yourCasualties;
-							hasUnresolvedCasualties = true;
-							you->AddCrew(-1);
-							if(you->Crew() <= 1)
-								break;
-						}
-						else
-						{
-							++enemyCasualties;
-							victim->AddCrew(-1);
-							if(!victim->Crew())
-								break;
-						}
-					}
-				}
-				if(enemyAttacks)
-				{
-					double yourDefensePower = defenseOdds.DefenderPower(yourCrew);
-					double total = defenseOdds.AttackerPower(enemyCrew) + yourDefensePower;
+	// 				if(total)
+	// 				{
+	// 					if(Random::Real() * total >= yourAttackPower)
+	// 					{
+	// 						++yourCasualties;
+	// 						hasUnresolvedCasualties = true;
+	// 						you->AddCrew(-1);
+	// 						if(you->Crew() <= 1)
+	// 							break;
+	// 					}
+	// 					else
+	// 					{
+	// 						++enemyCasualties;
+	// 						target->AddCrew(-1);
+	// 						if(!target->Crew())
+	// 							break;
+	// 					}
+	// 				}
+	// 			}
+	// 			if(enemyAttacks)
+	// 			{
+	// 				double yourDefensePower = defenseOdds.DefenderPower(yourCrew);
+	// 				double total = defenseOdds.AttackerPower(enemyCrew) + yourDefensePower;
 
-					if(total)
-					{
-						if(Random::Real() * total >= yourDefensePower)
-						{
-							++yourCasualties;
-							hasUnresolvedCasualties = true;
-							you->AddCrew(-1);
-							if(!you->Crew())
-								break;
-						}
-						else
-						{
-							++enemyCasualties;
-							victim->AddCrew(-1);
-							if(!victim->Crew())
-								break;
-						}
-					}
-				}
-			}
+	// 				if(total)
+	// 				{
+	// 					if(Random::Real() * total >= yourDefensePower)
+	// 					{
+	// 						++yourCasualties;
+	// 						hasUnresolvedCasualties = true;
+	// 						you->AddCrew(-1);
+	// 						if(!you->Crew())
+	// 							break;
+	// 					}
+	// 					else
+	// 					{
+	// 						++enemyCasualties;
+	// 						target->AddCrew(-1);
+	// 						if(!target->Crew())
+	// 							break;
+	// 					}
+	// 				}
+	// 			}
+	// 		}
 
-			// Report what happened and how many casualties each side suffered.
-			if(youAttack && enemyAttacks)
-				messages.push_back("You both attack. ");
-			else if(youAttack)
-				messages.push_back("You attack. ");
-			else if(enemyAttacks)
-				messages.push_back("They attack. ");
+	// 		// Report what happened and how many casualties each side suffered.
+	// 		if(youAttack && enemyAttacks)
+	// 			messages.push_back("You both attack. ");
+	// 		else if(youAttack)
+	// 			messages.push_back("You attack. ");
+	// 		else if(enemyAttacks)
+	// 			messages.push_back("They attack. ");
 
-			if(yourCasualties && enemyCasualties)
-				messages.back() += "You lose " + to_string(yourCasualties)
-					+ " crew; they lose " + to_string(enemyCasualties) + ".";
-			else if(yourCasualties)
-				messages.back() += "You lose " + to_string(yourCasualties) + " crew.";
-			else if(enemyCasualties)
-				messages.back() += "They lose " + to_string(enemyCasualties) + " crew.";
+	// 		if(yourCasualties && enemyCasualties)
+	// 			messages.back() += "You lose " + to_string(yourCasualties)
+	// 				+ " crew; they lose " + to_string(enemyCasualties) + ".";
+	// 		else if(yourCasualties)
+	// 			messages.back() += "You lose " + to_string(yourCasualties) + " crew.";
+	// 		else if(enemyCasualties)
+	// 			messages.back() += "They lose " + to_string(enemyCasualties) + " crew.";
 
-			// Check if either ship has been captured.
-			if(!you->Crew())
-			{
-				messages.push_back("You have been killed. Your ship is lost.");
-				you->WasCaptured(victim);
-				playerDied = true;
-				isCapturing = false;
-			}
-			else if(!victim->Crew())
-			{
-				messages.push_back("You have succeeded in capturing this ship.");
-				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->CrewValue());
+	// 		// Check if either ship has been captured.
+	// 		if(!you->Crew())
+	// 		{
+	// 			messages.push_back("You have been killed. Your ship is lost.");
+	// 			you->WasCaptured(target);
+	// 			playerDied = true;
+	// 			isCapturing = false;
+	// 		}
+	// 		else if(!target->Crew())
+	// 		{
+	// 			messages.push_back("You have succeeded in capturing this ship.");
+	// 			target->GetGovernment()->Offend(ShipEvent::CAPTURE, target->CrewValue());
 
-				// We need to resolve any casualties before we transfer crew members
-				// to the other ship. Otherwise, we won't be able to tally them correctly.
-				ResolveCasualties();
+	// 			// We need to resolve any casualties before we transfer crew members
+	// 			// to the other ship. Otherwise, we won't be able to tally them correctly.
+	// 			ResolveCasualties();
 
-				// Transfer the crew and fuel from the captured ship to your ship.
-				int crewTransferred = victim->WasCaptured(you);
-				if(crewTransferred > 0)
-				{
-					string transferMessage = Format::Number(crewTransferred) + " crew member";
-					if(crewTransferred == 1)
-						transferMessage += " has";
-					else
-						transferMessage += "s have";
-					transferMessage += " been transferred.";
-					messages.push_back(transferMessage);
-				}
-				if(!victim->JumpsRemaining() && you->CanRefuel(*victim))
-					you->TransferFuel(victim->JumpFuelMissing(), &*victim);
-				player.AddShip(victim);
-				for(const Ship::Bay &bay : victim->Bays())
-					if(bay.ship)
-					{
-						player.AddShip(bay.ship);
-						player.HandleEvent(ShipEvent(you, bay.ship, ShipEvent::CAPTURE), GetUI());
-					}
-				isCapturing = false;
+	// 			// Transfer the crew and fuel from the captured ship to your ship.
+	// 			int crewTransferred = target->WasCaptured(you);
+	// 			if(crewTransferred > 0)
+	// 			{
+	// 				string transferMessage = Format::Number(crewTransferred) + " crew member";
+	// 				if(crewTransferred == 1)
+	// 					transferMessage += " has";
+	// 				else
+	// 					transferMessage += "s have";
+	// 				transferMessage += " been transferred.";
+	// 				messages.push_back(transferMessage);
+	// 			}
+	// 			if(!target->JumpsRemaining() && you->CanRefuel(*target))
+	// 				you->TransferFuel(target->JumpFuelMissing(), &*target);
+	// 			player.AddShip(target);
+	// 			for(const Ship::Bay &bay : target->Bays())
+	// 				if(bay.ship)
+	// 				{
+	// 					player.AddShip(bay.ship);
+	// 					player.HandleEvent(ShipEvent(you, bay.ship, ShipEvent::CAPTURE), GetUI());
+	// 				}
+	// 			isCapturing = false;
 
-				// Report this ship as captured in case any missions care.
-				ShipEvent event(you, victim, ShipEvent::CAPTURE);
-				player.HandleEvent(event, GetUI());
-			}
-		}
-	}
+	// 			// Report this ship as captured in case any missions care.
+	// 			ShipEvent event(you, target, ShipEvent::CAPTURE);
+	// 			player.HandleEvent(event, GetUI());
+	// 		}
+	// 	}
+	// }
 	else if(command.Has(Command::INFO))
 		GetUI()->Push(new ShipInfoPanel(player));
 
@@ -403,8 +397,8 @@ bool BoardingPanel::Click(int x, int y, int clicks)
 	if(x >= -330 && x < 20 && y >= -180 && y < 60)
 	{
 		int index = (scroll + y - -170) / 20;
-		if(static_cast<unsigned>(index) < plunderSession.GetPlunder().size())
-			selected = index;
+		if(static_cast<unsigned>(index) < report->plunderOptions.size())
+			plunderIndex = index;
 		return true;
 	}
 
@@ -418,7 +412,7 @@ bool BoardingPanel::Drag(double dx, double dy)
 {
 	// The list is 240 pixels tall, and there are 10 pixels padding on the top
 	// and the bottom, so:
-	double maximumScroll = max(0., 20. * plunderSession.GetPlunder().size() - 220.);
+	double maximumScroll = max(0., 20. * report->plunderOptions.size() - 220.);
 	scroll = max(0., min(maximumScroll, scroll - dy));
 
 	return true;
@@ -434,10 +428,16 @@ bool BoardingPanel::Scroll(double dx, double dy)
 
 
 
-// You can't exit this panel if you're engaged in hand to hand combat.
-bool BoardingPanel::CanExit() const
+/**
+ * If the player is engaged in active combat, they must resolve it
+ * before they can close the panel. This involves either conquering the
+ * enemy ship, withdrawing from combat, or repelling enemy boarders.
+ *
+ * @return Whether or not the player can leave the boarding panel.
+ */
+bool BoardingPanel::CanLeave() const
 {
-	return !isCapturing;
+	return report->availableActions.at(Boarding::Action::Leave);
 }
 
 
@@ -452,24 +452,17 @@ bool BoardingPanel::CanExit() const
  *
  * @return True if you can raid the ship for valuables.
  */
-bool BoardingPanel::CanRaid(bool alreadyCheckedPlunder, bool canTakeSomething) const
+bool BoardingPanel::CanRaid() const
 {
-	if(alreadyCheckedPlunder && !canTakeSomething)
-		return false;
-	// If you ship or the other ship has been captured:
-	if(!you->IsYours())
-		return false;
-	if(victim->IsYours())
-		return false;
-	if(isCapturing || playerDied)
+	if(!report->availableActions.at(Boarding::Action::Raid))
 		return false;
 
-	if(alreadyCheckedPlunder)
-		return true;
-
-	// Check if you can take anything from the victim.
-	for(const Plunder &item : plunderSession.GetPlunder())
-		if(item.CanTake(*you))
+	// Check if the player can take any of the plunder options.
+	for(auto item : report->plunderOptions)
+		if(
+			item->HasEnoughSpace(report->ship)
+			&& (report->isEnemyConquered || !item->RequiresConquest())
+		)
 			return true;
 
 	return false;
@@ -477,105 +470,146 @@ bool BoardingPanel::CanRaid(bool alreadyCheckedPlunder, bool canTakeSomething) c
 
 
 
-// Check if you can take the given plunder item.
-bool BoardingPanel::CanTake() const
+/**
+ * @return Whether or not the player can take the Plunder action with
+ * 	the currently selected plunder option.
+ */
+bool BoardingPanel::CanPlunderSelected() const
 {
-	// If you ship or the other ship has been captured:
-	if(!you->IsYours())
-		return false;
-	if(victim->IsYours())
-		return false;
-	if(isCapturing || playerDied)
-		return false;
-	if(static_cast<unsigned>(selected) >= plunderSession.GetPlunder().size())
-		return false;
-
-	return plunderSession.GetPlunder(selected).CanTake(*you);
+	return report->availableActions.at(Boarding::Action::Plunder)
+		&& selectedPlunder
+		&& selectedPlunder->HasEnoughSpace(report->ship)
+		&& (report->isEnemyConquered || !selectedPlunder->RequiresConquest());
 }
 
 
 
-// Check if it's possible to initiate hand to hand combat.
+/**
+ * Check if the player can take the Capture action. This usually requires
+ * that the enemy ship has been conquered and that the player has at
+ * least one crew member to fly it.
+ *
+ * @return Whether or not the player can take the Capture action.
+ */
 bool BoardingPanel::CanCapture() const
 {
-	// You can't click the "capture" button if you're already in combat mode.
-	if(isCapturing || playerDied)
-		return false;
-
-	// If your ship or the other ship has been captured:
-	if(!you->IsYours())
-		return false;
-	if(victim->IsYours())
-		return false;
-	if(!canCapture)
-		return false;
-
-	return (!victim->RequiredCrew() || you->Crew() > 1);
+	return report->availableActions.at(Boarding::Action::Capture)
+		&& (!report->enemyShip->RequiredCrew() || report->crew > 1);
 }
 
 
 
-// Check if you are in the process of hand to hand combat.
+/**
+ * @return Whether or not the player can take the Attack action.
+ */
 bool BoardingPanel::CanAttack() const
 {
-	return isCapturing;
+	return report->availableActions.at(Boarding::Action::Attack);
 }
+
+
+
+/**
+ * @return Whether or not the player can take the Defend action.
+ */
+bool BoardingPanel::CanDefend() const
+{
+  return report->availableActions.at(Boarding::Action::Defend);
+}
+
 
 
 // Handle the keyboard scrolling and selection in the panel list.
 void BoardingPanel::DoKeyboardNavigation(const SDL_Keycode key)
 {
-	// Scrolling the list of plunder.
+	// Scrolling the list of plunder options.
 	if(key == SDLK_PAGEUP || key == SDLK_PAGEDOWN)
 		// Keep one of the previous items onscreen while paging through.
-		selected += 10 * ((key == SDLK_PAGEDOWN) - (key == SDLK_PAGEUP));
+		plunderIndex += 10 * ((key == SDLK_PAGEDOWN) - (key == SDLK_PAGEUP));
 	else if(key == SDLK_HOME)
-		selected = 0;
+		plunderIndex = 0;
 	else if(key == SDLK_END)
-		selected = static_cast<int>(plunderSession.GetPlunder().size() - 1);
+		plunderIndex = static_cast<int>(report->plunderOptions.size() - 1);
 	else
 	{
 		if(key == SDLK_UP)
-			--selected;
+			--plunderIndex;
 		else if(key == SDLK_DOWN)
-			++selected;
+			++plunderIndex;
 	}
-	selected = max(0, min(static_cast<int>(plunderSession.GetPlunder().size() - 1), selected));
+	plunderIndex = max(0, min(static_cast<int>(report->plunderOptions.size() - 1), plunderIndex));
 
 	// Scroll down at least far enough to view the current item.
-	double minimumScroll = max(0., 20. * selected - 200.);
-	double maximumScroll = 20. * selected;
+	double minimumScroll = max(0., 20. * plunderIndex - 200.);
+	double maximumScroll = 20. * plunderIndex;
 	scroll = max(minimumScroll, min(maximumScroll, scroll));
 }
 
 
+// TODO: Make this happen as part of the BoardingCombat system.
+//
 // Build a list of casualties from the boarding action and trigger any
 // consequences that result from them, such as death benefits and death shares.
-void BoardingPanel::ResolveCasualties()
+// void BoardingPanel::ResolveCasualties()
+// {
+// 	if(!hasUnresolvedCasualties)
+// 		return;
+
+
+// 	ostringstream out;
+// 	out << "During the boarding action, " << Format::Number(casualtyAnalysis.casualtyCount) << " of your crew members were killed.";
+// 	if(casualtyAnalysis.deathBenefits || casualtyAnalysis.deathShares)
+// 		out << " You owe their estates ";
+// 	if(casualtyAnalysis.deathBenefits)
+// 	{
+// 		out << Format::Credits(casualtyAnalysis.deathBenefits) << " credits in death benefits";
+// 		player.Accounts().AddDeathBenefits(casualtyAnalysis.deathBenefits);
+
+// 		if(casualtyAnalysis.deathShares)
+// 			out << ", and ";
+// 	}
+// 	if(casualtyAnalysis.deathShares)
+// 	{
+// 		out << Format::Number(casualtyAnalysis.deathShares) << " extra shares in today's profits (if any).";
+// 		player.Accounts().AddDeathShares(casualtyAnalysis.deathShares);
+// 	}
+// 	Messages::Add(out.str(), Messages::Importance::Highest);
+
+// 	hasUnresolvedCasualties = false;
+// }
+
+
+
+/**
+ * Attempt to take a turn in the boarding combat and assign a new
+ * BoardingCombat::SituationReport to the panel's report variable.
+ *
+ * Logs an error if the turn could not be created, such as when a player
+ * somehow takes an invalid action. This should not happen in practice,
+ * and indicates a problem with the panel. If you see this error, check
+ * the KeyDown() function to make sure that the key press validates the
+ * action before proceeding.
+ *
+ * @param action The action that the player is taking.
+ * @param details The details of that action.
+ *
+ * @return Whether or not a new turn was successfully created.
+ */
+bool BoardingPanel::TakeTurn(Boarding::Action action, Boarding::ActionDetails details)
 {
-	if(!hasUnresolvedCasualties)
-		return;
+	try {
+		shared_ptr<BoardingCombat::Turn> turn = combat.Step(action, details);
 
-	Crew::CasualtyAnalysis casualtyAnalysis(shipAnalysisBefore, you);
+		report = isPlayerBoarder
+		? turn->boarderSituationReport
+		: turn->targetSituationReport;
 
-	ostringstream out;
-	out << "During the boarding action, " << Format::Number(casualtyAnalysis.casualtyCount) << " of your crew members were killed.";
-	if(casualtyAnalysis.deathBenefits || casualtyAnalysis.deathShares)
-		out << " You owe their estates ";
-	if(casualtyAnalysis.deathBenefits)
-	{
-		out << Format::Credits(casualtyAnalysis.deathBenefits) << " credits in death benefits";
-		player.Accounts().AddDeathBenefits(casualtyAnalysis.deathBenefits);
+		for(auto message : turn->messages)
+			messages.push_back(message);
+		return true;
 
-		if(casualtyAnalysis.deathShares)
-			out << ", and ";
+	} catch(const exception &e) {
+		Logger::LogError("BoardingPanel::TakeTurn - the next turn could not be created. This indicates a bug, most likely in the KeyDown() hanlder." + string(e.what()));
+		return false;
 	}
-	if(casualtyAnalysis.deathShares)
-	{
-		out << Format::Number(casualtyAnalysis.deathShares) << " extra shares in today's profits (if any).";
-		player.Accounts().AddDeathShares(casualtyAnalysis.deathShares);
-	}
-	Messages::Add(out.str(), Messages::Importance::Highest);
-
-	hasUnresolvedCasualties = false;
 }

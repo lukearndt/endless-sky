@@ -19,6 +19,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "FireCommand.h"
 #include "FormationPositioner.h"
 #include "Point.h"
+#include "Ship.h"
 
 #include <cstdint>
 #include <list>
@@ -34,7 +35,6 @@ class Flotsam;
 class Government;
 class Minable;
 class PlayerInfo;
-class Ship;
 class ShipEvent;
 class StellarObject;
 class System;
@@ -53,7 +53,7 @@ public:
 template <class Type>
 	using List = std::list<std::shared_ptr<Type>>;
 	// Constructor, giving the AI access to the player and various object lists.
-	AI(const PlayerInfo &player, const List<Ship> &ships,
+	AI(PlayerInfo &player, const List<Ship> &ships,
 			const List<Minable> &minables, const List<Flotsam> &flotsam);
 
 	// Fleet commands from the player.
@@ -95,6 +95,9 @@ private:
 	bool HasHelper(const Ship &ship, const bool needsFuel, const bool needsEnergy);
 	// Pick a new target for the given ship.
 	std::shared_ptr<Ship> FindTarget(const Ship &ship) const;
+	std::shared_ptr<Ship> FindCrewTransferTarget(const Ship &ship) const;
+	std::shared_ptr<Ship> FindHostileBoardingTarget(const Ship &ship) const;
+	std::shared_ptr<Ship> FindRepairTarget(const Ship &ship, bool includeOtherGovernments = false, bool preventWiderCheck = false) const;
 	std::shared_ptr<Ship> FindSurveillanceTarget(const Ship &ship) const;
 	// Obtain a list of ships matching the desired hostility.
 	std::vector<Ship *> GetShipsList(const Ship &ship, bool targetEnemies, double maxRange = -1.) const;
@@ -128,6 +131,7 @@ private:
 	static void Attack(Ship &ship, Command &command, const Ship &target);
 	static void AimToAttack(Ship &ship, Command &command, const Body &target);
 	static void MoveToAttack(Ship &ship, Command &command, const Body &target);
+	static bool MoveToBoard(Ship &ship, Command &command, Ship::BoardingObjective objective, const std::shared_ptr<Ship> &target);
 	static void PickUp(Ship &ship, Command &command, const Body &target);
 	// Special decisions a ship might make.
 	static bool ShouldUseAfterburner(Ship &ship);
@@ -142,8 +146,9 @@ private:
 	bool DoHarvesting(Ship &ship, Command &command) const;
 	bool DoCloak(Ship &ship, Command &command);
 	void DoPatrol(Ship &ship, Command &command) const;
-	bool DoCapturing(Ship &ship, Command &command, bool useExtraAggression = false);
-	bool DoPlundering(Ship &ship, Command &command, bool useExtraAggression = false);
+	bool DoHostileBoarding(Ship &ship, Command &command, int orderType, std::shared_ptr<Ship> target = nullptr) const;
+	bool DoRepairing(Ship &ship, Command &command, std::shared_ptr<Ship> target = nullptr) const;
+	bool DisableAndBoard(Ship &ship, Command &command, std::shared_ptr<Ship> target, Ship::BoardingObjective objective, bool canAttemptObjective, bool allowRepeats = false) const;
 	// Prevent ships from stacking on each other when many are moving in sync.
 	void DoScatter(Ship &ship, Command &command);
 	bool DoSecretive(Ship &ship, Command &command);
@@ -197,17 +202,34 @@ private:
 		// ATTACK.
 		static const int HARVEST = 0x003;
 		static const int MINING = 0x004;
-		// Attack nearby enemies, and capture them once they are disabled.
-		static const int CAPTURE_HOSTILES = 0x005;
-		// Attack nearby enemies, and plunder them once they are disabled.
-		static const int PLUNDER_HOSTILES = 0x006;
+		// Attempt to disable and automatically capture hostile ships.
+		// Issuing with a target limits the order to that target.
+		// If the target is friendly, attempt to repair it instead.
+		// With no target, attempts to capture any hostile ships in the area.
+		static const int CAPTURE = 0x005;
+		// As CAPTURE, but raises the Boarding Panel instead of resolving the
+		// boarding combat automatically. With a target, enables friendly fire.
+		static const int CAPTURE_MANUALLY = 0x006;
+		// Attempt to disable and automatically plunder hostile ships.
+		// Issuing with a target limits the order to that target.
+		// If the target is friendly, attempt to repair it instead.
+		// With no target, attempts to plunder any hostile ships in the area.
+		static const int PLUNDER = 0x007;
+		// As PLUNDER, but raises the Boarding Panel instead of resolving the
+		// plunder automatically. With a target, enables friendly fire.
+		static const int PLUNDER_MANUALLY = 0x008;
+		// Repair the target disabled ship. Without no target, repair any
+		// disabled friendly ships in the area.
+		static const int REPAIR = 0x009;
+		// Transfer crew members to other ships in the fleet.
+		static const int TRANSFER_CREW = 0x00A;
+
 		static const int KEEP_STATION = 0x100;
 		static const int GATHER = 0x101;
 		static const int ATTACK = 0x102;
 		static const int FINISH_OFF = 0x103;
-		static const int CAPTURE_TARGET = 0x105;
-		static const int PLUNDER_TARGET = 0x106;
-		static const int REPAIR_TARGET = 0x107;
+		// Transfer the player to another ship in the fleet, making it the flagship.
+		static const int TRANSFER_PLAYER = 0x104;
 		// MINE is for fleet targeting the asteroid for mining. ATTACK is used
 		// to chase and attack the asteroid.
 		static const int MINE = 0x104;
@@ -231,7 +253,7 @@ private:
 
 private:
 	// TODO: Figure out a way to remove the player dependency.
-	const PlayerInfo &player;
+	PlayerInfo &player;
 	// Data from the game engine.
 	const List<Ship> &ships;
 	const List<Minable> &minables;

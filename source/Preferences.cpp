@@ -127,8 +127,14 @@ namespace {
 	const vector<string> AUTO_FIRE_SETTINGS = {"off", "on", "guns only", "turrets only"};
 	int autoFireIndex = 0;
 
-	const vector<string> BOARDING_SETTINGS = {"proximity", "value", "mixed"};
-	int boardingIndex = 0;
+	const vector<string> BOARDING_PRIORITY_SETTINGS = {"proximity", "value", "mixed"};
+	int boardingPriorityIndex = 0;
+
+	const vector<string> BOARDING_ATTACK_STRATEGY_SETTINGS = {"cautious", "aggressive", "reckless"};
+	int boardingAttackStrategyIndex = 0;
+
+	const vector<string> BOARDING_DEFENSE_STRATEGY_SETTINGS = {"repel", "counter"};
+	int boardingDefenseStrategyIndex = 0;
 
 	const vector<string> FLOTSAM_SETTINGS = {"off", "on", "flagship only", "escorts only"};
 	int flotsamIndex = 1;
@@ -224,7 +230,11 @@ void Preferences::Load()
 		else if(node.Token(0) == "scroll speed" && node.Size() >= 2)
 			scrollSpeed = node.Value(1);
 		else if(node.Token(0) == "boarding target")
-			boardingIndex = max<int>(0, min<int>(node.Value(1), BOARDING_SETTINGS.size() - 1));
+			boardingPriorityIndex = max<int>(0, min<int>(node.Value(1), BOARDING_PRIORITY_SETTINGS.size() - 1));
+		else if(node.Token(0) == "boarding attack strategy")
+			boardingAttackStrategyIndex = max<int>(0, min<int>(node.Value(1), BOARDING_ATTACK_STRATEGY_SETTINGS.size() - 1));
+		else if(node.Token(0) == "boarding defense strategy")
+			boardingDefenseStrategyIndex = max<int>(0, min<int>(node.Value(1), BOARDING_DEFENSE_STRATEGY_SETTINGS.size() - 1));
 		else if(node.Token(0) == "Flotsam collection")
 			flotsamIndex = max<int>(0, min<int>(node.Value(1), FLOTSAM_SETTINGS.size() - 1));
 		else if(node.Token(0) == "view zoom")
@@ -327,7 +337,9 @@ void Preferences::Save()
 	out.Write("window size", Screen::RawWidth(), Screen::RawHeight());
 	out.Write("zoom", Screen::UserZoom());
 	out.Write("scroll speed", scrollSpeed);
-	out.Write("boarding target", boardingIndex);
+	out.Write("boarding target", boardingPriorityIndex);
+	out.Write("boarding attack strategy", boardingAttackStrategyIndex);
+	out.Write("boarding defense strategy", boardingDefenseStrategyIndex);
 	out.Write("Flotsam collection", flotsamIndex);
 	out.Write("view zoom", zoomIndex);
 	out.Write("vsync", vsyncIndex);
@@ -390,6 +402,54 @@ string Preferences::AmmoUsage()
 }
 
 
+
+// Boarding attack strategy setting
+
+void Preferences::ToggleBoardingAttackStrategy()
+{
+	boardingAttackStrategyIndex = (boardingAttackStrategyIndex + 1) % BOARDING_ATTACK_STRATEGY_SETTINGS.size();
+}
+
+
+
+Preferences::BoardingAttackStrategy Preferences::GetBoardingAttackStrategy()
+{
+	return static_cast<BoardingAttackStrategy>(boardingAttackStrategyIndex);
+}
+
+
+
+const string &Preferences::BoardingAttackStrategySetting()
+{
+	return BOARDING_ATTACK_STRATEGY_SETTINGS[boardingAttackStrategyIndex];
+}
+
+
+
+// Boarding defense strategy setting
+
+void Preferences::ToggleBoardingDefenseStrategy()
+{
+	boardingDefenseStrategyIndex = (boardingDefenseStrategyIndex + 1) % BOARDING_DEFENSE_STRATEGY_SETTINGS.size();
+}
+
+
+
+Preferences::BoardingDefenseStrategy Preferences::GetBoardingDefenseStrategy()
+{
+	return static_cast<BoardingDefenseStrategy>(boardingDefenseStrategyIndex);
+}
+
+
+
+const string &Preferences::BoardingDefenseStrategySetting()
+{
+	return BOARDING_DEFENSE_STRATEGY_SETTINGS[boardingDefenseStrategyIndex];
+}
+
+
+
+// Date format setting
 
 void Preferences::ToggleDateFormat()
 {
@@ -703,24 +763,24 @@ const string &Preferences::AutoFireSetting()
 
 void Preferences::ToggleBoarding()
 {
-	int targetIndex = boardingIndex + 1;
-	if(targetIndex == static_cast<int>(BOARDING_SETTINGS.size()))
+	int targetIndex = boardingPriorityIndex + 1;
+	if(targetIndex == static_cast<int>(BOARDING_PRIORITY_SETTINGS.size()))
 		targetIndex = 0;
-	boardingIndex = targetIndex;
+	boardingPriorityIndex = targetIndex;
 }
 
 
 
 Preferences::BoardingPriority Preferences::GetBoardingPriority()
 {
-	return static_cast<BoardingPriority>(boardingIndex);
+	return static_cast<BoardingPriority>(boardingPriorityIndex);
 }
 
 
 
-const string &Preferences::BoardingSetting()
+const string &Preferences::BoardingPrioritySetting()
 {
-	return BOARDING_SETTINGS[boardingIndex];
+	return BOARDING_PRIORITY_SETTINGS[boardingPriorityIndex];
 }
 
 

@@ -1006,7 +1006,7 @@ void MapPanel::UpdateCache()
 					if(!price)
 						value = numeric_limits<double>::quiet_NaN();
 					else
-						value = (2. * (price - com.low)) / (com.high - com.low) - 1.;
+						value = (2. * (price - com.Low())) / (com.High() - com.Low()) - 1.;
 				}
 				else if(commodity == SHOW_SHIPYARD)
 				{

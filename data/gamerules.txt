@@ -72,7 +72,7 @@ gamerules
 	# Captured and gifted items start at this value.
 	# DEFAULT: 0.25 (25 percent)
 	# ALLOWABLE VALUES: any value between 0. and 1.
-	"depreciation min" 0.25
+	"depreciation min" 0.50
 
 	# Number of days before a new outfit or ship will begin to depreciate.
 	# DEFAULT: 7 (7 days)
@@ -94,9 +94,16 @@ gamerules
 	# Enable or disable negotiations during boarding combat, allowing for combatants that share a language to
 	# resolve the situation without any further violence.
 	#
-	# DEFAULT: false (this feature is not implemented yet)
+	# DEFAULT: false (this feature is not fully implemented yet)
 	# ALLOWABLE VALUES: true or false.
 	"boarding negotiations" false
+
+	# After a boarding combat has been resolved, both ships are rendered
+	# inactive for time based on the number of turns that the combat took.
+	#
+	# DEFAULT: 30 (half a second per turn)
+	# ALLOWABLE VALUES: any integer >= 0.
+	"boarding inactive frames per turn" 30
 
 	# During a boarding combat, the game scales the number of casualty rolls to perform each turn with the number
 	# of crew members that each combatant has. This helps prevent the combat from becoming tedious when the
@@ -120,12 +127,36 @@ gamerules
 	# ALLOWABLE VALUES: any value between 0.01 and 1.
 	"boarding casualty percentage per action" 0.25
 
-	# When a combatant successfully self destructs while being invaded, the game rolls for additional casualties during
-	# that turn. This is to account for the possibility of their vessel exploding before the enemy troops can withdraw.
+	# When a combatant successfully self destructs while being invaded,
+	# the game rolls for additional casualties during that turn. This is
+	# to account for the possibility of their vessel exploding before the
+	# enemy troops can withdraw.
 	#
-	# During that turn, the self-destructing combatant receives a multiplier to their defensive combat power. This setting
-	# determines that multiplier.
+	# During that turn, the self-destructing combatant receives a multiplier
+	# to their combat power for the purpose of assigning casualties.
+	# This setting determines that multiplier.
+	#
+	# Note that this multiplier is NOT used when determining the success
+	# or failure of the SelfDestruct action.
 	#
 	# DEFAULT: 3.0
 	# ALLOWABLE VALUES: any non-negative decimal value.
 	"boarding self destruct casualty power multiplier" 3.0
+
+
+
+	# Game rules affecting the global economy:
+
+	# Multiplies the price of all commodities by the given value.
+	# Use this to tweak the overall profitability of commodity-based trade.
+	# DEFAULT: 1.0
+	# ALLOWABLE VALUES: any non-negative decimal value.
+	"commodity price multiplier" 10.0
+
+	# Multiplies the rewards of all missions by the given value.
+	# Use this to tweak the overall profitability of mission-based gameplay.
+	# DEFAULT: 1.0
+	# ALLOWABLE VALUES: any non-negative decimal value.
+	"mission payment multiplier" 10.0
+
+

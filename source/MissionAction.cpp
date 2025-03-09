@@ -23,6 +23,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "text/Format.h"
 #include "GameData.h"
 #include "GameEvent.h"
+#include "Gamerules.h"
 #include "Outfit.h"
 #include "PlayerInfo.h"
 #include "Ship.h"
@@ -445,7 +446,7 @@ MissionAction MissionAction::Instantiate(const ConditionsStore &store, map<strin
 
 int64_t MissionAction::Payment() const noexcept
 {
-	return action.Payment();
+	return action.Payment() * GameData::GetGamerules().MissionPaymentMultiplier();
 }
 
 

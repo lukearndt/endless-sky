@@ -16,6 +16,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Ship.h"
 
 #include "audio/Audio.h"
+#include "BoardingCombat.h"
 #include "CategoryList.h"
 #include "CategoryTypes.h"
 #include "DamageDealt.h"
@@ -51,6 +52,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <sstream>
 
 using namespace std;
@@ -1488,6 +1490,13 @@ bool Ship::IsYours() const
 
 
 
+bool Ship::IsPlayerFlagship() const
+{
+	return isYours && parent.expired();
+}
+
+
+
 void Ship::SetIsParked(bool parked)
 {
 	isParked = parked;
@@ -1799,7 +1808,7 @@ void Ship::Launch(list<shared_ptr<Ship>> &ships, vector<Visual> &visuals)
 
 
 // Used for boarding another ship, or for returning to a carrier.
-shared_ptr<Ship> Ship::Board(bool isPlayerFlagship, const vector<shared_ptr<Ship>> &attackerFleet)
+shared_ptr<Ship> Ship::Board(PlayerInfo &player)
 {
 	shared_ptr<Ship> nullShip(nullptr);
 
@@ -1816,18 +1825,19 @@ shared_ptr<Ship> Ship::Board(bool isPlayerFlagship, const vector<shared_ptr<Ship
 	// We try this before the player flagship check because the player might
 	// be piloting a carryable ship and trying to dock with one of their carriers.
 	if(boardingObjective == BoardingObjective::DOCK)
-		if(CanBeCarried() && other->GetGovernment() == government && !other->IsDisabled())
+	{
+		if(CanBeCarried() && government == other->GetGovernment() && !other->IsDisabled())
 		{
 			SetTargetShip(nullShip);
 			other->Carry(shared_from_this());
 		}
-		return isPlayerFlagship ? other : nullShip;
+		return IsPlayerFlagship() ? other : nullShip;
 	}
 
-	// If the player is boarding a ship personally, they will choose what to do
-	// via the Boarding Panel. This is handled by the ShipEvent system, so
-	// we just return the other ship here.
-	if(isPlayerFlagship)
+	// If the player is boarding a ship personally or has ordered a manual
+	// boarding order, they will choose what to do via the Boarding Panel.
+	// This is handled by the ShipEvent system, so we return the other ship.
+	if(IsPlayerFlagship() || boardingObjective == BoardingObjective::CAPTURE_MANUALLY || boardingObjective == BoardingObjective::PLUNDER_MANUALLY)
 		return other;
 
 	// Board a friendly ship, to repair or refuel it.
@@ -1866,50 +1876,41 @@ shared_ptr<Ship> Ship::Board(bool isPlayerFlagship, const vector<shared_ptr<Ship
 	other->TransferFuel(other->fuel, this);
 	other->TransferEnergy(other->energy, this);
 
-	if(boardingObjective == BoardingObjective::CAPTURE)
+	// If this is a hostile boarding, simulate it using a boarding combat.
+	if(
+		boardingObjective == BoardingObjective::CAPTURE
+		|| boardingObjective == BoardingObjective::PLUNDER
+	)
 	{
-		CaptureSession captureSession(other, this);
+		shared_ptr<Ship> self = shared_from_this();
 
-		// Take as much valuable plunder as possible from the other.
-		captureSession.SafeAttack();
+		BoardingCombat boardingCombat(
+			player,
+			self,
+			other
+		);
 
-		// Pause for one frame per ton of mass taken in the raid.
-		// This adds up to one second per 60 tons of mass.
-		pilotError = captureSession.TotalMassTaken();
+		const string combatSummary = boardingCombat.ResolveAutomatically();
 
-		if(captureSession.TotalValueTaken() > 0)
+		if(!combatSummary.empty())
 		{
 			if(IsYours())
-				Messages::Add(captureSession.GetSummary(), Messages::Importance::High);
+				Messages::Add(combatSummary, Messages::Importance::High);
 			else if (other->IsYours())
-				Messages::Add(captureSession.GetSummary(), Messages::Importance::Highest);
+				Messages::Add(combatSummary, Messages::Importance::Highest);
 		}
-	}
 
-	// If the boarding ship is the player's flagship, they will choose what to plunder.
-	if(boardingObjective == BoardingObjective::PLUNDER)
-	{
-		Plunder::Session plunderSession(other, this, attackerFleet);
-
-		// Take as much valuable plunder as possible from the other.
-		plunderSession.Raid();
-
-		// Pause for one frame per ton of mass taken in the raid.
-		// This adds up to one second per 60 tons of mass.
-		pilotError = plunderSession.TotalMassTaken();
-
-		if(plunderSession.TotalValueTaken() > 0)
+		// Render both ships inactive for the duration of the combat.
+		int inactiveFrames = boardingCombat.CountInactiveFrames();
+		if(inactiveFrames > 0)
 		{
-			if(IsYours())
-				Messages::Add(plunderSession.GetSummary(), Messages::Importance::High);
-			else if (other->IsYours())
-				Messages::Add(plunderSession.GetSummary(), Messages::Importance::Highest);
+			pilotError += inactiveFrames;
+			other->pilotError += inactiveFrames;
 		}
 	}
 
 	// Stop targeting this ship (so you will not board it again right away).
-	if(!autoPlunder || personality.Disables())
-		SetTargetShip(nullShip);
+	SetTargetShip(nullShip);
 	return other;
 }
 
@@ -2269,10 +2270,7 @@ bool Ship::IsCapturable() const
 
 bool Ship::IsConquered() const
 {
-	if(RequiredCrew() < 0)
-		return Crew() > 0;
-
-
+	return Crew() == 0 && attributes.Get("automated defenders") == 0;
 }
 
 
@@ -2346,7 +2344,7 @@ bool Ship::CanLand() const
 
 
 
-BoardingObjective Ship::GetBoardingObjective() const
+Ship::BoardingObjective Ship::GetBoardingObjective() const
 {
   return boardingObjective;
 }
@@ -3692,9 +3690,9 @@ shared_ptr<map<const Outfit *, int>> Ship::PlunderableOutfits() const
 /**
  * Get a list of the outfits that are contained wholly within the vessel
  * and cannot be taken externally. To obtain these outfits, an attacker
- * must first invade the ship and defeat its crew.
+ * must first invade and conquer the ship.
  *
- * @return A map of plunderable outfits and their quantities.
+ * @return A map of protected outfits and their quantities.
  */
 std::shared_ptr<std::map<const Outfit *, int>> Ship::ProtectedOutfits() const
 {
@@ -3704,11 +3702,10 @@ std::shared_ptr<std::map<const Outfit *, int>> Ship::ProtectedOutfits() const
 	if(IsConquered() || Outfits().empty())
 		return protectedOutfits;
 
-	auto it = Outfits().begin();
-	for(auto it : Outfits().begin())
+	for(auto it : Outfits())
 	{
-		if(it->first && it->second && it->first->Get("unplunderable"))
-			(*protectedOutfits)[it->first] = it->second;
+		if(it.first && it.second && it.first->Get("unplunderable"))
+			(*protectedOutfits)[it.first] = it.second;
 	}
 
 	return protectedOutfits;

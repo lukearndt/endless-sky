@@ -64,7 +64,6 @@ public:
 	static const Command HELP;
 	// Escort commands:
 	static const Command CAPTURE;
-	static const Command RISKY_CAPTURE;
 	static const Command FIGHT;
 	static const Command GATHER;
 	static const Command HOLD;
@@ -72,8 +71,9 @@ public:
 	static const Command AMMO;
 	static const Command HARVEST;
 	static const Command PLUNDER;
-	static const Command RISKY_PLUNDER;
 	static const Command TRANSFER_CREW;
+	static const Command BOARDING_ATTACK_STRATEGY;
+	static const Command BOARDING_DEFENSE_STRATEGY;
 
 	// This command is given in combination with JUMP or LAND and tells a ship
 	// not to jump or land yet even if it is in position to do so. It can be

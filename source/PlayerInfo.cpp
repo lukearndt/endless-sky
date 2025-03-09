@@ -4997,6 +4997,10 @@ bool PlayerInfo::DeployInCarriedShip()
  * Transfers the player to a carrier upon docking with it,
  * which designates that carrier as the player's new flagship.
  *
+ * TODO: Make this a generic option when boarding an owned ship.
+ * In theory, the player could board any friendly ship, take command of
+ * it, and send a replacement pilot to their previous ship.
+ *
  * @param carrier The carrier that the player's fighter is docking with.
  */
 void PlayerInfo::DockWithCarrier(shared_ptr<Ship> &carrier)

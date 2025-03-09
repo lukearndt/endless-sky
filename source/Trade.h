@@ -31,9 +31,14 @@ public:
 	class Commodity {
 	public:
 		std::string name;
+		std::vector<std::string> items;
+		int Low() const;
+		int High() const;
+		void SetLow(int value);
+		void SetHigh(int value);
+	private:
 		int low = 0;
 		int high = 0;
-		std::vector<std::string> items;
 	};
 
 

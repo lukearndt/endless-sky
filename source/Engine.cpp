@@ -1761,17 +1761,20 @@ void Engine::MoveShip(const shared_ptr<Ship> &ship)
 	// Boarding:
 	// If the boarding ship is the player's flagship, we will display the
 	// boarding panel. Otherwise, it will perform any plundering automatically.
-	// If the player's flagship is boarding a carrier that they own, attempts
-	// to transfer them to the carrier by making it the flagship.
-	bool isPlayerFlagship = ship.get() == flagship;
-	shared_ptr<Ship> victim = ship->Board(!isPlayerFlagship, isPlayerFlagship, ship->IsYours() ? player.Ships() : vector<shared_ptr<Ship>>());
-	if(victim)
+	// If the player's flagship is boarding a carrier that they own,
+	// attempts to transfer them to the carrier by making it the flagship.
+	shared_ptr<Ship> target = ship->Board(player);
+	if(target)
 	{
-		if(flagship->CanBeCarried() && victim->IsYours())
-			player.DockWithCarrier(victim);
+		if(
+			ship->IsPlayerFlagship()
+			&& flagship->CanBeCarried()
+			&& target->IsYours()
+		)
+			player.DockWithCarrier(target);
 		else
-			eventQueue.emplace_back(ship, victim,
-				ship->GetGovernment()->IsEnemy(victim->GetGovernment()) ?
+			eventQueue.emplace_back(ship, target,
+				ship->GetGovernment()->IsEnemy(target->GetGovernment()) ?
 					ShipEvent::BOARD : ShipEvent::ASSIST);
 	}
 

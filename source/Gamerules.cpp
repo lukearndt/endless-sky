@@ -46,6 +46,8 @@ void Gamerules::Load(const DataNode &node)
 			npcMaxMiningTime = max<int>(0, child.Value(1));
 		else if(key == "boarding negotiations")
 			boardingNegotiations = child.BoolValue(1);
+		else if(key == "boarding inactive frames per turn")
+			boardingInactiveFramesPerTurn = max<int>(0, child.Value(1));
 		else if(key == "boarding casualty percentage per action")
 			boardingCasualtyPercentagePerAction = min<double>(1., max<double>(0.01, child.Value(1)));
 		else if(key == "boarding self destruct casualty power multiplier")
@@ -60,6 +62,10 @@ void Gamerules::Load(const DataNode &node)
 			depreciationGracePeriod = max<int>(0, child.Value(1));
 		else if(key == "depreciation max age")
 			depreciationMaxAge = max<int>(0, child.Value(1));
+		else if(key == "commodity price multiplier")
+			commodityPriceMultiplier = max<double>(0., child.Value(1));
+		else if(key == "mission payment multiplier")
+			missionPaymentMultiplier = max<double>(0., child.Value(1));
 		else if(key == "disabled fighters avoid projectiles")
 		{
 			const string &value = child.Token(1);
@@ -114,6 +120,13 @@ bool Gamerules::BoardingNegotiations() const
 
 
 
+int Gamerules::BoardingInactiveFramesPerTurn() const
+{
+  return boardingInactiveFramesPerTurn;
+}
+
+
+
 double Gamerules::BoardingCasualtyPercentagePerAction() const
 {
   return boardingCasualtyPercentagePerAction;
@@ -159,6 +172,20 @@ int Gamerules::DepreciationGracePeriod() const
 int Gamerules::DepreciationMaxAge() const
 {
 	return depreciationMaxAge;
+}
+
+
+
+double Gamerules::CommodityPriceMultiplier() const
+{
+  return commodityPriceMultiplier;
+}
+
+
+
+double Gamerules::MissionPaymentMultiplier() const
+{
+  return missionPaymentMultiplier;
 }
 
 

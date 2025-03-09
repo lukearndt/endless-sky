@@ -41,6 +41,7 @@ public:
 	int NoPersonSpawnWeight() const;
 	int NPCMaxMiningTime() const;
 	bool BoardingNegotiations() const;
+	int BoardingInactiveFramesPerTurn() const;
 	double BoardingCasualtyPercentagePerAction() const;
 	double BoardingSelfDestructCasualtyPowerMultiplier() const;
 	double UniversalFrugalThreshold() const;
@@ -48,6 +49,8 @@ public:
 	double DepreciationDaily() const;
 	int DepreciationGracePeriod() const;
 	int DepreciationMaxAge() const;
+	double CommodityPriceMultiplier() const;
+	double MissionPaymentMultiplier() const;
 	FighterDodgePolicy FightersHitWhenDisabled() const;
 
 
@@ -57,6 +60,7 @@ private:
 	int noPersonSpawnWeight = 1000;
 	int npcMaxMiningTime = 3600;
 	bool boardingNegotiations = false; // This feature is not implemented yet
+	int boardingInactiveFramesPerTurn = 30;
 	double boardingCasualtyPercentagePerAction = 0.25;
 	double boardingSelfDestructCasualtyPowerMultiplier = 3.0;
 	double universalFrugalThreshold = .75;
@@ -64,5 +68,7 @@ private:
 	double depreciationDaily = 0.997;
 	int depreciationGracePeriod = 7;
 	int depreciationMaxAge = 1000;
+	double commodityPriceMultiplier = 1.0;
+	double missionPaymentMultiplier = 1.0;
 	FighterDodgePolicy fighterHitPolicy = FighterDodgePolicy::ALL;
 };

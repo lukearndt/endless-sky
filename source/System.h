@@ -192,11 +192,13 @@ private:
 	public:
 		void SetBase(int base);
 		void Update();
+		int Current() const;
 
 		int base = 0;
-		int price = 0;
 		double supply = 0.;
 		double exports = 0.;
+	private:
+		int price = 0;
 	};
 
 

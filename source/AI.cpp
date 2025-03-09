@@ -180,7 +180,7 @@ namespace {
 	}
 
 	// Helper function for selecting the ships for formation commands.
-	vector<Ship *> GetShipsForFormationCommand(const PlayerInfo &player)
+	vector<Ship *> GetShipsForFormationCommand(PlayerInfo &player)
 	{
 		// Figure out what ships we are giving orders to.
 		vector<Ship *> targetShips;
@@ -452,7 +452,7 @@ namespace {
 
 
 
-AI::AI(const PlayerInfo &player, const List<Ship> &ships,
+AI::AI(PlayerInfo &player, const List<Ship> &ships,
 		const List<Minable> &minables, const List<Flotsam> &flotsam)
 	: player(player), ships(ships), minables(minables), flotsam(flotsam)
 {
@@ -610,6 +610,7 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 	if(player.Ships().size() < 2)
 		return;
 
+	// Some commands are altered if the shift key is held.
 	const bool shift = activeCommands.Has(Command::SHIFT);
 
 	// Toggle the "deploy" command for the fleet or selected ships.
@@ -621,8 +622,7 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 	}
 
 	// The gather command controls formation flying when combined with shift.
-	// The shift key also makes the "capture" and "plunder" commands more aggressive.
-	const bool shift = activeCommands.Has(Command::SHIFT);
+	// The shift key also makes the "capture" and "plunder" commands use the boarding panel.
 	if(shift && activeCommands.Has(Command::GATHER))
 		IssueFormationChange(player);
 
@@ -656,41 +656,45 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 	if(activeCommands.Has(Command::CAPTURE))
 	{
 		string message;
+		string actionMessage = shift ? "preparing to manually capture" : "attempting to capture ";
 		if(target)
 		{
 			bool hostileAction = !target->IsYours()
 				&& (shift || target->GetGovernment()->IsEnemy(GameData::PlayerGovernment()));
 
 			if(hostileAction)
-			{
-				newOrders.target = target;
-				newOrders.type = Orders::CAPTURE_TARGET;
+				{
+					newOrders.target = target;
+					newOrders.type = shift ? Orders::CAPTURE_MANUALLY : Orders::CAPTURE;
 				IssueOrders(newOrders, target->IsDisabled()
-				? "capturing \"" + target->Name() + "\"."
-				: "attempting to disable and capture \"" + target->Name() + "\".");
+				? actionMessage + target->QuotedName() + "."
+				: "disabling and " + actionMessage + target->QuotedName() + ".");
 			}
 			else if(target->IsDisabled())
 			{
 				newOrders.target = target;
-				newOrders.type = Orders::REPAIR_TARGET;
-				IssueOrders(newOrders, "repairing \"" + target->Name() + "\".");
+				newOrders.type = Orders::REPAIR;
+				IssueOrders(newOrders, "repairing " + target->QuotedName() + ". Hold shift if you intend to capture a friendly target.");
 			}
 			else
-			  Messages::Add(
-					"Cannot repair an target that is not disabled."
-					+ target->IsYours() ? "" : " Hold shift if you mean to attack and capture a friendly ship.",
-					Messages::Importance::High
-				);
+			{
+				message += target->QuotedName() + " does not need repairs.";
+				if(!target->IsYours())
+					message += " Hold shift if you intend to capture a friendly target.";
+			  Messages::Add(message, Messages::Importance::High);
+			}
 		}
 		else // No target selected, so just capture hostiles in general.
 		{
-			newOrders.type = Orders::CAPTURE_HOSTILES;
-			IssueOrders(newOrders, "attacking hostile ships and capturing them once disabled.");
+			newOrders.type = shift ? Orders::CAPTURE_MANUALLY : Orders::CAPTURE;
+			IssueOrders(newOrders, "disabling hostile ships and " + actionMessage + " them.");
 		}
 	}
 	if(activeCommands.Has(Command::PLUNDER))
 	{
 		string message;
+		string actionMessage = shift ? "preparing to manually plunder " : "plundering ";
+
 		if(target)
 		{
 			bool hostileAction = !target->IsYours()
@@ -699,28 +703,55 @@ void AI::UpdateKeys(PlayerInfo &player, Command &activeCommands)
 			if(hostileAction)
 			{
 				newOrders.target = target;
-				newOrders.type = Orders::PLUNDER_TARGET;
+				newOrders.type = shift ? Orders::PLUNDER_MANUALLY : Orders::PLUNDER;
 				IssueOrders(newOrders, target->IsDisabled()
-				? "plundering " + target->QuotedName() + "."
-				: "attempting to disable and plunder " + target->QuotedName() + ".");
+				? actionMessage + target->QuotedName() + "."
+				: "disabling and " + actionMessage + target->QuotedName() + ".");
 			}
 			else if(target->IsDisabled())
 			{
 				newOrders.target = target;
-				newOrders.type = Orders::REPAIR_TARGET;
-				IssueOrders(newOrders, "repairing " + target->QuotedName() + ".");
+				newOrders.type = Orders::REPAIR;
+				IssueOrders(newOrders, "repairing " + target->QuotedName() + ". Hold shift if you intend to capture a friendly target.");
 			}
 			else
-			  Messages::Add(
-					"Cannot repair an target that is not disabled."
-					+ target->IsYours() ? "" : " Hold shift if you mean to attack and plunder a friendly ship.",
-					Messages::Importance::High
-				);
+			{
+				message += target->QuotedName() + " does not need repairs.";
+				if(!target->IsYours())
+					message += " Hold shift if you intend to plunder a friendly target.";
+			  Messages::Add(message, Messages::Importance::High);
+			}
 		}
 		else // No target selected, so just plunder hostiles in general.
 		{
-			newOrders.type = Orders::PLUNDER_HOSTILES;
-			IssueOrders(newOrders, "attacking hostile ships and plundering them once disabled.");
+			newOrders.type = shift ? Orders::PLUNDER_MANUALLY : Orders::PLUNDER;
+			string plunderType = shift ? "manually" : "automatically";
+			IssueOrders(newOrders, "disabling hostile ships and " + actionMessage + "them.");
+		}
+	}
+	// Command escorts to transfer their extra crew to other owned ships.
+	if(activeCommands.Has(Command::TRANSFER_CREW))
+	{
+		if(shift)
+		{
+			// If the player holds shift and selects a single escort,
+			// they are trying to turn that escort into the flagship.
+			if(player.SelectedShips().size() == 1)
+			{
+				auto ship = player.SelectedShips().at(0).lock();
+				Messages::Add("Transferring you to " + ship->QuotedName() + " and making it your new flagship.", Messages::Importance::High);
+			}
+			else // Transfer selected escorts' extra crew to the flagship.
+			{
+				newOrders.target = player.FlagshipPtr();
+				newOrders.type = Orders::TRANSFER_CREW;
+				IssueOrders(newOrders, "transferring their extra crew to your flagship.");
+			}
+		}
+		else // Transfer extra crew to other escorts.
+		{
+			newOrders.type = Orders::TRANSFER_CREW;
+			IssueOrders(newOrders, "transferring their extra crew to other escorts that need them.");
 		}
 	}
 
@@ -1609,7 +1640,10 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 			if(
 				order.type == Orders::ATTACK
 				|| order.type == Orders::FINISH_OFF
-				|| order.type == Orders::PLUNDER_TARGET
+				|| order.type == Orders::CAPTURE
+				|| order.type == Orders::CAPTURE_MANUALLY
+				|| order.type == Orders::PLUNDER
+				|| order.type == Orders::PLUNDER_MANUALLY
 			)
 				return order.target.lock();
 		}
@@ -1654,7 +1688,7 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 		(minRange > 1000.) ? maxRange * 1.5 : 4000.;
 	bool hasNemesis = false;
 	bool canPlunder = ship.Cargo().Free() &&
-	(person.Plunders() || order.type == Orders::PLUNDER_TARGET || order.type == Orders::PLUNDER_HOSTILES);
+	(person.Plunders() || order.type == Orders::PLUNDER || order.type == Orders::PLUNDER_MANUALLY);
 	// Figure out how strong this ship is.
 	int64_t maxStrength = 0;
 	auto strengthIt = shipStrength.find(&ship);
@@ -1738,6 +1772,110 @@ shared_ptr<Ship> AI::FindTarget(const Ship &ship) const
 	}
 
 	return target;
+}
+
+
+
+/**
+ * Find a hostile target for the given ship to board.
+ *
+ * The ship will prefer its current target if that target is disabled
+ * and the ship has not yet boarded it.
+ *
+ * Otherwise, it will search the system for a disabled hostile ship that
+ * it has not yet boarded.
+ *
+ * @param ship The ship that is looking for a hostile target to board.
+ *
+ * @return A disabled hostile target that this ship has not yet boarded,
+ * 	or `nullptr` if no such ship exists.
+ */
+std::shared_ptr<Ship> AI::FindHostileBoardingTarget(const Ship &ship) const
+{
+	auto target = ship.GetTargetShip();
+	if(target && target->IsDisabled() && !Has(ship, target, ShipEvent::BOARD))
+		return target;
+
+	auto enemies = GetShipsList(ship, true);
+	for(auto &foe : enemies)
+		if(foe->IsDisabled())
+		{
+			auto foePtr = foe->shared_from_this();
+			if(!Has(ship, foePtr, ShipEvent::BOARD))
+				return foePtr;
+		}
+
+	return nullptr;
+}
+
+
+
+/**
+ * Find a disabled target for the given ship to board and repair.
+ *
+ * The ship prefers its current target if disabled and friendly.
+ * Otherwise, it searches the system for a disabled friendly ship.
+ *
+ * By default, this routine can execute twice:
+ *
+ * First, it only considers targets with the same government as the ship.
+ * This is to ensure that the ship prioritises ships from its own fleet
+ * over other ships that are friendly but not direct allies.
+ *
+ * If the first execution does not find a target, the routine calls itself
+ * one more time with `includeOtherGovernments` set to true. This allows
+ * the ship to consider friendly targets from other governments.
+ *
+ * There are two ways to override this behaviour:
+ *
+ * If you set `includeOtherGovernments` to true, the routine considers
+ * all friendly ships in the system during the first execution and does not
+ * call itself a second time.
+ *
+ * If you set `preventWiderCheck` to true, the routine avoids calling
+ * itself a second time even if it does not find a target during the
+ * first attempt.
+ *
+ * @param ship The ship that is looking for a disabled target to repair.
+ * @param includeOtherGovernments If true, considers ships from other
+ * 	governments. Defaults to false, but set to true for the	second execution.
+ * @param preventWiderCheck If true, prevents the routine from calling
+ * 	itself a second time with `includeOtherGovernments` set to true.
+ * 	Defaults to false, but set to true for the second execution.
+ *
+ * @return A disabled friendly target in the system.
+ */
+std::shared_ptr<Ship> AI::FindRepairTarget(const Ship &ship, bool includeOtherGovernments, bool preventWiderCheck) const
+{
+	auto shipGovernment = ship.GetGovernment();
+
+	// First check if the ship already has a disabled friendly target.
+	auto target = ship.GetTargetShip();
+	if(
+		target && target->IsDisabled() && (includeOtherGovernments
+			? !shipGovernment->IsEnemy(target->GetGovernment())
+			: shipGovernment == target->GetGovernment()
+		)
+	)
+		return target;
+
+	auto allies = GetShipsList(ship, false);
+
+	// Next, prefer ships that are disabled.
+	for(auto &ally : allies)
+		if(ally->IsDisabled() && (includeOtherGovernments || shipGovernment == ally->GetGovernment()))
+			return ally->shared_from_this();
+
+	// If we have enough fuel, also check for ships that are stranded.
+	if(ship.Fuel() > ship.JumpNavigation().JumpFuel() * 1.5)
+		for(auto &ally : allies)
+			if(ally->NeedsFuel() && (includeOtherGovernments || shipGovernment == ally->GetGovernment()))
+				return ally->shared_from_this();
+
+	if(preventWiderCheck)
+		return nullptr;
+
+	return FindRepairTarget(ship, true, true);
 }
 
 
@@ -1940,49 +2078,28 @@ bool AI::FollowOrders(Ship &ship, Command &command)
 		else
 			return false;
 	}
-	else if(type == Orders::CAPTURE_HOSTILES || type == Orders::CAPTURE_TARGET)
+	else if(
+		type == Orders::CAPTURE || type == Orders::CAPTURE_MANUALLY
+		|| type == Orders::PLUNDER || type == Orders::PLUNDER_MANUALLY
+	)
 	{
-		// If the target is an enemy and not disabled, setting it as a target
-		// is enough to make the ship attack it.
-		if(type == Orders::CAPTURE_TARGET)
-			ship.SetTargetShip(target);
-
-		if(DoCapturing(ship, command))
+		if(DoHostileBoarding(ship, command, type, target))
 		{
 			ship.SetCommands(command);
 			ship.SetCommands(firingCommands);
-			return true;
 		}
 		else
 			return false;
 	}
-	else if(type == Orders::PLUNDER_HOSTILES || type == Orders::PLUNDER_TARGET)
+	else if(type == Orders::REPAIR)
 	{
-		// If the target is an enemy and not disabled, setting it as a target
-		// is enough to make the ship attack it.
-		if(type == Orders::PLUNDER_TARGET)
-			ship.SetTargetShip(target);
-
-		if(DoPlundering(ship, command))
+		if(DoRepairing(ship, command, target))
 		{
 			ship.SetCommands(command);
 			ship.SetCommands(firingCommands);
-			return true;
 		}
 		else
 			return false;
-	}
-	else if(type == Orders::REPAIR_TARGET)
-	{
-		// If the target is an enemy and not disabled, setting it as a target
-		// is enough to make the ship attack it.
-		if(!target->IsDisabled())
-			return false;
-
-		ship.SetTargetShip(target);
-		command |= Command::BOARD;
-		ship.SetCommands(command);
-		ship.SetCommands(firingCommands);
 	}
 	else if(!target)
 	{
@@ -2088,7 +2205,7 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 		{
 			if(it->second.type == Orders::MOVE_TO)
 				ignoreTargetShip = (ship.GetTargetSystem() && ship.JumpsRemaining()) || ship.GetTargetStellar();
-			else if(it->second.type == Orders::ATTACK || it->second.type == Orders::FINISH_OFF || it->second.type == Orders::PLUNDER_TARGET)
+			else if(it->second.type == Orders::ATTACK || it->second.type == Orders::FINISH_OFF || it->second.type == Orders::PLUNDER_MANUALLY)
 				friendlyOverride = it->second.target.lock() == target;
 		}
 	}
@@ -2141,6 +2258,14 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 				command |= Command::SCAN;
 			return;
 		}
+	}
+	// If there's nothing more pressing to do, check for disabled friendly
+	// ships and consider helping them.
+	else if(DoRepairing(ship, command))
+	{
+		ship.SetCommands(command);
+		ship.SetCommands(firingCommands);
+		return;
 	}
 
 	// A ship has restricted movement options if it is 'staying', 'lingering', or hostile to its parent.
@@ -3052,6 +3177,32 @@ void AI::MoveToAttack(Ship &ship, Command &command, const Body &target)
 
 
 
+/**
+ * Instructs the ship to move to the target ship and board it.
+ *
+ * @param ship The ship that is moving to board the target.
+ * @param command The command being executed.
+ * @param target The ship to board. If this is a nullptr, the routine
+ * 	immediately returns false and does nothing else.
+ * @param objective A Ship::BoardingObjective to assign the ship so that
+ * 	it knows what to do once it reaches the target.
+ *
+ * @return Whether or not the ship is attempting to board the target.
+ */
+bool AI::MoveToBoard(Ship &ship, Command &command, Ship::BoardingObjective objective, const shared_ptr<Ship> &target)
+{
+	if(!target)
+		return false;
+
+	ship.SetTargetShip(target);
+	ship.SetBoardingObjective(objective);
+	MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
+	command |= Command::BOARD;
+	return true;
+}
+
+
+
 void AI::PickUp(Ship &ship, Command &command, const Body &target)
 {
 	// Figure out the target's velocity relative to the ship.
@@ -3748,181 +3899,202 @@ void AI::DoPatrol(Ship &ship, Command &command) const
 }
 
 /**
- * A ship can use this routine to evaluate its current target for capture.
+ * A ship can use this routine to consider boarding another ship.
  *
- * If the ship given this command does not have any extra crew members
- * beyond its required crew, it will not attempt to capture any ships.
+ * The ship only attempts to boarding disabled targets that it can
+ * feasibly capture or plunder. Capturing requires that the ship has
+ * extra crew members, while plundering requires available cargo space.
  *
- * If the ship doesn't have a target yet, it searches for a disabled
- * enemy ship that it hasn't boarded yet.
+ * If a specific target is supplied, the ship contributes to disabling
+ * that target even if it can't board it. This allows the order to be
+ * used to focus fire on a specific target with the entire fleet, and
+ * then board it with only the ships that can meaningfully do so.
  *
- * If it can't find a suitable enemy, it searches for a disabled friendly
- * ship that it can repair.
- *
- * @param ship The ship that is capturing.
+ * @param ship The ship that is attempting to capture.
  * @param command The command being executed.
+ *
+ * @param orderType The boarding order to carry out. Supported values: CAPTURE, CAPTURE_MANUALLY, PLUNDER, PLUNDER_MANUALLY.
+ *
+ * 	Manual orders trigger the boarding panel when the ship boards,
+ * 	giving the player direct control over the process. When paired with
+ * 	a supplied non-player target, they also enable friendly fire.
+ *
+ * @param target A specific target to consider boarding. Optional.
+ *
+ * 	By default, the ship will search for a hostile target to board,
+ * 	prioritising its current target where appropriate.
+ *
+ * 	Supplying a target will make the ship consider only that target,
+ *  and prevents it from searching for other targets to board.
+ *
+ * 	If the target is friendly, the ship assumes that the order was
+ * 	issued by mistake. Manual orders bypass this safety check.
  *
  * @return Whether or not the ship has chosen an action.
  */
-bool AI::DoCapturing(Ship &ship, Command &command, bool useExtraAggression)
+bool AI::DoHostileBoarding(
+	Ship &ship,
+	Command &command,
+	int orderType,
+	shared_ptr<Ship> target
+) const
 {
-	shared_ptr<Ship> target = ship.GetTargetShip();
+	bool isManualOrder = false;
+	Ship::BoardingObjective objective = Ship::BoardingObjective::NONE;
+	bool canAttemptObjective = false;
 
-	bool hasExtraCrew = ship.Crew() > ship.RequiredCrew();
-
-	// If the ship doesn't have a target yet and it has extra crew members,
-	// it searches for a disabled enemy ship that it hasn't boarded yet.
-	if(!target && hasExtraCrew)
+	if(orderType == Orders::CAPTURE)
 	{
-		auto enemies = GetShipsList(ship, true);
-		for(auto &foe : enemies)
-			if(foe->IsDisabled())
-			{
-				auto foePtr = foe->shared_from_this();
-				if(!Has(ship, foePtr, ShipEvent::BOARD))
-				{
-					target = foePtr;
-					break;
-				}
-			}
+		objective = Ship::BoardingObjective::CAPTURE;
+		canAttemptObjective = ship.Crew() > ship.RequiredCrew();
 	}
-
-	// If there aren't any enemies, it searches for a disabled ally to repair.
-	if(!target)
+	else if(orderType == Orders::CAPTURE_MANUALLY)
 	{
-		auto allies = GetShipsList(ship, false);
-		for(auto &ally : allies)
-			if(ally->IsDisabled())
-			{
-				target = ally->shared_from_this();
-				break;
-			}
+		isManualOrder = true;
+		objective = Ship::BoardingObjective::CAPTURE_MANUALLY;
+		canAttemptObjective = ship.Crew() > ship.RequiredCrew();
 	}
-
-	// If it still doesn't have a disabled target, it can't board anything.
-	if(!target || !target->IsDisabled())
-		return false;
-
-	// From this point onward, we know that the ship has a disabled target.
-
-	bool autoPlunder = false;
-	bool considerCapture = false;
-	bool nonDocking = true;
-	// If the disabled target is an enemy, or it's been told to be more
-	// aggressive and the target is not in the same faction, the ship
-	// considers capturing it.
-	if(
-		ship.GetGovernment()->IsEnemy(target->GetGovernment())
-		|| (useExtraAggression && ship.GetGovernment() != target->GetGovernment())
-	)
+	else if(orderType == Orders::PLUNDER)
 	{
-		// Abort if the ship doesn't have any extra crew members, or if it has
-		// already boarded this target.
-		if(!hasExtraCrew || Has(ship, target, ShipEvent::BOARD))
+		objective = Ship::BoardingObjective::PLUNDER;
+		canAttemptObjective = ship.Cargo().Free() > 0;
+	}
+	else if(orderType == Orders::PLUNDER_MANUALLY)
+	{
+		isManualOrder = true;
+		objective = Ship::BoardingObjective::PLUNDER_MANUALLY;
+		canAttemptObjective = ship.Cargo().Free() > 0;
+	}
+	else
+		throw logic_error("DoHostileBoarding called with unsupported order: " + to_string(orderType));
+
+	// If the order has a specific target, only consider that.
+	if(target)
+	{
+		// If the target is friendly, this ship assumes that the order was
+		// issued by mistake. Manual orders bypass this safety check.
+		bool hostile = isManualOrder || ship.GetGovernment()->IsEnemy(target->GetGovernment());
+		if(!hostile)
 		{
-			target.reset();
+			if(ship.GetTargetShip() == target)
+				ship.SetTargetShip(nullptr);
+
 			return false;
 		}
 
-		considerCapture = true;
+		return DisableAndBoard(ship, command, target, objective, canAttemptObjective);
 	}
 
-	// Move to the target ship and board it.
-	ship.SetTargetShip(target);
-	if(!ship.Board(autoPlunder, considerCapture, nonDocking, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>(), useExtraAggression))
-	{
-		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
-		command |= Command::BOARD;
-	}
-	return true;
+	// Avoid searching for a target if this ship can't attempt the objective.
+	if(!canAttemptObjective)
+		return false;
+
+	// Find a disabled hostile target, and attempt to board it.
+	// If this ship already has a target, it will consider that first.
+	return DisableAndBoard(ship, command, FindHostileBoardingTarget(ship), objective, canAttemptObjective);
 }
 
+
+
 /**
- * A ship can use this routine to evaluate its current target for boarding.
+ * A ship can use this routine to perform search and rescue operations.
  *
- * If the ship doesn't have a target yet, it searches for a disabled
- * enemy ship that it hasn't boarded yet.
- *
- * If it can't find a suitable enemy, it searches for a disabled friendly
- * ship that it can repair.
- *
- * @param ship The ship that is plundering.
+ * If the ship doesn't have a suitable target yet, it searches for a
+ * disabled friendly ship. It prioritises ships that are in its
+ * government's faction, but will also help ships from other factions.
+ * *
+ * @param ship The ship that is repairing other friendly ships.
  * @param command The command being executed.
+ * @param target A specific target to consider repairing. Optional.
+ * 	If a target is not supplied, the ship searches for one.
  *
  * @return Whether or not the ship has chosen an action.
  */
-bool AI::DoPlundering(Ship &ship, Command &command, bool useExtraAggression)
+bool AI::DoRepairing(Ship &ship, Command &command, shared_ptr<Ship> target) const
 {
-	shared_ptr<Ship> target = ship.GetTargetShip();
-
-	bool hasFreeCargo = ship.Cargo().Free() > 0;
-
-	// If the ship doesn't have a target yet and it has free cargo space,
-	// it searches for a disabled enemy ship that it hasn't boarded yet.
-	if(!target && hasFreeCargo)
+	if(target)
 	{
-		auto enemies = GetShipsList(ship, true);
-		for(auto &foe : enemies)
-			if(foe->IsDisabled())
-			{
-				auto foePtr = foe->shared_from_this();
-				if(!Has(ship, foePtr, ShipEvent::BOARD))
-				{
-					target = foePtr;
-					break;
-				}
-			}
-	}
-
-	// If there aren't any enemies, it searches for a disabled ally to repair.
-	if(!target)
-	{
-		auto allies = GetShipsList(ship, false);
-		for(auto &ally : allies)
-			if(ally->IsDisabled())
-			{
-				target = ally->shared_from_this();
-				break;
-			}
-	}
-
-	// If it still doesn't have a disabled target, it can't board anything.
-	if(!target || !target->IsDisabled())
-		return false;
-
-	// From this point onward, we know that the ship has a disabled target.
-
-	bool autoPlunder = false;
-	bool considerCapture = false;
-	bool nonDocking = true;
-	// If the disabled target is an enemy, or it's been told to be more
-	// aggressive and the target is not in the same faction, the ship
-	// considers plundering it.
-	if(
-		ship.GetGovernment()->IsEnemy(target->GetGovernment())
-		|| (useExtraAggression && ship.GetGovernment() != target->GetGovernment())
-	)
-	if(ship.GetGovernment()->IsEnemy(target->GetGovernment()))
-	{
-		// Abort if the ship doesn't have any free cargo space, or if it has
-		// already boarded this target.
-		if(!hasFreeCargo || Has(ship, target, ShipEvent::BOARD))
+		// If the target is disabled, attempt to repair it.
+		if(target->IsDisabled())
 		{
-			target.reset();
-			return false;
+			MoveToBoard(ship, command, Ship::BoardingObjective::REPAIR, target);
+			return true;
 		}
 
-		autoPlunder = true;
+		// If the target is no longer disabled, release it.
+		if(ship.GetTargetShip() == target)
+			ship.SetTargetShip(nullptr);
+
+		return false;
 	}
 
-	// Move to the target ship and board it.
-	ship.SetTargetShip(target);
-	if(!ship.Board(autoPlunder, false, ship.IsYours() ? player.Ships() : vector<shared_ptr<Ship>>()))
+	return MoveToBoard(ship, command, Ship::BoardingObjective::REPAIR, FindRepairTarget(ship));
+}
+
+
+
+
+/**
+ * A ship can use this routine to disable and board another ship.
+ *
+ * It assumes that the target is considered hostile, so ensure that any
+ * friendly fire checks are done before calling this routine.
+ *
+ * If the ship given this command chooses to either attack or board the
+ * target, it will do so and return true.
+ *
+ * If the target is disabled and the ship cannot carry out the boarding
+ * objective, it releases the target and the routine returns false.
+ *
+ * @param ship The ship that is executing the command.
+ * @param command The command being executed.
+ * @param target A specific target to disable and consider boarding.
+ * 	If the target is null, the routine immediately returns false.
+ * @param objective What the ship is trying to achieve by boarding.
+ * @param canAttemptObjective Whether or not the ship can attempt the boarding objective.
+ * @param allowRepeats Whether or not the ship can board the
+ * 	same target multiple times. Default is false.
+ *
+ * @return Whether or not the ship has chosen an action.
+ */
+bool AI::DisableAndBoard(
+	Ship &ship,
+	Command &command,
+	std::shared_ptr<Ship> target,
+	Ship::BoardingObjective objective,
+	bool canAttemptObjective,
+	bool allowRepeats
+) const
+{
+	// This allows us to call the routine directly with an attempt to
+	// select a target instead of assigning and checking it beforehand.
+	if(!target)
+		return false;
+
+	// If the target is not yet disabled, attack it.
+	if(!target->IsDisabled())
 	{
-		MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
-		command |= Command::BOARD;
+		ship.SetTargetShip(target);
+		MoveToAttack(ship, command, *target);
+		return true;
 	}
-	return true;
+
+	// Avoid boarding the target multiple times unless instructed to.
+	if(!allowRepeats && Has(ship, target, ShipEvent::BOARD))
+		canAttemptObjective = false;
+
+	// Board the target if this ship can attempt the objective.
+	if(canAttemptObjective)
+	{
+		MoveToBoard(ship, command, objective, target);
+		return true;
+	}
+
+	// Otherwise, release the target so that this ship can do something else.
+	if(ship.GetTargetShip() == target)
+		ship.SetTargetShip(nullptr);
+
+	return false;
 }
 
 
@@ -4317,7 +4489,7 @@ void AI::AutoFire(const Ship &ship, FireCommand &command, bool secondary, bool i
 		{
 			disabledOverride = (it->second.type == Orders::FINISH_OFF);
 			friendlyOverride = disabledOverride |
-				(it->second.type == Orders::ATTACK || it->second.type == Orders::PLUNDER_TARGET);
+				(it->second.type == Orders::ATTACK || it->second.type == Orders::PLUNDER_MANUALLY);
 		}
 	}
 	bool currentIsEnemy = currentTarget

@@ -16,6 +16,8 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Trade.h"
 
 #include "DataNode.h"
+#include "GameData.h"
+#include "Gamerules.h"
 
 #include <algorithm>
 
@@ -41,8 +43,8 @@ void Trade::Load(const DataNode &node)
 			it->name = child.Token(1);
 			if(!isSpecial)
 			{
-				it->low = child.Value(2);
-				it->high = child.Value(3);
+				it->SetLow(child.Value(2));
+				it->SetHigh(child.Value(3));
 			}
 			for(const DataNode &grand : child)
 				it->items.push_back(grand.Token(0));
@@ -66,4 +68,32 @@ const vector<Trade::Commodity> &Trade::Commodities() const
 const vector<Trade::Commodity> &Trade::SpecialCommodities() const
 {
 	return specialCommodities;
+}
+
+
+
+int Trade::Commodity::Low() const
+{
+	return low * GameData::GetGamerules().CommodityPriceMultiplier();
+}
+
+
+
+int Trade::Commodity::High() const
+{
+	return high * GameData::GetGamerules().CommodityPriceMultiplier();
+}
+
+
+
+void Trade::Commodity::SetLow(int value)
+{
+	low = value;
+}
+
+
+
+void Trade::Commodity::SetHigh(int value)
+{
+	high = value;
 }

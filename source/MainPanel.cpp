@@ -225,6 +225,18 @@ bool MainPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, boo
 		Messages::Add("Your escorts will now expend ammo: " + Preferences::AmmoUsage() + "."
 			, Messages::Importance::High);
 	}
+	else if(command.Has(Command::BOARDING_ATTACK_STRATEGY))
+	{
+		Preferences::ToggleBoardingAttackStrategy();
+		Messages::Add("Your escorts will now use the \"" + Preferences::BoardingAttackStrategySetting()
+			+ "\" attack strategy during boarding actions.", Messages::Importance::High);
+	}
+	else if(command.Has(Command::BOARDING_DEFENSE_STRATEGY))
+	{
+		Preferences::ToggleBoardingDefenseStrategy();
+		Messages::Add("Your escorts will now use the \"" + Preferences::BoardingDefenseStrategySetting() + "\" defense strategy during boarding actions."
+			, Messages::Importance::High);
+	}
 	else if((key == SDLK_MINUS || key == SDLK_KP_MINUS) && !command)
 		Preferences::ZoomViewOut();
 	else if((key == SDLK_PLUS || key == SDLK_KP_PLUS || key == SDLK_EQUALS) && !command)

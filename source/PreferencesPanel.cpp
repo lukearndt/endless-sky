@@ -476,6 +476,7 @@ void PreferencesPanel::DrawControls()
 		"Keyboard Navigation",
 		"Fleet",
 		"\t",
+		"Boarding",
 		"Targeting",
 		"Weapons",
 		"\n",
@@ -504,6 +505,9 @@ void PreferencesPanel::DrawControls()
 		Command::AMMO,
 		Command::TRANSFER_CREW,
 		Command::NONE,
+		Command::NONE,
+		Command::BOARDING_ATTACK_STRATEGY,
+		Command::BOARDING_DEFENSE_STRATEGY,
 		Command::NONE,
 		Command::NEAREST,
 		Command::TARGET,
@@ -875,7 +879,7 @@ void PreferencesPanel::DrawSettings()
 		else if(setting == BOARDING_PRIORITY)
 		{
 			isOn = true;
-			text = Preferences::BoardingSetting();
+			text = Preferences::BoardingPrioritySetting();
 		}
 		else if(setting == TARGET_ASTEROIDS_BASED_ON)
 		{
