@@ -18,68 +18,62 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include <map>
 #include <memory>
+#include <string>
 #include <variant>
 
 
 
-// This class contains several enumsand classes that are used to model
+// This class contains several enums and classes that are used to model
 // how boarding takes place and the decisions that each combatant can make.
-// It is separate from the BoardingCombat and BoardingPanel classes in
-// order to prevent circular dependencies between the files that define
-// the boarding combat system and other files that interact with it.
+// It is separate from the BoardingCombat and BoardingPanel classes so
+// that other files can include it without creating a circular dependency.
 class Boarding {
 public:
-	// The actions that a combatant can take during a single Turn of combat.
-	enum class Action {
-		Null, // The combatant does not take an action. Used during Turn 0 or when defeated.
-
-		// Section 1: Actions taken during active combat.
-
-		Attack, // Try to capture the enemy or use attack power to repel invaders.
-		Defend,  // Focus on preventing the enemy from invading.
-		Negotiate, // Ask the enemy to negotiate. Might open a mission dialogue.
-		Plunder, // Try to steal an outfit or cargo from the enemy.
-		SelfDestruct, // Attempt to destroy yourself, denying technology and possibly killing some invaders.
-
-		// Section 2: Actions that end the combat, applying a particular outcome.
-
-		Capture, // Final. Requires victory. Repair the ship and take control of it, transferring crew.
-		Destroy, // Final. Requires isolation or victory. Destroys the enemy ship, preventing any further boarding from others.
-		Leave, // Final. Requires isolation or victory. Withdraws from the ship, leaving it disabled. Others can board afterward.
-		Raid, // Final. Requires isolation or victory. Plunders as much value as possible. Destroys enemy if no plunder remains.
-		Resolve // End the combat without further violence, applying the agreed-upon Terms.
-	};
-
 	// The state of a boarding combat during a given Turn.
+	// This is used to determine what actions are available to each combatant.
+	// Combat begins in the Isolated state, and can progress through the
+	// various other states as the combatants take various actions.
 	enum class State {
-		// Isolated: the combatants are not attached to one another.
-		// If the boarder chooses Attack, the state becomes BoarderInvading.
-		Isolated,
-		// BoarderInvading: the boarder has invaded the target with troops.
-		// If both sides Defend, the state becomes Poised.
-		BoarderInvading,
-		// Poised: neither combatant is invading, but they are attached to one another.
+		Isolated, // The combatants are not attached to one another.
+		// If the boarder Attacks, the state becomes Poised.
+		Poised, // Combat is active, but neither combatant is invading.
+		// If one side Attacks, the state becomes Invading for them.
+		// If both sides Attack, the state continues as Poised.
+		// If both sides Defend, the state becomes Withdrawing.
+		Withdrawing, // Combat has ceased, but combatants are still attached.
+		// If one side Attacks, the state becomes Invading for them.
 		// If both sides Defend, the state becomes Isolated.
-		Poised,
-		// TargetInvading: the target has invaded the boarder with troops.
+		BoarderInvading, // The boarder has invaded the target with troops.
 		// If both sides Defend, the state becomes Poised.
-		TargetInvading,
-		// BoarderVictory: the boarder has conquered the target.
+		TargetInvading, // The target has invaded the boarder with troops.
+		// If both sides Defend, the state becomes Poised.
+		BoarderVictory, // The boarder has conquered the target.
 		// Target can no longer take any actions.
-		BoarderVictory,
-		// TargetVictory: the target has conquered the boarder.
+		TargetVictory, // The target has conquered the boarder.
 		// Boarder can no longer take any actions.
 		// Target can repair itself using the boarder's resources.
-		TargetVictory,
-		// Ended: the combat is over, and no further actions can be taken.
-		Ended
+		Ended, // The combat is over, and no further actions can be taken.
 	};
 
-	// During a boarding combat, each combatant may attempt to negotiate with the other.
-	// If the Negotiate action succeeds, they can discuss terms and potentially end the combat.
-	// If one combatant rejects the Negotiate action, the other combatant can no longer take it.
-	// Combatants must share a language in order to negotiate.
-	enum class NegotiationState {
+	// During a boarding combat, a combatant may attempt to Negotiate.
+	// If the combatants do not share a language, the Negotiate action fails.
+	//
+	// If the Negotiate action succeeds, the combat is paused while the
+	// combatants attempt to find an Offer that they can both agree to.
+	//
+	// While a negotiation is Active, each combatant can do the following:
+	//
+	// - Negotiate: Make a non-binding Offer for the other combatant to consider.
+	//
+	// - Reject: Cease negotiations and resume the combat. Afterward, the
+	//   other combatant can no longer take the Negotiate action, but the
+	//   rejecting combatant can resume talks using the Negotiate action.
+	//
+	// - Resolve: Make a binding Offer. If both combatants Resolve with
+	// 	 the same Offer, the negotiation succeeds and its Terms are applied.
+	//
+	// During an active negotiation, neither combatant can take other actions.
+	enum class Negotiation {
 		// NotAttempted: neither combatant as attempted to negotiate with the other.
 		// Either combatant can take the Negotiate action.
 		NotAttempted,
@@ -92,14 +86,16 @@ public:
 		// The target can take the Negotiate action.
 		TargetRejected,
 		// Active: the combatants are currently negotiating.
-		// Neither combatant can take the Negotiate action.
-		// Either combatant can take the Forgive or Surrender actions.
+		// Either combatant can take the Negotiate, Reject, or Resolve actions.
+		// If both combatants Resolve with the same Offer, the negotiation succeeds.
+		// If at least one combatant Rejects, the negotiation fails.
 		Active,
 		// Successful: the combatants have agreed to a resolution.
-		// Neither combatant can take the Negotiate or Attack action.
-		// The agreed-upon terms will be applied to the combatants, which may include a victory condition.
+		// The agreed-upon Terms will be applied to the combat,
+		// which will most likely change its state.
 		Successful,
-		// Failed: either both combatants have rejected negotiation attempts, or they lack a shared language.
+		// Failed: either both combatants have rejected negotiation attempts,
+		// or they lack a shared language.
 		// Neither combatant can take the Negotiate action.
 		Failed
 	};
@@ -162,8 +158,131 @@ public:
 
 
 
-	// Some Actions require additional information in order to be resolved.
-	using ActionDetails = std::variant<int, std::tuple<int, int>, Offer>;
+	/**
+	 * Models a combatant's behaviour during a single Turn of boarding combat.
+	 */
+	class Action {
+	public:
+		// An overall objective for the combatant's behaviour during the Turn.
+		enum class Objective {
+			// Section 1: Placeholders.
+
+			Null, // The combatant's did not specify a objective, or their intended objective was prevented.
+			Pending, // The combatant's actual objective has not yet been determined.
+
+			// Section 2: Progressing the combat in some way.
+
+			Attack, // Try to capture the enemy or use attack power to repel invaders.
+			Defend,  // Focus on preventing the enemy from invading.
+			Negotiate, // Ask the enemy to negotiate, providing an Offer for consideration.
+			Plunder, // Try to steal an outfit or cargo from the enemy.
+			Reject, // Cease negotiations and return to the previous combat state.
+			Resolve, // Agree to a given Offer. If both combatants Resolve with the same Offer, the negotiations succeed.
+			SelfDestruct, // Attempt to destroy yourself, denying technology and possibly killing invaders.
+
+			// Section 3: Special actions that are used at the end of combat.
+
+			Capture, // Final. Requires victory. Repair the ship and take control of it, transferring crew.
+			Destroy, // Final. Requires isolation or victory. Destroys the enemy ship, preventing any further boarding from others.
+			Leave // Final. Requires isolation or victory. Withdraws from the ship, leaving it disabled. Others can board afterward.
+		};
+
+		// Some Objectives are more complex than others, and require some additional information.
+		using Details = std::variant<
+			// Usually just 'false' to indicate that the Objective has no additional details.
+			bool,
+			// A pair of integers, for example a plunder index and a quantity.
+			// If the Objective is Plunder, the first integer is the index of
+			// the outfit or cargo to plunder, and the second is the quantity.
+			// Specifying -1 for either value indicates that the system should
+			// determine that value automatically.
+			std::tuple<int, int>,
+			// An Offer, which is a set of Terms that can be enacted if both
+			// combatants agree to them.
+			// When supplied with a Negotiate action, the combatant is offering
+			// a new set of Terms to the enemy to see if they are agreeable.
+			// When supplied with a Resolve action, the combatant is making a
+			// binding agreement to end the combat on these terms.
+			// If both combatants take the Resolve action with the same Offer,
+			// the combat will end with the agreed-upon Terms.
+			Offer
+		>;
+
+		// The result of a combatant having taken an Action.
+		using Effect = struct {
+			State state;
+			Negotiation negotiation;
+			Objective casualtyObjective;
+			int casualtyRolls;
+		};
+
+		using Result = struct {
+			State state;
+			Negotiation negotiation;
+			int casualties;
+			int enemyCasualties;
+		};
+
+		// What a combatant is attempting to do with the Turn.
+		using Activity = struct {
+			Objective objective;
+			Details details;
+		};
+
+		// A map of all possible Objectives and whether or not a condition is
+		// true of false for that Objective.
+		using ObjectiveCondition = std::map<Objective, bool>;
+
+
+		static bool IsValidDetails(Objective objective, Details details);
+		static bool IsValidDetails(Objective objective, bool details);
+		static bool IsValidDetails(Objective objective, std::tuple<int, int> details);
+		static bool IsValidDetails(Objective objective, Offer details);
+
+		static const ObjectiveCondition casualtiesPreventedByObjective;
+		static const ObjectiveCondition isObjectiveDefensive;
+
+		static const std::map<Objective, std::string> objectiveConstNames;
+		static std::string GetObjectiveName(Objective objective);
+
+		static const std::shared_ptr<ObjectiveCondition> ValidObjectives(
+			State state,
+			Negotiation negotiation,
+			bool isBoarder
+		);
+
+		Action(
+			Activity intended,
+			Activity actual,
+			Effect effect
+		);
+
+		Action(Activity intent);
+
+		Action();
+
+		// What the combatant attempted to do during the Turn.
+		Activity intent;
+		// What they actually did during the Turn, which may differ from their intention.
+		Activity actual;
+		// The effect that the Action has on the Turn's proceedings.
+		Effect effect;
+		// The result of the Action after its Effect has been applied.
+		Result result;
+	};
+
+	static const std::map<State, bool> casualtiesPreventedByState;
+	static const std::map<Negotiation, bool> casualtiesPreventedByNegotiation;
+
+	static const std::map<State, std::string> stateConstNames;
+	static std::string GetStateName(State state);
+
+	static int ActionIndex(State state, bool isBoarder);
+
+	static bool IsValidActivity(
+		Action::Activity intent,
+		std::shared_ptr<Action::ObjectiveCondition> validObjectives,
+		bool isBoarder,
+		bool shouldThrow = false
+	);
 };
-
-

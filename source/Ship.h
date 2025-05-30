@@ -227,7 +227,7 @@ public:
 	// Launch any ships that are ready to launch.
 	void Launch(std::list<std::shared_ptr<Ship>> &ships, std::vector<Visual> &visuals);
 
-	// If this ship is boarding another ship, applies the current BoardingObjective.
+	// If this ship is boarding another ship, applies the current BoardingGoal.
 	// Non-hostile objectives like Repair are resolved automatically.
 	// Hostile objectives like Capture are resolved via a BoardingCombat.
 	// Some objectives or situations require the BoardingPanel. When that
@@ -284,10 +284,11 @@ public:
 	// Since we try not to expose this kind of AI logic to the Engine, we
 	// need to store it on the ship so that it's available during Board().
 	//
-	// When the ship completes or aborts a boarding action, set this to NONE.
-	enum class BoardingObjective {NONE, CAPTURE, CAPTURE_MANUALLY, DOCK, PLUNDER, PLUNDER_MANUALLY, REPAIR, TRANSFER_CREW, TRANSFER_PLAYER};
-	BoardingObjective GetBoardingObjective() const;
-	void SetBoardingObjective(BoardingObjective objective);
+	// When the ship completes or aborts a boarding action, set this to DEFAULT.
+	enum class BoardingGoal {DEFAULT, CAPTURE, CAPTURE_MANUALLY, DOCK, PLUNDER, PLUNDER_MANUALLY, REPAIR, TRANSFER_CREW, TRANSFER_PLAYER};
+	BoardingGoal GetBoardingGoal(bool ) const;
+	void SetBoardingGoal(BoardingGoal objective);
+	BoardingGoal GetDefaultBoardingGoal(bool isTargetHostile) const;
 
 	// Check if some condition is keeping this ship from acting. (That is, it is
 	// landing, hyperspacing, cloaking without "cloaked ActionType", disabled, or under-crewed.)
@@ -342,12 +343,17 @@ public:
 	bool CanRefuel(const Ship &other) const;
 	// Check if this ship can transfer sufficient energy to the other ship.
 	bool CanGiveEnergy(const Ship &other) const;
+	// Transfer crew members from the provider ship to this one.
+	int ReceiveCrew(std::shared_ptr<Ship> &provider, bool requiredOnly = false);
 	// Give the other ship enough fuel for it to jump.
 	double TransferFuel(double amount, Ship *to);
 	// Give the other ship some energy.
 	double TransferEnergy(double amount, Ship *to);
 	// Mark this ship as property of the given ship. Returns the number of crew transferred from the capturer.
-	int WasCaptured(const std::shared_ptr<Ship> &capturer);
+	int WasCaptured(
+		std::shared_ptr<Ship> capturer,
+		std::shared_ptr<Ship> newParent = nullptr
+	);
 	// Clear all orders and targets this ship has (after capture or transfer of control).
 	void ClearTargetsAndOrders();
 
@@ -409,6 +415,15 @@ public:
 	int DesiredCrew() const;
 	int ExtraCrew() const;
 	int RequiredCrew() const;
+
+	int AutomatedDefenders() const;
+	int AutomatedInvaders() const;
+
+	int Defenders() const;
+	int Invaders() const;
+
+	int InflictDefenderCasualty();
+	int InflictInvaderCasualty();
 	// Get the reputational value of this ship's crew, which depends
 	// on its crew size and "crew equivalent" attribute.
 	int CrewValue() const;
@@ -654,9 +669,8 @@ private:
 	const Phrase *hail = nullptr;
 	ShipAICache aiCache;
 
-	// This should be set by the AI when it directs the ship to board a target.
-	// If that fails, repair seems like the least problematic default.
-	BoardingObjective boardingObjective = BoardingObjective::REPAIR;
+	// This is set by the AI when it directs the ship to board a target.
+	BoardingGoal boardingGoal = BoardingGoal::DEFAULT;
 
 	// Installed outfits, cargo, etc.:
 	Outfit attributes;
@@ -712,6 +726,9 @@ private:
 	int crew = 0;
 	int pilotError = 0;
 	int pilotOkay = 0;
+
+	int disabledAutomatedDefenders = 0;
+	int disabledAutomatedInvaders = 0;
 
 	// Current status of this particular ship:
 	const System *currentSystem = nullptr;

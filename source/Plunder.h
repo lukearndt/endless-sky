@@ -39,17 +39,16 @@ public:
 
 		static std::vector<std::shared_ptr<Plunder>> BuildPlunderList(const std::shared_ptr<Ship> &ship);
 
+		int64_t ExpectedTotalRaidValue() const;
+
+		bool IsFinished() const;
+
 		// Get the list of items that can be plundered from the target ship.
 		const std::vector<std::shared_ptr<Plunder>> &RemainingPlunder() const;
 
-		// Take as much valuable plunder as possible from the target ship.
-		// TODO: Move to BoardingCombat.
-		// void Raid();
+		bool Raid();
 
-		// Take an item from the target and give it on the attacker.
-		// If no quantity is specified, take as many as possible.
-		// Returns how many were successfully taken.
-		int Take(int index, bool pruneList = false, int quantity = -1);
+		int Take(int index, int quantity = -1, bool pruneList = true);
 
 		// Get a message describing the result of the plunder session.
 		const std::string GetSummary() const;
@@ -82,6 +81,7 @@ public:
 		int64_t totalMassTaken;
 		int64_t totalOutfitsTaken;
 		int64_t totalValueTaken;
+		bool finished;
 	};
 
 	// Sort by value per ton of mass.

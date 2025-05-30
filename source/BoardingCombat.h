@@ -17,7 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Boarding.h"
-#include "CaptureOdds.h"
+#include "BoardingPrediction.h"
 #include "Crew.h"
 #include "Outfit.h"
 #include "PlayerInfo.h"
@@ -41,6 +41,13 @@ public:
 	class Combatant;
 	class SituationReport;
 	class Turn;
+
+	// The result of the process that rolls for casualties for an Action.
+	using CasualtyReport = struct {
+		State state;
+		int boarderCasualties;
+		int targetCasualties;
+	};
 
 	/**
 	 * This class represents a single step in the overall combat.
@@ -76,28 +83,26 @@ public:
 	 * include Capture, Raid, Leave, and Destroy, and they can only be
 	 * performed when the enemy combatant is unable to prevent them.
 	 *
-	 * If a combatant tries to take an Action that is not available to them,
-	 * the Turn will not be created. Instead, the constructor will raise
-	 * an error, which we catch immediately and log before handling.
+	 * If a combatant tries to take an Action that was not available to
+	 * them at all, the Turn will not be created. The constructor will
+	 * instead raise an error, which we immediately catch and log.
 	 * Ideally this would never happen, since the rest of the game code
 	 * should prevent the AI or player from taking invalid Actions, but
 	 * bugs are always possible and we want to make sure that the game
 	 * does not allow boarding combats to proceed along invalid paths.
 	 *
-	 * @param combat A reference to the BoardingCombat that is taking place.
-	 * @param boarderAction The Action that the boarder will take this turn.
-	 * @param targetAction The Action that the target will take this turn.
-	 * @param boarderActionDetails Extra details about the boarder's action.
-	 * @param targetActionDetails Extra details about the target's action.
+	 * On the other hand, if a combatant tries to take an Action that was
+	 * available to them at the time they took it, but becomes invalid due
+	 * to the other combatant's Action, the Turn will be created and that
+	 * combatant will be assigned a different Action. The new Action will
+	 * usually be something passive like Null.
 	 */
 	class Turn {
 	public:
 		Turn(
 			BoardingCombat &combat,
-			Action boarderAction,
-			Action targetAction,
-			ActionDetails boarderActionDetails = 0,
-			ActionDetails targetActionDetails = 0
+			Action::Activity boarderIntent,
+			Action::Activity targetIntent
 		);
 
 		Turn(BoardingCombat &combat, Offer &agreement);
@@ -107,17 +112,22 @@ public:
 			std::shared_ptr<Combatant> &target
 		);
 
-		Action boarderAction;
-		Action targetAction;
-
-		Action successfulBoarderAction;
-		Action successfulTargetAction;
-
+		std::shared_ptr<Turn> previous;
 		State state;
-		NegotiationState negotiationState;
+		Negotiation negotiation;
 
-		int boarderCasualties;
-		int targetCasualties;
+		Action::Activity boarderIntent;
+		Action::Activity targetIntent;
+
+		int boarderActionIndex;
+		int targetActionIndex;
+
+		std::vector<Action> actions;
+
+		Action BoarderAction() const;
+		Action TargetAction() const;
+
+		CasualtyReport casualties;
 
 		std::shared_ptr<SituationReport> boarderSituationReport;
 		std::shared_ptr<SituationReport> targetSituationReport;
@@ -126,8 +136,6 @@ public:
 
 	// The history of the combat, represented as a list of Turns.
 	using History = std::vector<std::shared_ptr<Turn>>;
-
-
 
 	/**
 	 * This class represents one of the participants of the boarding combat.
@@ -140,6 +148,7 @@ public:
 		Combatant(
 			std::shared_ptr<Ship> &ship,
 			std::shared_ptr<Ship> &enemyShip,
+			std::shared_ptr<BoardingPrediction> &prediction,
 			bool isBoarder,
 			bool isPlayerControlled, // True if the player is using the BoardingPanel.
 			const std::vector<std::shared_ptr<Ship>> &playerFleet = {} // Unfortunate dependency, used for displaying a cargo space message.
@@ -147,65 +156,108 @@ public:
 
 		int ApplyCasualty(bool isDefender);
 
-		Action AttemptBinaryAction(const BoardingCombat & combat, Action action);
+		Action AttemptAction(
+			const BoardingCombat &combat,
+			State state,
+			Negotiation negotiation,
+			Action::Activity intent,
+			Action::Activity enemyIntent,
+			double enemyPower
+		);
 
-		const std::shared_ptr<std::map<Action, bool>> AvailableActions(State state) const;
+		const std::shared_ptr<Action::ObjectiveCondition> ValidObjectives(
+			State state,
+			Negotiation negotiation
+		) const;
 
 		std::shared_ptr<Crew::CasualtyAnalysis> CasualtyAnalysis();
 
-		int CasualtyRollsPerAction(Action action) const;
+		int CasualtyRolls(
+			State state,
+			Negotiation negotiation,
+			Action::Objective objective
+		) const;
 
-		bool ConsiderAttacking(const BoardingCombat &combat);
+		bool ConsiderAttacking(const std::shared_ptr<SituationReport> &report) const;
+		bool ConsiderCapturing(const std::shared_ptr<SituationReport> &report) const;
+		bool ConsiderDestroying(const std::shared_ptr<SituationReport> &report) const;
+		bool ConsiderPlundering(const std::shared_ptr<SituationReport> &report) const;
+		bool ConsiderSelfDestructing(const std::shared_ptr<SituationReport> &report) const;
 
 		int Crew() const;
 
 		const std::string &CrewDisplayName(bool startOfSentence = false);
 
-		Action DetermineAction(const BoardingCombat &combat);
+		Action::Activity DetermineIntent(const std::shared_ptr<SituationReport> &report) const;
+		Action::Activity DetermineCaptureIntent(const std::shared_ptr<SituationReport> &report) const;
+		Action::Activity DetermineDefaultIntent(const std::shared_ptr<SituationReport> &report) const;
+		Action::Activity DeterminePlunderIntent(const std::shared_ptr<SituationReport> &report) const;
+
+		State MaybeChangeState(
+			State state,
+			Action::Activity actual,
+			const Action::Activity enemyIntent
+		) const;
+
+		Negotiation MaybeChangeNegotiation(
+			Negotiation negotiation,
+			Action::Activity actual
+		) const;
+
+		double ExpectedInvasionCasualties(int enemyDefenders) const;
+		double ExpectedDefensiveCasualties(int enemyInvaders) const;
+		double DefensiveVictoryProbability(int enemyInvaders) const;
+		double InvasionVictoryProbability(int enemyDefenders) const;
 
 		int64_t ExpectedCaptureProfit(double expectedInvasionCasualties, double victoryOdds);
 		int64_t ExpectedInvasionProfit(
 			const std::shared_ptr<Combatant> &enemy,
 			int64_t expectedCaptureProfit,
+			int64_t expectedPlunderProfit,
 			int64_t expectedProtectedPlunderProfit
 		);
+		int64_t ExpectedPlunderProfit();
 		int64_t ExpectedProtectedPlunderProfit(double expectedInvasionCasualties, double victoryOdds);
 
 		double AttackPower() const;
 		double DefensePower() const;
 
-		double ExpectedSelfDestructCasualties(const std::shared_ptr<Combatant> &enemy) const;
+		double ExpectedSelfDestructCasualtiesInflicted(const std::shared_ptr<Combatant> &enemy) const;
 		double SelfDestructProbability(const std::shared_ptr<Combatant> &enemy) const;
 
 		int Defenders() const;
     int Invaders() const;
 
-    CaptureOdds GetOdds() const;
+    BoardingPrediction GetOdds() const;
 
 		std::shared_ptr<Ship> &GetShip();
 		const std::shared_ptr<Ship> &GetShip() const;
 
 		bool IsBoarder() const;
 		bool IsPlayerControlled() const;
+		bool IsPlunderFinished() const;
+
+		std::shared_ptr<Plunder::Session> &PlunderSession();
 
 		const std::vector<std::shared_ptr<Plunder>> &PlunderOptions() const;
 
 		double PostCaptureSurvivalOdds() const;
 
-		double Power(Action action, Action successfulBinaryAction = Action::Null) const;
-
+		double ActionPower(Action::Objective objective) const;
+		double CasualtyPower(Action::Objective objective) const;
 
 	private:
 		std::shared_ptr<Ship> ship;
 		std::shared_ptr<Plunder::Session> plunderSession;
 
+		Ship::BoardingGoal goal;
 		AttackStrategy attackStrategy;
 		DefenseStrategy defenseStrategy;
 
 		int automatedDefenders;
 		int automatedInvaders;
 
-		CaptureOdds odds;
+		std::shared_ptr<BoardingPrediction> prediction;
 
 		std::shared_ptr<Crew::CasualtyAnalysis> casualtyAnalysis = nullptr;
 		std::shared_ptr<Crew::ShipAnalysis> crewAnalysisAfter = nullptr;
@@ -224,8 +276,8 @@ public:
 
 		double postCaptureSurvivalOdds;
 
-		bool hasCaptureObjective;
-		bool hasPlunderObjective;
+		bool hasCaptureGoal;
+		bool hasPlunderGoal;
 
 		bool isBoarder;
 		bool isPlayerControlled;
@@ -242,18 +294,26 @@ public:
 		SituationReport(
 			const std::shared_ptr<Combatant> &combatant,
 			const std::shared_ptr<Combatant> &enemy,
-			const Turn &turn
+			const Turn &turn,
+			const std::shared_ptr<SituationReport> &previousReport
 		);
 
 		const std::shared_ptr<Combatant> &combatant;
 		const std::shared_ptr<Combatant> &enemy;
 		const Turn &turn;
+		const std::shared_ptr<SituationReport> &previousReport;
 
 		const std::shared_ptr<Ship> &ship;
 		const std::shared_ptr<Ship> &enemyShip;
 
+		bool isBoarder;
+		bool actedFirst;
 		bool isConquered;
 		bool isEnemyConquered;
+		bool isEnemyInvading;
+
+		const Action &latestAction;
+		const Action &enemyLatestAction;
 
 		int invaders;
 		int defenders;
@@ -264,6 +324,9 @@ public:
 		int enemyCrew;
 
 		int cargoSpace;
+		int enemyCargoSpace;
+
+		BoardingPrediction::Report predictionReport;
 
 		double attackPower;
 		double defensePower;
@@ -277,9 +340,11 @@ public:
 		double minimumTurnsToVictory;
 		double minimumTurnsToDefeat;
 
+		double selfDestructProbability;
+
 		double enemySelfDestructProbability;
-		double cumulativeSelfDestructProbability;
-		double selfDestructCasualtyPower;
+		double enemyCumulativeSelfDestructProbability;
+		double enemySelfDestructCasualtyPower;
 
 		double expectedSelfDestructCasualties;
 		double expectedInvasionCasualties;
@@ -290,11 +355,15 @@ public:
 		double postCaptureSurvivalProbability;
 
 		int64_t expectedCaptureProfit;
+		int64_t expectedPlunderProfit;
 		int64_t expectedProtectedPlunderProfit;
 		int64_t expectedInvasionProfit;
 
+		bool isPlunderFinished;
 		const std::vector<std::shared_ptr<Plunder>> &plunderOptions;
-		const std::map<Action, bool> &availableActions;
+
+		const std::shared_ptr<Action::ObjectiveCondition> validObjectives;
+		const std::shared_ptr<Action::ObjectiveCondition> enemyValidObjectives;
 	};
 
 
@@ -307,14 +376,108 @@ public:
 		std::shared_ptr<Ship> &targetShip
 	);
 
+	Action::Result ApplyAction(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyNull(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+
+	Action::Result ApplyAttack(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyDefend(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyNegotiate(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyReject(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyResolve(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyPlunder(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplySelfDestruct(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+
+	Action::Result ApplyCapture(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyDestroy(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+	Action::Result ApplyLeave(
+		State state,
+		Negotiation negotiation,
+		bool isBoarder,
+		const Action &action,
+		const Action &enemyAction
+	);
+
+	bool ApplyCasualtyConsequences();
+
+	CasualtyReport RollForCasualties(
+		State state,
+		bool isBoarder,
+		const Action &boarderAction,
+		const Action &targetAction
+	);
+
 	const std::shared_ptr<History> &GetHistory() const;
 
 	int CountInactiveFrames() const;
 
 	const std::shared_ptr<Combatant> GetPlayerCombatant() const;
 	const std::shared_ptr<Combatant> GetPlayerEnemy() const;
-
-	State GuessNextState(State state, Action boarderAction, Action targetAction) const;
 
 	bool IsLanguageShared() const;
 
@@ -329,24 +492,23 @@ public:
 	const std::shared_ptr<Turn> Step();
 
 	// Resolve the next turn of combat, based on the action chosen by the player.
-	const std::shared_ptr<Turn> Step(Action playerAction, ActionDetails playerActionDetails = 0);
+	const std::shared_ptr<Turn> Step(Action::Activity playerIntent);
 
 private:
-	static const std::map<Action, bool> aggressionByAction;
 	static const std::map<std::string, double> postCaptureSurvivalOddsByCategory;
 
 	static std::string BuildCrewDisplayName(std::shared_ptr<Ship> &ship, bool startOfSentence = false);
-	static bool IsValidActionDetails(Action action, ActionDetails details);
-	static bool IsValidActionDetails(Action action, int details);
-	static bool IsValidActionDetails(Action action, Offer details);
-	static bool IsValidActionDetails(Action action, bool details);
 
 	PlayerInfo &player;
-	Ship::BoardingObjective boardingObjective;
+	Ship::BoardingGoal boardingObjective;
+
 	bool usingBoardingPanel;
 
+	bool pendingCasualtyConsequences = false;
 	bool hasNegotiationFailed = false;
 	bool isLanguageShared;
+
+	std::shared_ptr<BoardingPrediction> prediction;
 
 	std::shared_ptr<Combatant> boarder;
 	std::shared_ptr<Combatant> target;

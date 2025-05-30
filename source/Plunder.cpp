@@ -224,8 +224,86 @@ Plunder::Session::Session(shared_ptr<Ship> &target, shared_ptr<Ship> &attacker, 
 	totalCommodityMassTaken(0),
 	totalMassTaken(0),
 	totalOutfitsTaken(0),
-	totalValueTaken(0)
+	totalValueTaken(0),
+	finished(remaining.empty())
 {
+}
+
+
+
+/**
+ * @return The total value of the plunder that would be taken if the
+ * 	attacker were to Raid the target until it runs out of cargo space
+ * 	or until there is nothing available to plunder.
+ *
+ * 	Does not account for the cargo space that the attacker would save by
+ * 	installing any taken outfits as ammo for their weapons.
+ */
+int64_t Plunder::Session::ExpectedTotalRaidValue() const
+{
+	int64_t result = 0;
+	int cargoSpace = attacker->Cargo().Free();
+
+	for(const auto &item : remaining)
+	{
+		if(item->RequiresConquest() && !target->IsConquered())
+			continue;
+
+		int remainingCount = item->Count();
+
+		while(remainingCount > 0 && cargoSpace >= item->UnitMass())
+		{
+			result += item->UnitValue();
+			cargoSpace -= item->UnitMass();
+			remainingCount--;
+		}
+
+		if(cargoSpace < 1)
+			break;
+	}
+
+	return result;
+}
+
+
+
+/**
+ * Check if the plunder session is finished, meaning that the attacker
+ * cannot take any further plunder from the target.
+ *
+ * @return Whether or not the plunder session is finished.
+ */
+bool Plunder::Session::IsFinished() const
+{
+  return finished;
+}
+
+
+
+/**
+ * Take the most valuable item that the attacker is able to plunder.
+ *
+ * Iterates through the list of plunder from most to least valuable per
+ * mass, and attempts to takes as much as possible from each item until
+ * it takes at least one of something.
+ *
+ * @return Whether or not something was taken.
+ */
+bool Plunder::Session::Raid()
+{
+	int takenCount = 0;
+
+	for(size_t i = 0; i < remaining.size(); ++i)
+	{
+		takenCount = Take(i);
+
+		if(takenCount > 0)
+			return true;
+	}
+
+	finished = true;
+
+	return false;
 }
 
 
@@ -245,36 +323,6 @@ const vector<shared_ptr<Plunder>> &Plunder::Session::RemainingPlunder() const
 
 
 /**
- * TODO: Make this part of BoardingCombat.
- *
- * Take as much valuable plunder as possible from the target ship.
- * This function performs the entire plundering process in one go, such
- * as when one AI-controlled ship plunders another.
- *
- * Iterates through the list of plunder from most to least valuable per
- * mass, and takes as much as possible from each item. Stops when the
- * attacker's cargo hold is full or there is no more plunder to take.
- */
-// void Plunder::Session::Raid()
-// {
-// 	for(size_t i = 0; i < plunder.size(); ++i)
-// 	{
-// 		Take(i);
-
-// 		if(attacker->Cargo().Free() < 1)
-// 			break;
-// 	}
-
-// 	for(size_t i = 0; i < plunder.size(); ++i)
-// 	{
-// 		if(plunder[i].Count() < 1)
-// 			plunder.erase(plunder.begin() + i--);
-// 	}
-// }
-
-
-
-/**
  * Take the specified number of a given item as possible from the list of plunder.
  * If the item is a commodity, as many as possible will be taken, ignoring quantity.
  * If the item is an outfit, the specified quantity will be taken if possible.
@@ -283,18 +331,24 @@ const vector<shared_ptr<Plunder>> &Plunder::Session::RemainingPlunder() const
  * Returns how many were successfully taken.
  *
  * @param index The index of the item to take.
- * @param number The number of items to take.
- * @param pruneList Whether to remove the item from the list if all of it
- * 	was taken. If false, the item remains in the list with a count of zero.
- * 	Leave this false if you want to iterate through the list and take several
- * 	items of various types, as that will prevent the list from shifting as you
- * 	remove items from it.
+ * @param quantity The number of items to take.
+ * @param pruneList Defaults to true.
+ * 	Whether or not to remove the item from the list if all of it was
+ * 	taken. If false, the item remains in the list with a count of zero.
+ * 	Specify this as false if you want to iterate through the list and
+ * 	take several items of various types, as that will prevent the list
+ * 	from shifting as you remove items from it.
  *
  * @return The number of items taken.
  */
-int Plunder::Session::Take(int index, bool pruneList, int quantity)
+int Plunder::Session::Take(int index, int quantity, bool pruneList)
 {
 	Plunder item = *remaining.at(index);
+
+	// Unplunderable items can't be taken unless the target is conquered.
+	if(item.RequiresConquest() && !target->IsConquered())
+		return 0;
+
 	int available = item.Count();
 	if(quantity < 0 || available < quantity)
 		quantity = available;
@@ -341,9 +395,15 @@ int Plunder::Session::Take(int index, bool pruneList, int quantity)
 	{
 		remaining.erase(remaining.begin() + index);
 		index = min<int>(index, remaining.size());
+		if(remaining.empty())
+			finished = true;
 	}
 	else
+	{
 		remaining.at(index)->UpdateCount(-takenCount);
+		if(remaining.size() == 1 && remaining.front()->Count() == 0)
+			finished = true;
+	}
 
 	// Update the total mass of the plunder that has been taken so far.
 	totalMassTaken += takenCount * item.UnitMass();

@@ -632,13 +632,13 @@ void LoadPanel::ConfirmGameLoadFeeCallback()
 		return;
 	}
 
-	string message = "Reloading the game will cost you ";
-	message += Format::Number(gameReloadFeePercentage) + "% of your " + Preferences::GameReloadFeeTaperingSetting();
+	string message = "Because of your difficulty settings, reloading the game will cost you ";
+	message += Format::Number(gameReloadFeePercentage) + "% of your " + Preferences::GameReloadFeeAssetGroupSetting();
 
 	if(Preferences::GetGameReloadFeeTapering() == Preferences::GameReloadFeeTapering::ON)
-		message += " (with high values adjusted)";
+		message += ", with high values scaled down";
 
-	message += ", as you specified in the difficulty settings. Do you want to proceed?";
+	message += ". Do you want to proceed?";
 
 	GetUI()->Push(new Dialog(this, &LoadPanel::LoadCallback, message));
 }

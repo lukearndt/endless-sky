@@ -1818,13 +1818,17 @@ shared_ptr<Ship> Ship::Board(PlayerInfo &player)
 	hasBoarded = false;
 
 	shared_ptr<Ship> other = GetTargetShip();
+	// Release target lock on the ship we are boarding so that we don't
+	// immediately try to board it again.
+	SetTargetShip(nullShip);
+
 	if(CannotAct(Ship::ActionType::BOARD) || !other || other->IsDestroyed() || other->GetSystem() != GetSystem())
 		return nullShip;
 
 	// For a fighter or drone, "board" could mean "return to carrier ship".
 	// We try this before the player flagship check because the player might
 	// be piloting a carryable ship and trying to dock with one of their carriers.
-	if(boardingObjective == BoardingObjective::DOCK)
+	if(boardingGoal == BoardingGoal::DOCK)
 	{
 		if(CanBeCarried() && government == other->GetGovernment() && !other->IsDisabled())
 		{
@@ -1837,11 +1841,11 @@ shared_ptr<Ship> Ship::Board(PlayerInfo &player)
 	// If the player is boarding a ship personally or has ordered a manual
 	// boarding order, they will choose what to do via the Boarding Panel.
 	// This is handled by the ShipEvent system, so we return the other ship.
-	if(IsPlayerFlagship() || boardingObjective == BoardingObjective::CAPTURE_MANUALLY || boardingObjective == BoardingObjective::PLUNDER_MANUALLY)
+	if(IsPlayerFlagship() || boardingGoal == BoardingGoal::CAPTURE_MANUALLY || boardingGoal == BoardingGoal::PLUNDER_MANUALLY)
 		return other;
 
 	// Board a friendly ship, to repair or refuel it.
-	if(boardingObjective == BoardingObjective::REPAIR)
+	if(boardingGoal == BoardingGoal::REPAIR)
 	{
 		SetShipToAssist(nullShip);
 		SetTargetShip(nullShip);
@@ -1878,8 +1882,8 @@ shared_ptr<Ship> Ship::Board(PlayerInfo &player)
 
 	// If this is a hostile boarding, simulate it using a boarding combat.
 	if(
-		boardingObjective == BoardingObjective::CAPTURE
-		|| boardingObjective == BoardingObjective::PLUNDER
+		boardingGoal == BoardingGoal::CAPTURE
+		|| boardingGoal == BoardingGoal::PLUNDER
 	)
 	{
 		shared_ptr<Ship> self = shared_from_this();
@@ -1909,8 +1913,9 @@ shared_ptr<Ship> Ship::Board(PlayerInfo &player)
 		}
 	}
 
-	// Stop targeting this ship (so you will not board it again right away).
-	SetTargetShip(nullShip);
+	// I'm unsure when this would happen. We ought to cover all cases in
+	// the code above.
+	throw logic_error("Ship::Board: reached the end with no outcome.");
 	return other;
 }
 
@@ -2344,16 +2349,61 @@ bool Ship::CanLand() const
 
 
 
-Ship::BoardingObjective Ship::GetBoardingObjective() const
+/**
+ * @param isTargetHostile Whether or not the target is hostile.
+ * 	This is used when determining the default boarding objective.
+ *
+ * @return The ship's current boarding objective.
+ * 	If none is set, returns the default for the situation.
+ */
+Ship::BoardingGoal Ship::GetBoardingGoal(bool isTargetHostile) const
 {
-  return boardingObjective;
+	if(boardingGoal == BoardingGoal::DEFAULT)
+		return GetDefaultBoardingGoal(isTargetHostile);
+
+  return boardingGoal;
 }
 
 
 
-void Ship::SetBoardingObjective(BoardingObjective objective)
+void Ship::SetBoardingGoal(BoardingGoal objective)
 {
-	boardingObjective = objective;
+	boardingGoal = objective;
+}
+
+
+
+/**
+ * Get the default boarding objective for this ship.
+ *
+ * This is used when a ship has been boarded by another combatant and
+ * the player is not directly controlling the ship's boarding actions.
+ *
+ * It also acts as a fallback option for if a ship somehow boards but
+ * does not have a specific boarding objective set.
+ *
+ * @param isTargetHostile Whether or not the target is hostile.
+ * 	If the target is hostile, the ship considers capturing or plundering
+ *  it. Otherwise, it will attempt to repair the target.
+ *
+ * @return The default boarding objective for this ship.
+ */
+Ship::BoardingGoal Ship::GetDefaultBoardingGoal(bool isTargetHostile) const
+{
+	if(!isTargetHostile)
+		return BoardingGoal::REPAIR;
+
+	if(
+		personality.Plunders()
+			|| personality.IsHunting()
+			|| personality.IsNemesis()
+			|| personality.IsDaring()
+	)
+		return Crew() > RequiredCrew()
+			? BoardingGoal::CAPTURE
+			: BoardingGoal::PLUNDER;
+
+	return BoardingGoal::DEFAULT;
 }
 
 
@@ -2637,7 +2687,22 @@ void Ship::Recharge(int rechargeType, bool hireCrew)
 		return;
 
 	if(hireCrew)
+	{
 		crew = min<int>(max(DesiredCrew(), RequiredCrew()), attributes.Get("bunks"));
+		// In leiu of a more sophisticated approach, it seems sensible to
+		// replenish automated troops at the same time as regular crew.
+		//
+		// This makes ships with automated troops obey the same rules as
+		// those with regular crew, rather than risking them being able
+		// to replenish their troops at unusual or exploitative times.
+		//
+		// A better solution for the future might be to add a new kind of
+		// Port::RechargeType for this to signify that a port is able to
+		// repair automatons, and then add it to each appropriate location.
+		damagedAutomatedDefenders = 0;
+		damagedAutomatedInvaders = 0;
+	}
+
 	pilotError = 0;
 	pilotOkay = 0;
 
@@ -2681,6 +2746,47 @@ bool Ship::CanGiveEnergy(const Ship &other) const
 
 
 
+/**
+ * Transfer crew members from the provider ship to this one.
+ *
+ * Draws crew members from the provider ship's extra crew members, if
+ * any are available. If the provider ship does not have any extra crew
+ * members and this ship has no crew at all, transfers one crew member.
+ *
+ * If this ship would normally hire extra crew members, attempts to fill
+ * those extra crew positions with extra crew from the provider ship.
+ * This allows a fleet to consolidate its extra crew members onto a
+ * single ship in order to maximise its boarding capabilities. You can
+ * prevent this behaviour by setting requiredOnly to true.
+ *
+ * @param provider The ship to transfer crew from.
+ * @param requiredOnly Whether or not to ignore this ship's instruction
+ * 	to hire extra crew members and only transfer the required amount.
+ *
+ * @return The number of crew members transferred.
+ */
+int Ship::ReceiveCrew(std::shared_ptr<Ship> &provider, bool requiredOnly)
+{
+	int available = Crew() == 0
+		? max(provider->Crew() - 1, provider->ExtraCrew())
+		: provider->ExtraCrew();
+
+	int count = min(
+		available,
+		Crew() - (requiredOnly ? RequiredCrew() : DesiredCrew())
+	);
+
+	if(count > 0)
+	{
+		provider->AddCrew(-count);
+		AddCrew(count);
+	}
+
+	return count;
+}
+
+
+
 double Ship::TransferFuel(double amount, Ship *to)
 {
 	amount = max(fuel - attributes.Get("fuel capacity"), amount);
@@ -2709,10 +2815,18 @@ double Ship::TransferEnergy(double amount, Ship *to)
 
 
 
-// Convert this ship from one government to another, as a result of boarding
-// actions (if the player is capturing) or player death (poor decision-making).
-// Returns the number of crew transferred from the capturer.
-int Ship::WasCaptured(const shared_ptr<Ship> &capturer)
+/**
+ * Convert this ship to the capturer's government, transfers crew
+ * members as needed, sets the ship's parent, and repeats the process
+ * for any other ships that this one is carrying.
+ *
+ * @param capturer The ship that has captured this one.
+ * @param newParent The new parent of this ship. If not supplied,
+ *  this ship's parent is set to the capturer.
+ *
+ * @return The number of crew members transferred from the capturer.
+ */
+int Ship::WasCaptured(shared_ptr<Ship> capturer, shared_ptr<Ship> newParent)
 {
 	// Repair up to the point where this ship is just barely not disabled.
 	hull = min(max(hull, MinimumHull() * 1.5), MaxHull());
@@ -2721,22 +2835,12 @@ int Ship::WasCaptured(const shared_ptr<Ship> &capturer)
 	// Set the new government.
 	government = capturer->GetGovernment();
 
-	// Transfer some crew over. Only transfer the bare minimum unless even that
-	// is not possible, in which case, share evenly.
-	int totalRequired = capturer->RequiredCrew() + RequiredCrew();
-	int transfer = RequiredCrew() - crew;
-	if(transfer > 0)
-	{
-		if(totalRequired > capturer->Crew() + crew)
-			transfer = max(crew ? 0 : 1, (capturer->Crew() * transfer) / totalRequired);
-		capturer->AddCrew(-transfer);
-		AddCrew(transfer);
-	}
+	int transferredCrew = ReceiveCrew(capturer, true);
 
 	// Clear this ship's previous targets.
 	ClearTargetsAndOrders();
 	// Set the capturer as this ship's parent.
-	SetParent(capturer);
+	SetParent(newParent ? newParent : capturer);
 
 	// This ship behaves like its new parent does.
 	isSpecial = capturer->isSpecial;
@@ -2745,9 +2849,11 @@ int Ship::WasCaptured(const shared_ptr<Ship> &capturer)
 
 	// Fighters should flee a disabled ship, but if the player manages to capture
 	// the ship before they flee, the fighters are captured, too.
+	auto thisShip = shared_from_this();
+
 	for(const Bay &bay : bays)
 		if(bay.ship)
-			bay.ship->WasCaptured(capturer);
+			transferredCrew += bay.ship->WasCaptured(capturer, thisShip);
 	// If a flagship is captured, its escorts become independent.
 	for(const auto &it : escorts)
 	{
@@ -2758,7 +2864,7 @@ int Ship::WasCaptured(const shared_ptr<Ship> &capturer)
 	// This ship should not care about its now-unallied escorts.
 	escorts.clear();
 
-	return transfer;
+	return transferredCrew;
 }
 
 
@@ -3088,7 +3194,10 @@ int Ship::DesiredCrew() const
 	if(attributes.Get("hires extra crew") && !IsParked())
 		return attributes.Get("bunks");
 
-	return max(crew, RequiredCrew());
+	if(IsPlayerFlagship())
+		return max(crew, RequiredCrew());
+
+	return RequiredCrew();
 }
 
 
@@ -3107,6 +3216,89 @@ int Ship::RequiredCrew() const
 
 	// Drones do not need crew, but all other ships need at least one.
 	return max<int>(1, attributes.Get("required crew"));
+}
+
+
+
+/**
+ * @return The number of automated defenders that this ship has available.
+ */
+int Ship::AutomatedDefenders() const
+{
+  return attributes.Get("automated defenders") - disabledAutomatedDefenders;
+}
+
+
+
+/**
+ * @return The number of automated invaders that this ship has available.
+ */
+int Ship::AutomatedInvaders() const
+{
+  return attributes.Get("automated invaders") - disabledAutomatedInvaders;
+}
+
+
+
+/**
+ * @return The number of defenders that this ship has available.
+ * 	This includes both crew members and automated defenders.
+ */
+int Ship::Defenders() const
+{
+  return crew + AutomatedDefenders()
+}
+
+
+/**
+ * @return The number of invaders that this ship has available.
+ * 	This includes both crew members and automated invaders.
+ */
+int Ship::Invaders() const
+{
+  return crew + attributes.Get("automated invaders") - disabledAutomatedInvaders;
+}
+
+
+
+/**
+ * Inflicts a single casualty on the ship's defenders.
+ *
+ * Automated defenders are disabled first, followed by crew members.
+ *
+ * @return The number of defenders that the ship has remaining.
+ */
+int Ship::InflictDefenderCasualty()
+{
+	if(AutomatedDefenders() > 0)
+		++disabledAutomatedDefenders;
+	else if(crew > 0)
+		--crew;
+	else
+		Logger::LogError("Ship::InflictDefenderCasualty called with no defenders available.");
+
+	return Defenders();
+}
+
+
+
+/**
+ * Inflicts a single casualty on the ship's invaders.
+ *
+ * Automated invaders are disabled first, followed by crew members.
+ *
+ * @return The number of invaders that the ship has remaining.
+ */
+int Ship::InflictInvaderCasualty()
+{
+	if(AutomatedInvaders() > 0)
+		++disabledAutomatedInvaders;
+	else if(crew > 0)
+		--crew;
+	else
+		Logger::LogError("Ship::InflictInvaderCasualty called with no invaders available.");
+
+	return Invaders();
 }
 
 
@@ -5076,15 +5268,15 @@ void Ship::StepTargeting()
 				else
 				{
 					isBoarding = false;
-					bool isEnemy = government->IsEnemy(target->government);
-					if(isEnemy && Random::Real() < target->Attributes().Get("self destruct"))
-					{
-						Messages::Add("The " + target->DisplayModelName() + " \"" + target->Name()
-							+ "\" has activated its self-destruct mechanism.", Messages::Importance::High);
-						GetTargetShip()->SelfDestruct();
-					}
-					else
-						hasBoarded = true;
+					hasBoarded = true;
+					// bool isEnemy = government->IsEnemy(target->government);
+					// if(isEnemy && Random::Real() < target->Attributes().Get("self destruct"))
+					// {
+					// 	Messages::Add("The " + target->DisplayModelName() + " \"" + target->Name()
+					// 		+ "\" has activated its self-destruct mechanism.", Messages::Importance::High);
+					// 	GetTargetShip()->SelfDestruct();
+					// }
+					// else
 				}
 			}
 		}

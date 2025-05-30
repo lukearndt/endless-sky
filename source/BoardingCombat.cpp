@@ -16,16 +16,19 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "BoardingCombat.h"
 
+#include "Boarding.h"
 #include "Depreciation.h"
 #include "text/Format.h"
 #include "GameData.h"
 #include "Gamerules.h"
 #include "Government.h"
 #include "Logger.h"
+#include "Messages.h"
 #include "Outfit.h"
 #include "PlayerInfo.h"
 #include "Preferences.h"
 #include "Ship.h"
+#include "ShipEvent.h"
 #include "System.h"
 
 #include <algorithm>
@@ -33,7 +36,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <variant>
 
 using namespace std;
-
 
 
 
@@ -62,127 +64,109 @@ using namespace std;
  */
 BoardingCombat::Turn::Turn(
 	BoardingCombat &combat,
-	Action boarderAction,
-	Action targetAction,
-	ActionDetails boarderActionDetails,
-	ActionDetails targetActionDetails
+	Action::Activity boarderIntent,
+	Action::Activity targetIntent
 ) :
-	boarderAction(boarderAction),
-	targetAction(targetAction),
-	state(combat.history->back()->state),
-	negotiationState(combat.history->back()->negotiationState),
-	boarderCasualties(0),
-	targetCasualties(0),
+	previous(combat.history->back()),
+	state(previous->state),
+	negotiation(previous->negotiation),
+	boarderIntent(boarderIntent),
+	targetIntent(targetIntent),
+	boarderActionIndex(ActionIndex(state, true)),
+	targetActionIndex(boarderActionIndex == 0 ? 1 : 0),
+	actions({
+		// The order of these is a performance optimization, since the
+		// target almost always goes first.
+		targetActionIndex == 0 ? Action(targetIntent) : Action(boarderIntent),
+		boarderActionIndex == 1 ? Action(boarderIntent) : Action(targetIntent),
+	}),
 	messages({})
 {
-	shared_ptr<Turn> latest = combat.history->back();
+	// Validate the inputs before we go any further. An error here means
+	// that there is a bug in the code causing a combatant to take an
+	// invalid action.
+	//
+	// If we don't check this up front, the problem will be hidden by the
+	// IsValidActivity check inside AttemptAction, and it will seem like
+	// the combatant was prevented from taking their action due to the
+	// prior action of their enemy. That can happen legitimately and does
+	// not throw an error, so we need to separate those two situations.
+	IsValidActivity(boarderIntent, previous->boarderSituationReport->validObjectives, true, true);
+	IsValidActivity(targetIntent, previous->targetSituationReport->validObjectives, false, true);
 
-	// Validate the inputs before we go any further. This will throw an error if we have
-	// somehow supplied the function with invalid data. It shouldn't happen, but if there
-	// is a problem due to programmer error, it's useful to know straight away.
-	if(!IsValidActionDetails(boarderAction, boarderActionDetails))
-		throw runtime_error(
-			"BoardingCombat::Turn - boarder's Action has invalid ActionDetails. Action:"
-				+ to_string(static_cast<int>(targetAction)) + "."
-		);
+	for(int i = 0; i < actions.size(); i++)
+	{
+		if(i == boarderActionIndex)
+			actions[i] = combat.boarder->AttemptAction(
+				combat,
+				state,
+				negotiation,
+				boarderIntent,
+				targetIntent,
+				combat.target->ActionPower(targetIntent.objective)
+			);
+		else
+			actions[i] = combat.target->AttemptAction(
+				combat,
+				state,
+				negotiation,
+				targetIntent,
+				boarderIntent,
+				combat.boarder->ActionPower(boarderIntent.objective)
+			);
 
-	if(!IsValidActionDetails(targetAction, targetActionDetails))
-		throw runtime_error(
-			"BoardingCombat::Turn - target's Action has invalid ActionDetails. Action:"
-				+ to_string(static_cast<int>(targetAction)) + "."
-		);
-
-	if(!combat.boarder->AvailableActions(latest->state)->at(boarderAction))
-		throw runtime_error("BoardingCombat::Turn - boarder tried to take an invalid action:" + to_string(static_cast<int>(boarderAction)));
-
-	if(!combat.boarder->AvailableActions(latest->state)->at(targetAction))
-		throw runtime_error("BoardingCombat::Turn - target tried to take an invalid action:" + to_string(static_cast<int>(targetAction)));
-
-
-
-	// If either side has taken an action with a binary result,
-	// we need to determine whether or not that action succeeds or fails.
-	successfulBoarderAction = combat.boarder->AttemptBinaryAction(combat, boarderAction);
-	successfulTargetAction = combat.target->AttemptBinaryAction(combat, targetAction);
-
-
-
-	// Determine the number of casualty rolls that we need to make.
-	int casualtyRolls = 0;
-
-	if(boarderAction == Action::Attack)
-		casualtyRolls += combat.boarder->CasualtyRollsPerAction(boarderAction);
-	else if(boarderAction == Action::Defend && latest->state == State::TargetInvading)
-		casualtyRolls += combat.target->CasualtyRollsPerAction(targetAction);
-
-	if(targetAction == Action::Attack)
-		casualtyRolls += combat.target->CasualtyRollsPerAction(targetAction);
-	else if(targetAction == Action::Defend && latest->state == State::BoarderInvading)
-		casualtyRolls += combat.boarder->CasualtyRollsPerAction(boarderAction);
-
-	// Self destructing while being invaded increases the number of potential casualties.
-	if(
-		(successfulBoarderAction == Action::SelfDestruct && latest->state == State::TargetInvading)
-	)
-		casualtyRolls += (casualtyRolls + combat.boarder->CasualtyRollsPerAction(successfulBoarderAction));
-	else if(
-		(successfulTargetAction == Action::SelfDestruct && latest->state == State::BoarderInvading)
-	)
-		casualtyRolls += (casualtyRolls + combat.target->CasualtyRollsPerAction(successfulTargetAction));
-
-	// If an attempt to negotiate has succeeded, no casualties occur this turn.
-	if(successfulBoarderAction == Action::Negotiate || successfulTargetAction == Action::Negotiate)
-		casualtyRolls = 0;
-
-
-
-	// Determine the number of casualties suffered by each side.
-	// Cache the power of each side to avoid recalculating it unnecessarily.
-	double boarderPower = combat.boarder->Power(boarderAction);
-	double targetPower = combat.target->Power(targetAction);
-
-	for(int i = 0; i < casualtyRolls; ++i) {
-		// Roll to determine which side suffers a casualty.
-		bool isBoarderCasualty = Random::Real() * (boarderPower + targetPower) >= boarderPower;
-
-		// Apply the casualty to the combatant who lost the roll.
-		if(isBoarderCasualty) {
-			++boarderCasualties;
-			if(!combat.boarder->ApplyCasualty(state == State::BoarderInvading)) {
-				state = State::TargetVictory;
-				break;
-			}
-			boarderPower = combat.boarder->Power(boarderAction);
-		} else {
-			++targetCasualties;
-			if(!combat.target->ApplyCasualty(state == State::TargetInvading)) {
-				state = State::BoarderVictory;
-				break;
-			}
-			targetPower = combat.target->Power(targetAction);
-		}
+		state = actions[i].effect.state;
+		negotiation = actions[i].effect.negotiation;
 	}
 
-	if(successfulBoarderAction == Action::SelfDestruct || successfulTargetAction == Action::SelfDestruct)
-		state = State::Ended;
+	for(int i = 0; i < actions.size(); i++)
+	{
+		if(i == boarderActionIndex)
+			actions[i].result = combat.ApplyAction(
+				state,
+				negotiation,
+				true,
+				actions[i],
+				actions[!i]
+			);
+		else
+			actions[i].result = combat.ApplyAction(
+				state,
+				negotiation,
+				false,
+				actions[i],
+				actions[!i]
+			);
+
+		state = actions[1].result.state;
+		negotiation = actions[1].result.negotiation;
+	}
 
 	// Generate a SituationReport for each combatant.
-	boarderSituationReport = make_shared<SituationReport>(combat.boarder, combat.target, *this);
-	targetSituationReport = make_shared<SituationReport>(combat.target, combat.boarder, *this);
-
-
+	boarderSituationReport = make_shared<SituationReport>(
+		combat.boarder,
+		combat.target,
+		*this,
+		previous->boarderSituationReport
+	);
+	targetSituationReport = make_shared<SituationReport>(
+		combat.target,
+		combat.boarder,
+		*this,
+		previous->targetSituationReport
+	);
 }
 
 
 
 /**
  * Constructor for BoardingCombat::Turn that is used to resolve the
- * combat when the boarder and target have made an Offer.
+ * combat when both combatants use a Resolve intent with the same Offer.
  *
  * Adds a Turn to the History where both combatants take the Resolve
  * action, and applies the Terms of the Offer to the combatants.
  *
- * Changes the negotiationState of the combat to Successful.
+ * Changes the negotiation of the combat to Successful.
  * The new state of the combat is based on the Terms of the Offer.
  *
  * @param combat A reference to the BoardingCombat that is taking place.
@@ -191,17 +175,20 @@ BoardingCombat::Turn::Turn(
  * @return A new Turn that models the negotiated resolution of the combat.
  */
 BoardingCombat::Turn::Turn(BoardingCombat &combat, Offer &agreement) :
-	boarderAction(Action::Resolve),
-	targetAction(Action::Resolve),
-	successfulBoarderAction(Action::Resolve),
-	successfulTargetAction(Action::Resolve),
-	state(combat.history->back()->state),
-	negotiationState(NegotiationState::Successful),
-	boarderCasualties(0),
-	targetCasualties(0)
+	previous(combat.history->back()),
+	state(previous->state),
+	negotiation(Negotiation::Successful),
+	boarderIntent(Action::Activity(Action::Objective::Resolve, agreement)),
+	targetIntent(Action::Activity(Action::Objective::Resolve, agreement)),
+	boarderActionIndex(ActionIndex(state, true)),
+	targetActionIndex(boarderActionIndex == 0 ? 1 : 0),
+	actions({
+		// The order of these is a performance optimization, since the
+		// target almost always goes first.
+		targetActionIndex == 0 ? Action(targetIntent) : Action(boarderIntent),
+		boarderActionIndex == 1 ? Action(boarderIntent) : Action(targetIntent),
+	})
 {
-	shared_ptr<Turn> latest = combat.history->back();
-
 	// Apply the Terms of the Offer to the combatants.
 	for(auto it : *agreement.GetTerms())
 	{
@@ -271,8 +258,18 @@ BoardingCombat::Turn::Turn(BoardingCombat &combat, Offer &agreement) :
 		state = State::Ended;
 
 	// Generate a SituationReport for each combatant.
-	boarderSituationReport = make_shared<SituationReport>(combat.boarder, combat.target, *this);
-	targetSituationReport = make_shared<SituationReport>(combat.target, combat.boarder, *this);
+	boarderSituationReport = make_shared<SituationReport>(
+		combat.boarder,
+		combat.target,
+		*this,
+		previous->boarderSituationReport
+	);
+	targetSituationReport = make_shared<SituationReport>(
+		combat.target,
+		combat.boarder,
+		*this,
+		previous->targetSituationReport
+	);
 }
 
 
@@ -291,17 +288,25 @@ BoardingCombat::Turn::Turn(
 	shared_ptr<Combatant> &boarder,
 	shared_ptr<Combatant> &target
 ) :
-	boarderAction(Action::Null),
-	targetAction(Action::Null),
+	previous(nullptr),
 	state(State::Isolated),
-	negotiationState(NegotiationState::NotAttempted),
-	boarderCasualties(0),
-	targetCasualties(0),
+	negotiation(Negotiation::NotAttempted),
+	boarderIntent(Action::Activity(Action::Objective::Null, false)),
+	targetIntent(Action::Activity(Action::Objective::Null, false)),
+	boarderActionIndex(ActionIndex(state, true)),
+	targetActionIndex(boarderActionIndex == 0 ? 1 : 0),
+	actions({
+		// The order of these is a performance optimization, since the
+		// target almost always goes first.
+		targetActionIndex == 0 ? Action(targetIntent) : Action(boarderIntent),
+		boarderActionIndex == 1 ? Action(boarderIntent) : Action(targetIntent),
+	}),
+	casualties({State::Isolated, 0, 0}),
 	boarderSituationReport(make_shared<SituationReport>(
-		boarder, target, *this
+		boarder, target, *this, nullptr
 	)),
 	targetSituationReport(make_shared<SituationReport>(
-		target, boarder, *this
+		target, boarder, *this, nullptr
 	)),
 	messages({})
 {
@@ -335,6 +340,34 @@ BoardingCombat::Turn::Turn(
 
 
 
+/**
+ * @return The boarder's Action for this Turn, which may be in a Pending
+ * 	state if that action has not yet been attempted.
+ */
+Boarding::Action BoardingCombat::Turn::BoarderAction() const
+{
+	if(actions.size() > boarderActionIndex)
+		return actions[boarderActionIndex];
+	else
+		return Action(boarderIntent);
+}
+
+
+
+/**
+ * @return The target's Action for this Turn, which may be in a Pending
+ * 	state if that action has not yet been attempted.
+ */
+Boarding::Action BoardingCombat::Turn::TargetAction() const
+{
+	if(actions.size() > targetActionIndex)
+		return actions[targetActionIndex];
+	else
+		return Action(targetIntent);
+}
+
+
+
 // --- End of BoardingCombat::Turn class implementation ---
 
 
@@ -354,12 +387,14 @@ BoardingCombat::Turn::Turn(
 BoardingCombat::Combatant::Combatant(
 	shared_ptr<Ship> &ship,
 	shared_ptr<Ship> &enemyShip,
+	shared_ptr<BoardingOdds> &odds,
 	bool isBoarder,
 	bool usingBoardingPanel,
 	const vector<shared_ptr<Ship>> &playerFleet
 ) :
 	ship(ship),
 	plunderSession(make_shared<Plunder::Session>(enemyShip, ship, playerFleet)),
+	goal(ship->GetBoardingGoal(true)),
 	attackStrategy(
 		ship->IsYours()
 			? static_cast<AttackStrategy>(Preferences::GetBoardingAttackStrategy())
@@ -372,7 +407,7 @@ BoardingCombat::Combatant::Combatant(
 	),
 	automatedDefenders(static_cast<int>(ship->Attributes().Get("automated defenders"))),
 	automatedInvaders(static_cast<int>(ship->Attributes().Get("automated invaders"))),
-	odds(*ship, *enemyShip),
+	odds(odds),
 	crewAnalysisBefore(make_shared<Crew::ShipAnalysis>(ship, ship->IsPlayerFlagship())),
 	crewDisplayNameMidSentence(BoardingCombat::BuildCrewDisplayName(ship, false)),
 	crewDisplayNameStartOfSentence(BoardingCombat::BuildCrewDisplayName(ship, true)),
@@ -381,8 +416,8 @@ BoardingCombat::Combatant::Combatant(
 	protectedPlunderValue(0),
 	expectedCostPerBoardingCasualty(Crew::ExpectedCostPerCasualty(true)),
 	expectedCostPerCasualtyPostCapture(Crew::ExpectedCostPerCasualty(false)),
-	hasCaptureObjective(ship->GetBoardingObjective() == Ship::BoardingObjective::CAPTURE),
-	hasPlunderObjective(ship->GetBoardingObjective() == Ship::BoardingObjective::PLUNDER),
+	hasCaptureGoal(goal == Ship::BoardingGoal::CAPTURE),
+	hasPlunderGoal(goal == Ship::BoardingGoal::PLUNDER),
 	isBoarder(isBoarder),
 	isPlayerControlled(isBoarder ? ship->IsYours() : enemyShip->IsYours())
 {
@@ -441,7 +476,7 @@ int BoardingCombat::Combatant::ApplyCasualty(bool isInvading)
  * change the combatant's crew, such as transferring crew members to
  * the enemy ship upon capture.
  *
- * The main purpose of the CasualtyAnalysis is to provide the information
+ * The main goal of the CasualtyAnalysis is to provide the information
  * needed to calculate the financial impact of the combatant's crew
  * members dying, such as any death benefits and death shares owed.
  *
@@ -455,19 +490,31 @@ shared_ptr<Crew::CasualtyAnalysis> BoardingCombat::Combatant::CasualtyAnalysis()
 
 
 /**
- * @return The number of casualty rolls that the combatant makes each time
- * 	it takes an action that can kill enemy crew members (minimum 1).
- * 	This is a flat percentage of the combatant's current attacker or
- * 	defender count, as relevant for the action, as defined in the game
- * 	rules as BoardingCasualtyPercentagePerAction.
+ * @param objective The Objective to determine the number of casualty rolls for.
+ *
+ * @return The number of casualty rolls that the objective adds to the
+ * 	pool for the turn. This is a flat percentage of the combatant's
+ * 	current attacker or defender count, as defined in the game rules
+ * 	as BoardingCasualtyPercentagePerAction.
  */
-int BoardingCombat::Combatant::CasualtyRollsPerAction(Action action) const
+int BoardingCombat::Combatant::CasualtyRolls(
+	State state,
+	Negotiation negotiation,
+	Action::Objective objective
+) const
 {
-  return min(
+	if(
+		casualtiesPreventedByState.at(state)
+			|| casualtiesPreventedByNegotiation.at(negotiation)
+			|| Action::casualtiesPreventedByObjective.at(objective)
+		)
+		return 0;
+
+  return max(
 		1,
 		static_cast<int>(
 			GameData::GetGamerules().BoardingCasualtyPercentagePerAction()
-			* (BoardingCombat::aggressionByAction.at(action) ? Invaders() : Defenders())
+			* (Action::isObjectiveDefensive.at(objective) ? Defenders() : Invaders())
 		)
 	);
 }
@@ -477,11 +524,7 @@ int BoardingCombat::Combatant::CasualtyRollsPerAction(Action action) const
 /**
  * Evaluates the odds of victory, the expected casualties, and the potential
  * profit of invading the enemy. Compares them with the combatant's
- * AttackStrategy to determine if it is willing to risk an attack.
- *
- * Does not take into account other strategic factors, such as the
- * Counter defense strategy. Those are expected to be handled by the
- * calling function.
+ * strategy to determine if it is willing to risk mounting an invasion.
  *
  * The ranking crew members making this decision are assumed to be capable
  * and experienced, having a good understanding of the risks of boarding.
@@ -503,45 +546,202 @@ int BoardingCombat::Combatant::CasualtyRollsPerAction(Action action) const
  * outfits when they board it, so it's not unreasonable to assume that
  * the AI crew members have that same information.
  *
- * @param combat A reference to the combat that is taking place.
+ * @param report A shared pointer to the combatant's latest SituationReport.
  *
- * @return True if the ship wants to attack, false otherwise.
+ * @return Whether or not the combatant is willing to attack.
  */
-bool BoardingCombat::Combatant::ConsiderAttacking(const BoardingCombat &combat)
+bool BoardingCombat::Combatant::ConsiderAttacking(const shared_ptr<SituationReport> &report) const
 {
-	shared_ptr<Turn> latest = combat.GetHistory()->back();
+	if(!report->validObjectives->at(Action::Objective::Attack))
+		return false;
 
-	// Only the boarder can attack when the combatants are isolated.
-	if(!isBoarder && latest->state == State::Isolated)
-	return false;
+	const Turn latest = report->turn;
 
-	shared_ptr<SituationReport> report = isBoarder ? latest->boarderSituationReport : latest->targetSituationReport;
+	// If the combatant's priority is to deny the enemy its resources,
+	// they will only attack if doing so is a more effective way to
+	// achieve that objective than defending or self-destructing would be.
+	if(defenseStrategy == DefenseStrategy::Deny)
+	{
+		if(report->enemyValidObjectives->at(Action::Objective::Plunder))
+			return report->invasionVictoryProbability > report->selfDestructProbability;
+		else if(report->isEnemyInvading)
+			return report->invasionVictoryProbability > report->defensiveVictoryProbability
+				&& report->invasionVictoryProbability > report->selfDestructProbability;
+	}
 
-	bool withinRiskTolerance = false;
+	// While being invaded, a combatant's priority is to repel invaders,
+	// but sometimes attacking is the best possible defense.
+	if(report->isEnemyInvading)
+	{
+		// If the combatant has more attack power than defense, they attack
+		// instead of defending. This can sometimes happen when the combatant
+		// has access to automated invaders or weapons with high attack power
+		// and low defense power.
+		if(report->attackPower > report->defensePower)
+			return true;
 
+		// Similarly to the previous case, the combatant might be better off
+		// launching a counter-invasion if that would result in fewer overall
+		// casualites than defending. For example, if the enemy has a lot of
+		// automated attackers but few defenders or real crew, the combatant
+		// might be able to push through and quickly conquer the enemy ship.
+		if(report->expectedInvasionCasualties < report->expectedDefensiveCasualties)
+			return true;
+	}
+
+	// Don't invade if it's not likely to be profitable.
+	if(report->expectedInvasionProfit <= 0)
+		return false;
+
+	// During the Poised state, if the combatant using the Counter
+	// strategy would take fewer (or inflict more) casualties by defending
+	// than by attacking, they first create an opportunity for the enemy
+	// to make a mistake. If the enemy takes the bait, the combatant
+	// naturally delays their own invasion until the enemy withdraws or
+	// the situation changes.
+	if(
+		defenseStrategy == DefenseStrategy::Counter
+			&& latest.state == State::Poised
+			&& (
+				report->expectedInvasionCasualties > report->expectedDefensiveCasualties
+					|| (
+					report->defensePower / report->enemyAttackPower
+						> report->attackPower / report->enemyDefensePower
+				)
+			)
+	)
+		return false;
+
+	// Otherwise, the combatant will attack if they believe that they have
+	// an acceptable chance of victory and that they won't take too many
+	// casualties in the process. The definitions of "acceptable" and
+	// "too many" vary greatly with the combatant's AttackStrategy.
 	switch(attackStrategy)
 	{
 		case(AttackStrategy::Cautious):
-			withinRiskTolerance = report->invasionVictoryProbability > 0.99
+			return report->invasionVictoryProbability > 0.99
 				&& report->expectedInvasionCasualties < 0.5;
 		case(AttackStrategy::Aggressive):
-			withinRiskTolerance = report->invasionVictoryProbability > 0.99
+			return report->invasionVictoryProbability > 0.99
 				&& report->expectedInvasionCasualties < ship->ExtraCrew();
 		case(AttackStrategy::Reckless):
-			withinRiskTolerance = report->invasionVictoryProbability > 0.5;
+			return report->invasionVictoryProbability > 0.5;
 		case(AttackStrategy::Fanatical):
-			withinRiskTolerance = report->invasionVictoryProbability > 0.01;
+			return report->invasionVictoryProbability > 0.01;
 		default:
 		{
 			Logger::LogError(
 				"BoardingCombat::ConsiderAttacking cannot handle AttackStrategy: "
 					+ to_string(static_cast<int>(attackStrategy)) + ". Defaulting to false."
 			);
-			withinRiskTolerance = false;
+			return false;
 		}
 	}
+}
 
-	return withinRiskTolerance && report->expectedInvasionProfit > 0;
+
+
+/**
+ * Determines if the combatant is willing to capture the enemy ship.
+ *
+ * Note that this is specifically about using the Capture objective to
+ * immediately take control of a conquered ship, not about invading it
+ * with a view to capture it. That would be an Attack objective.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return Whether or not the combatant is willing to capture the enemy ship.
+ */
+bool BoardingCombat::Combatant::ConsiderCapturing(const shared_ptr<SituationReport> &report) const
+{
+	if(!report->validObjectives->at(Action::Objective::Capture))
+		return false;
+
+	if(report->combatant->hasCaptureGoal)
+		return report->expectedCaptureProfit > 0;
+	else
+		return report->expectedCaptureProfit > report->expectedPlunderProfit;
+}
+
+
+
+/**
+ * Determines if the combatant is willing to destroy the enemy ship.
+ *
+ * This helps keep the system clear of ships that are no longer useful
+ * to the game, which aids performance and prevents the player and other
+ * ships from trying to interact with them for no reason.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return Whether or not the combatant is willing to capture the enemy ship.
+ */
+bool BoardingCombat::Combatant::ConsiderDestroying(const shared_ptr<SituationReport> &report) const
+{
+  return report->validObjectives->at(Action::Objective::Destroy)
+		&& report->plunderOptions.empty();
+}
+
+
+
+/**
+ * Determines if the combatant is willing to plunder the enemy ship.
+ * This assumes that the combatant has already determined that they will
+ * not attack the enemy, capture it, or attempt to self-destruct.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return Whether or not the combatant is willing to plunder the enemy ship.
+ */
+bool BoardingCombat::Combatant::ConsiderPlundering(const shared_ptr<SituationReport>& report) const
+{
+	return report->validObjectives->at(Action::Objective::Plunder)
+		&& report->expectedPlunderProfit > 0;
+}
+
+
+
+/**
+ * Determines if the combatant is willing to self-destruct. This is a
+ * last-ditch effort to prevent the enemy from capturing or plundering.
+ *
+ * This function's logic assumes that the combatant has already
+ * determined that they are either not capable of attacking the enemy
+ * or that they are not willing to do so.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return Whether or not the combatant is willing to self-destruct.
+ */
+bool BoardingCombat::Combatant::ConsiderSelfDestructing(const shared_ptr<SituationReport> &report) const
+{
+	if(report->selfDestructProbability < 0.001)
+		return false;
+
+	switch(defenseStrategy)
+	{
+		case(DefenseStrategy::Deny):
+			if(report->enemyValidObjectives->at(Action::Objective::Plunder))
+				return true;
+			return report->isEnemyInvading
+				&& report->selfDestructProbability > report->defensiveVictoryProbability;
+		case(DefenseStrategy::Counter):
+			return report->isEnemyInvading
+				&& report->selfDestructProbability > report->defensiveVictoryProbability
+				&& report->defensiveVictoryProbability < 0.1;
+		case(DefenseStrategy::Repel):
+			return report->isEnemyInvading
+				&& report->selfDestructProbability > report->defensiveVictoryProbability
+				&& report->defensiveVictoryProbability < 0.1;
+		default:
+		{
+			Logger::LogError(
+				"BoardingCombat::ConsiderSelfDestructing cannot handle DefenseStrategy: "
+					+ to_string(static_cast<int>(defenseStrategy)) + ". Defaulting to false."
+			);
+			return false;
+		}
+	}
 }
 
 
@@ -564,111 +764,233 @@ const string &BoardingCombat::Combatant::CrewDisplayName(bool startOfSentence)
 
 
 /**
- * Determines the action that the combatant should take during next turn.
- * The action is based on the combatant's current state, the state of the
- * enemy ship, the combat history, and their strategy.
+ * Determines the Activity that the combatant should attempt to perform
+ * during the next turn, based on their current situation and goal.
  *
- * @param combat A const reference to the BoardingCombat that is taking place.
+ * @param report A shared pointer to the combatant's latest SituationReport.
  *
- * @return The action that the combatant should take during the next turn.
+ * @return An Activity for combatant to attempt during the next turn.
  */
-BoardingCombat::Action BoardingCombat::Combatant::DetermineAction(const BoardingCombat &combat)
+Boarding::Action::Activity BoardingCombat::Combatant::DetermineIntent(const shared_ptr<SituationReport> &report) const
 {
-	shared_ptr<Combatant> enemy = isBoarder ? combat.target : combat.boarder;
-	double defeatOdds = enemy->GetOdds().Odds(enemy->Crew(), ship->Crew());
-	double selfDestructAttribute = ship->Attributes().Get("self destruct");
-	// If the combatant has more attack power than defense, they attack when
-	// they would otherwise defend. This is not usually the case, but it can
-	// easily happen if the combatant has access to automated invaders.
-	Action defenseAction = AttackPower() > DefensePower() ? Action::Attack : Action::Defend;
-	bool willingToAttack = ConsiderAttacking(combat);
-
-	shared_ptr<Turn> latest = combat.GetHistory()->back();
-
-	const shared_ptr<map<Action, bool>> availableActions = AvailableActions(latest->state);
-
-	// When combatants are isolated from one another, their options are more limited.
-	// Combatants are also considered isolated during the first turn of combat.
-	if(!latest || latest->state == State::Isolated)
+	switch (goal)
 	{
-		if(isBoarder)
-		{
-			if((hasCaptureObjective || hasPlunderObjective) && willingToAttack)
-				return Action::Attack;
-			else if(hasPlunderObjective && ship->Cargo().Free() > 0)
-				return Action::Raid;
-			else
-				return Action::Leave;
-		}
-		else
-		{
-			if(defenseStrategy == DefenseStrategy::Deny && selfDestructAttribute > 0.0)
-				return Action::SelfDestruct;
-			else
-				return defenseAction;
-		}
+		case Ship::BoardingGoal::CAPTURE:
+			return DetermineCaptureIntent(report);
+		case Ship::BoardingGoal::PLUNDER:
+			return DeterminePlunderIntent(report);
+		default:
+			return DetermineDefaultIntent(report);
+	}
+}
+
+
+
+/**
+ * Determines the Activity that the combatant should attempt to perform
+ * during the next turn if their goal is to capture the enemy.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return An Activity for combatant to attempt during the next turn.
+ */
+Boarding::Action::Activity BoardingCombat::Combatant::DetermineCaptureIntent(const shared_ptr<SituationReport> &report) const
+{
+	Action::Activity intent = Action::Activity(Action::Objective::Null, false);
+
+	if(ConsiderCapturing(report))
+		intent.objective = Action::Objective::Capture;
+	else if(ConsiderAttacking(report))
+		intent.objective = Action::Objective::Attack;
+	else if(ConsiderSelfDestructing(report))
+		intent.objective = Action::Objective::SelfDestruct;
+	else if(report->validObjectives->at(Action::Objective::Leave))
+		intent.objective = Action::Objective::Leave;
+	else if(report->validObjectives->at(Action::Objective::Defend))
+		intent.objective = Action::Objective::Defend;
+
+	return intent;
+}
+
+
+
+/**
+ * Determines the Activity that the combatant should attempt to perform
+ * during the next turn if they lack a goal with more specific behaviour.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return An Activity for combatant to attempt during the next turn.
+ */
+Boarding::Action::Activity BoardingCombat::Combatant::DetermineDefaultIntent(const shared_ptr<SituationReport> &report) const
+{
+	Action::Activity intent = Action::Activity(Action::Objective::Null, false);
+
+	if(ConsiderCapturing(report))
+		intent.objective = Action::Objective::Capture;
+	else if(ConsiderAttacking(report))
+		intent.objective = Action::Objective::Attack;
+	else if(ConsiderSelfDestructing(report))
+		intent.objective = Action::Objective::SelfDestruct;
+	else if(ConsiderPlundering(report))
+	{
+		intent.objective = Action::Objective::Plunder;
+		intent.details = make_tuple<int, int>(-1, -1); // Signals the Raid variant.
+	}
+	else if(ConsiderDestroying(report))
+		intent.objective = Action::Objective::Destroy;
+	else if(report->validObjectives->at(Action::Objective::Leave))
+		intent.objective = Action::Objective::Leave;
+	else if(report->validObjectives->at(Action::Objective::Defend))
+		intent.objective = Action::Objective::Defend;
+
+	return intent;
+}
+
+
+
+/**
+ * Determines the Activity that the combatant should attempt to perform
+ * during the next turn if their goal is to plunder the enemy.
+ *
+ * @param report A shared pointer to the combatant's latest SituationReport.
+ *
+ * @return An Activity for combatant to attempt during the next turn.
+ */
+Boarding::Action::Activity BoardingCombat::Combatant::DeterminePlunderIntent(const shared_ptr<SituationReport> &report) const
+{
+	Action::Activity intent = Action::Activity(Action::Objective::Null, false);
+
+	if(ConsiderDestroying(report))
+		intent.objective = Action::Objective::Destroy;
+	else if(report->isPlunderFinished && report->validObjectives->at(Action::Objective::Leave))
+		intent.objective = Action::Objective::Leave;
+	else if(ConsiderAttacking(report))
+		intent.objective = Action::Objective::Attack;
+	else if(ConsiderSelfDestructing(report))
+		intent.objective = Action::Objective::SelfDestruct;
+	else if(report->validObjectives->at(Action::Objective::Plunder))
+	{
+		intent.objective = Action::Objective::Plunder;
+		intent.details = make_tuple<int, int>(-1, -1); // Signals the Raid variant.
+	}
+	else if(report->validObjectives->at(Action::Objective::Leave))
+		intent.objective = Action::Objective::Leave;
+	else if(report->validObjectives->at(Action::Objective::Defend))
+		intent.objective = Action::Objective::Defend;
+
+	return intent;
+}
+
+
+
+/**
+ * During a Turn, a combatant's Activity might immediately change the
+ * state of the combat. Since this can make the other combatant's
+ * Activity invalid, we need to check it after each one is performed.
+ *
+ * Intended for use during the resolution of a Turn. The state returned
+ * by this function is not guaranteed to be the final state of the
+ * Turn, since it might change again in response to the enemy's Activity
+ * or during the process of finalising the Turn.
+ *
+ * @param state The state of the combat at this point in the Turn.
+ * @param actual The actual activity that this combatant is taking.
+ * @param enemyIntent The intent of the enemy combatant.
+ *
+ * @return The state of the combat immediately following this
+ * 	combatant's Activity having been performed.
+ */
+Boarding::State BoardingCombat::Combatant::MaybeChangeState(
+	State state,
+	Action::Activity actual,
+	const Action::Activity enemyIntent
+) const
+{
+	if(actual.objective == Action::Objective::Attack)
+	{
+		bool enemyAttacking = enemyIntent.objective == Action::Objective::Attack;
+		bool isInvading = isBoarder
+			? state == State::BoarderInvading
+			: state == State::TargetInvading;
+		bool enemyInvading = isBoarder
+			? state == State::TargetInvading
+			: state == State::BoarderInvading;
+
+		if(isInvading)
+			return state;
+
+		if(enemyInvading)
+			return enemyAttacking ? state : State::Poised;
+
+		if(state == State::Isolated && isBoarder)
+			return State::Poised;
+
+		if(state == State::Poised || state == State::Withdrawing)
+			return enemyAttacking
+				? State::Poised
+				: isBoarder
+					? State::BoarderInvading
+					: State::TargetInvading;
+
+		return state;
 	}
 
-	// If we reach this point, at least one turn has taken place so we can
-	// read the state directly without risking an error.
-	State state = latest->state;
-	Action latestEnemyAction = isBoarder ? latest->targetAction : latest->boarderAction;
+	if(actual.objective == Action::Objective::SelfDestruct)
+	  return State::Ended;
 
-	// Neither combatant has invaded the other with troops, but their airlocks
-	// are connected so they are can try to invade one another.
-	if(state == State::Poised)
-	{
-		switch(defenseStrategy)
-		{
-			case(DefenseStrategy::Repel):
-				return willingToAttack ? Action::Attack : defenseAction;
-			case(DefenseStrategy::Counter):
-				return willingToAttack && (latestEnemyAction == defenseAction || latestEnemyAction == Action::Plunder)
-					? Action::Attack
-					: defenseAction;
-			case(DefenseStrategy::Deny):
-				return willingToAttack
-					? Action::Attack
-					: latestEnemyAction == Action::Attack && defeatOdds > 0.01 && selfDestructAttribute > 0.0
-						? Action::SelfDestruct
-						: defenseAction;
-			default:
-			{
-				Logger::LogError("BoardingCombat::DetermineAction with State::Poised cannot handle DefenseStrategy: " + to_string(static_cast<int>(defenseStrategy)) + ". Defaulting to Defend action.");
-				return defenseAction;
-			}
-		}
-	}
+	if(actual.objective == Action::Objective::Capture)
+		return State::Ended;
 
-	// This combatant has invaded the enemy with troops.
-	if(isBoarder ? state == State::BoarderInvading : state == State::TargetInvading)
-	{
-		if(willingToAttack)
-			return Action::Attack;
-		else if(hasPlunderObjective && ship->Cargo().Free() > 0)
-			return Action::Plunder;
-		else
-			return defenseAction;
-	}
+	if(actual.objective == Action::Objective::Destroy)
+		return State::Ended;
 
-	// This combatant has fully conquered the enemy combatant.
-	if(isBoarder ? state == State::BoarderVictory : state == State::TargetVictory)
-	{
-		if(hasCaptureObjective && ship->Crew() > 2)
-			return Action::Capture;
-		else if(hasPlunderObjective && ship->Cargo().Free() > 0)
-			return Action::Raid;
-		else
-			return Action::Leave;
-	}
+	if(actual.objective == Action::Objective::Leave)
+		return State::Ended;
 
-	// This combatant been has fully conquered the enemy combatant.
-	if(isBoarder ? state == State::TargetVictory : state == State::BoarderVictory)
-		return Action::Null;
+	return state;
+}
 
-	// Something unexpected has happened, so we default to the defenseAction.
-	Logger::LogError("BoardingCombat::DetermineAction reached an unexpected state. Defaulting to defenseAction.");
-	return defenseAction;
+
+
+/**
+ * During a Turn, a combatant's Activity might immediately change the
+ * negotiation status. Since this can make the other combatant's
+ * Activity invalid, we need to check it after each one is performed.
+ *
+ * Intended for use during the resolution of a Turn. The negotiation
+ * status returned by this function is not guaranteed to be the final
+ * negotation status of the Turn, since it might change again in
+ * response to the enemy's Activity or during the process of finalising
+ * the Turn.
+ */
+Boarding::Negotiation BoardingCombat::Combatant::MaybeChangeNegotiation(
+	Negotiation negotiation,
+	Action::Activity actual
+) const
+{
+  if(actual.objective == Action::Objective::Negotiate)
+		return Negotiation::Active;
+
+	if(actual.objective == Action::Objective::Reject)
+		return isBoarder
+			? Negotiation::BoarderRejected
+			: Negotiation::TargetRejected;
+
+	return negotiation;
+}
+
+
+
+/**
+ * @return The number of casualties that this combatant expects to
+ * 	suffer if they invade the enemy ship.
+ */
+double BoardingCombat::Combatant::ExpectedInvasionCasualties(int enemyDefenders) const
+{
+  return isBoarder
+		? odds->BoarderInvasionCasualties(Invaders(), enemyDefenders)
+		: odds->TargetInvasionCasualties(Defenders(), enemyDefenders);
 }
 
 
@@ -689,7 +1011,10 @@ BoardingCombat::Action BoardingCombat::Combatant::DetermineAction(const Boarding
  *
  * @return The expected financial impact of capturing this ship.
  */
-int64_t BoardingCombat::Combatant::ExpectedCaptureProfit(double expectedInvasionCasualties, double victoryOdds)
+int64_t BoardingCombat::Combatant::ExpectedCaptureProfit(
+	double expectedInvasionCasualties,
+	double victoryOdds
+)
 {
 	return captureValue * victoryOdds
 		- expectedInvasionCasualties * expectedCostPerBoardingCasualty
@@ -701,7 +1026,7 @@ int64_t BoardingCombat::Combatant::ExpectedCaptureProfit(double expectedInvasion
 /**
  * Calculates the the expected financial gain from invading and conquering
  * this combatant, factoring in the probability of success and whether
- * the combatant is planning to capture the ship or plunder it.
+ * the combatant's overall goal is to capture the ship or plunder it.
  *
  * @param enemy The combatant that is considering invading this ship.
  * @param expectedCaptureProfit The expected financial gain from capturing
@@ -714,26 +1039,48 @@ int64_t BoardingCombat::Combatant::ExpectedCaptureProfit(double expectedInvasion
 int64_t BoardingCombat::Combatant::ExpectedInvasionProfit(
 	const shared_ptr<Combatant> &enemy,
 	int64_t expectedCaptureProfit,
+	int64_t expectedPlunderProfit,
 	int64_t expectedProtectedPlunderProfit
 )
 {
-  switch(enemy->GetShip()->GetBoardingObjective())
+  switch(enemy->GetShip()->GetBoardingGoal(true))
 	{
-		case Ship::BoardingObjective::CAPTURE:
+		case Ship::BoardingGoal::CAPTURE:
 			return expectedCaptureProfit;
-		case Ship::BoardingObjective::PLUNDER:
+		case Ship::BoardingGoal::PLUNDER:
 			return expectedProtectedPlunderProfit;
-		case Ship::BoardingObjective::CAPTURE_MANUALLY:
+		case Ship::BoardingGoal::CAPTURE_MANUALLY:
 			return max(expectedCaptureProfit, expectedProtectedPlunderProfit);
-		case Ship::BoardingObjective::PLUNDER_MANUALLY:
+		case Ship::BoardingGoal::PLUNDER_MANUALLY:
 			return max(expectedCaptureProfit, expectedProtectedPlunderProfit);
 		default:
-			Logger::LogError(
-				"BoardingCombat::Combatant::ExpectedInvasionProfit - Invalid BoardingObjective: "
-					+ to_string(static_cast<int>(enemy->GetShip()->GetBoardingObjective()))
+			// Represents the case where the enemy has no specific capture or
+			// plunder goal, but might invade the enemy anyway.
+			// One possible reason for this is that the combatant has been
+			// boarded and is considering a counter-invasion.
+			return max(
+				expectedCaptureProfit,
+				// If the enemy is not the boarder, they can only plunder if
+				// they perform a successful counter-invasion. This means that
+				// their expected profit from invading is based on the total
+				// plunder profit instead of just that of the protected items.
+				enemy->IsBoarder()
+					? expectedProtectedPlunderProfit
+					: expectedPlunderProfit
 			);
-			return 0;
 	}
+}
+
+
+
+/**
+ * Calculates the the expected financial gain from plundering this
+ * combatant's ship, based on the total value of the plunder that is
+ * currently available to the enemy combatant.
+ */
+int64_t BoardingCombat::Combatant::ExpectedPlunderProfit()
+{
+	return plunderSession->ExpectedTotalRaidValue();
 }
 
 
@@ -754,7 +1101,10 @@ int64_t BoardingCombat::Combatant::ExpectedInvasionProfit(
  * @return The expected financial impact of invading the ship for plunder,
  * 	assuming that the fleet is able to claim all of that plunder.
  */
-int64_t BoardingCombat::Combatant::ExpectedProtectedPlunderProfit(double expectedInvasionCasualties, double victoryOdds)
+int64_t BoardingCombat::Combatant::ExpectedProtectedPlunderProfit(
+	double expectedInvasionCasualties,
+	double victoryOdds
+)
 {
   return protectedPlunderValue * victoryOdds
 		- expectedInvasionCasualties * expectedCostPerBoardingCasualty;
@@ -767,7 +1117,9 @@ int64_t BoardingCombat::Combatant::ExpectedProtectedPlunderProfit(double expecte
  */
 double BoardingCombat::Combatant::AttackPower() const
 {
-  return odds.AttackerPower(Invaders());
+  return isBoarder
+		? odds->BoarderAttackPower(Invaders())
+		:	odds->TargetAttackPower(Defenders());
 }
 
 
@@ -777,7 +1129,9 @@ double BoardingCombat::Combatant::AttackPower() const
  */
 double BoardingCombat::Combatant::DefensePower() const
 {
-  return odds.DefenderPower(Defenders());
+  return isBoarder
+		? odds->BoarderDefensePower(Defenders())
+		:	odds->TargetDefensePower(Invaders());
 }
 
 
@@ -805,7 +1159,7 @@ double BoardingCombat::Combatant::SelfDestructProbability(const shared_ptr<Comba
 		return 0.0;
 
 	// The power of this combatant when activating the self-destruct system.
-	double power = aggressionByAction.at(Action::SelfDestruct) ? AttackPower() : DefensePower();
+	double power = ActionPower(Action::Objective::SelfDestruct);
 
 	// We assume here that the enemy is taking an aggressive action, since
 	// this function is mostly used by the enemy to determine whether or
@@ -850,11 +1204,15 @@ double BoardingCombat::Combatant::SelfDestructProbability(const shared_ptr<Comba
  * 	This includes both the normal casualties for the turn and the
  * 	additional casualties from the explosion.
  */
-double BoardingCombat::Combatant::ExpectedSelfDestructCasualties(const shared_ptr<Combatant> &enemy) const
+double BoardingCombat::Combatant::ExpectedSelfDestructCasualtiesInflicted(const shared_ptr<Combatant> &enemy) const
 {
-	double power = Power(Action::SelfDestruct, Action::SelfDestruct);
+	double power = CasualtyPower(Action::Objective::SelfDestruct);
 
-  return CasualtyRollsPerAction(Action::SelfDestruct)
+  return CasualtyRolls(
+		isBoarder ? State::TargetInvading : State::BoarderInvading,
+		Negotiation::NotAttempted,
+		Action::Objective::SelfDestruct
+	)
 		* (power / (power + enemy->AttackPower()));
 }
 
@@ -866,7 +1224,7 @@ double BoardingCombat::Combatant::ExpectedSelfDestructCasualties(const shared_pt
  */
 int BoardingCombat::Combatant::Defenders() const
 {
-  return ship->Crew() + static_cast<int>(ship->Attributes().Get("automated defenders"));
+  return ship->Defenders();
 }
 
 
@@ -877,17 +1235,7 @@ int BoardingCombat::Combatant::Defenders() const
  */
 int BoardingCombat::Combatant::Invaders() const
 {
-  return ship->Crew() + static_cast<int>(ship->Attributes().Get("automated invaders"));
-}
-
-
-
-/**
- * @return The CaptureOdds from this combatant's perspective.
- */
-CaptureOdds BoardingCombat::Combatant::GetOdds() const
-{
-  return odds;
+  return ship->Invaders();
 }
 
 
@@ -935,6 +1283,27 @@ bool BoardingCombat::Combatant::IsPlayerControlled() const
 
 
 /**
+ * @return Whether or not this combatant has finished plundering the enemy.
+ */
+bool BoardingCombat::Combatant::IsPlunderFinished() const
+{
+  return plunderSession->IsFinished();
+}
+
+
+
+/**
+ * @return The Plunder::Session that this combatant is using to plunder
+ * 	the enemy.
+ */
+shared_ptr<Plunder::Session> &BoardingCombat::Combatant::PlunderSession()
+{
+  return plunderSession;
+}
+
+
+
+/**
  * @return A vector of Plunder items that the combatant can attempt to
  * 	take from the enemy vessel. The list includes all of the enemy's
  * 	outfits and cargo, but some of the items might not be accessible
@@ -961,157 +1330,164 @@ double BoardingCombat::Combatant::PostCaptureSurvivalOdds() const
 
 
 /**
- * Calculates the power of the combatant when performing a specific action.
+ * Calculates the power of the combatant when attempting to perform an
+ * Activity with the given Objective.
  * The power is based on the number of invaders or defenders available to
- * the combatant, and whether or not the action is aggressive.
+ * the combatant, and whether or not the action is considered defensive.
  *
- * The power can be further modified based on whether or not the combatant
- * has successfully performed a relevant binary action. For example, if the
- * combatant has successfully activated their self-destruct system, their
- * power is increased by the self-destruct power multiplier defined in
- * the game rules.
- *
- * @param action The action that the combatant is attempting.
- * @param successfulBinaryAction (optional) A binary action that the
- * 	combatant has successfully performed this turn, such as SelfDestruct.
+ * @param objective The Objective to determine the power for.
  *
  * @return The power of the combatant when performing the specified action.
  */
-double BoardingCombat::Combatant::Power(Action action, Action successfulBinaryAction) const
+double BoardingCombat::Combatant::ActionPower(Action::Objective objective) const
 {
-  if(BoardingCombat::aggressionByAction.at(action))
+  if(Action::isObjectiveDefensive.at(objective))
+		return DefensePower();
+	else
 		return AttackPower();
-
-	double defenseMultiplier = 1.0;
-
-	if(successfulBinaryAction == Action::SelfDestruct)
-		defenseMultiplier *= GameData::GetGamerules().BoardingSelfDestructCasualtyPowerMultiplier();
-
-	return DefensePower() * defenseMultiplier;
 }
 
 
 
 /**
- * Used to determine whether or not the combatant's action is successful.
- * If the action does not have a binary success/failure outcome that can
- * be determined during a single turn, the function returns false.
+ * Calculates the power of the combatant when determining the casualties
+ * that are inflicted by an Action with the given Objective.
  *
- * This function does not apply the effect of the action. That must be
- * performed separately based on whether or not the action is successful.
+ * The power is based on the number of invaders or defenders available to
+ * the combatant, and whether or not the Objective.
+ *
+ * In the case of a SelfDestruct Objective, the casualty power is
+ * multiplied by the self destruct casualty power multiplier defined in
+ * the game rules.
+ *
+ * @param objective The Objective of the combatant's performed Activity.
+ *
+ * @return The effective power of the combatant when casualties are
+ * 	rolled for the turn.
+ */
+double BoardingCombat::Combatant::CasualtyPower(Action::Objective objective) const
+{
+	double multiplier = 1.0;
+
+	if(objective == Action::Objective::SelfDestruct)
+		multiplier *= GameData::GetGamerules().BoardingSelfDestructCasualtyPowerMultiplier();
+
+  if(Action::isObjectiveDefensive.at(objective))
+		return DefensePower() * multiplier;
+	else
+		return AttackPower() * multiplier;
+}
+
+
+
+/**
+ * Used to determine the Action that a combatant takes during a turn.
+ * While each combatant indicates an intended Activity to perform, that
+ * Activity might be prevented by the other combatant. If that happens,
+ * the combatant will instead perform a different Activity.
+ *
+ * This can happen for two reasons:
+ *
+ * 1. The enemy combatant takes an action that changes the state or the
+ * 	negotiation status of the combat, which then makes the intended
+ * 	Activity invalid.
+ *
+ * 2. The combatant's intended Activity might require a successful power
+ *	roll to perform, and they might fail that roll.
+ *
+ * This function returns an Action, but does not apply its effect to the
+ * boarding combat or its combatants.
  *
  * @param combat A reference to the BoardingCombat that is taking place.
- * @param action The action that the combatant is attempting.
+ * @param state The state of the combat at the time the action is attempted.
+ * 	This might be different from the state as of the most recent turn,
+ * 	since the enemy might have taken a binary action that changes it.
+ * @param negotiation The state of the negotiation at the time the action
+ * 	is attempted. As with state, this might be different from last turn.
+ * @param intent The Activity that the combatant is attempting.
+ * @param enemyIntent The Activity that the enemy combatant is attempting.
+ * @param enemyPower The enemy combatant's current action power.
  *
- * @return The action that succeeded, or Action::Null if the action failed.
+ * @return A Boarding::Action object containing the Activity that the
+ * 	combatant intended, the Activity that they actually performed, and
+ * 	information about the effect of that Activity.
  */
-BoardingCombat::Action BoardingCombat::Combatant::AttemptBinaryAction(const BoardingCombat &combat, Action action)
+Boarding::Action BoardingCombat::Combatant::AttemptAction(
+	const BoardingCombat &combat,
+	State state,
+	Negotiation negotiation,
+	Action::Activity intent,
+	Action::Activity enemyIntent,
+	double enemyPower
+)
 {
-	NegotiationState negotiationState = combat.history->back()->negotiationState;
-	State state = combat.GetHistory()->back()->state;
+	int casualtyRolls = 0;
 
-	double power = Power(action);
-	shared_ptr<Combatant> enemy = isBoarder ? combat.target : combat.boarder;
-	double enemyPower = enemy->Power(action);
-	double totalPower = power + enemyPower;
-
-	bool wonPowerRoll = Random::Real() * totalPower >= power;
-	bool succeeded = false;
-
-	switch(action)
+	// First check if the combatant is still able to take the action.
+	// The action might have been valid when the combatant decided to
+	// take it, but it could have become invalid by the time the action
+	// is actually attempted. For example, the enemy might have already
+	// ended the combat by activating their self-destruct system.
+	if(!IsValidActivity(intent, ValidObjectives(state, negotiation), isBoarder))
 	{
-		case Action::Negotiate:
-			succeeded = combat.IsLanguageShared() && (
-				negotiationState == NegotiationState::NotAttempted
-				|| negotiationState == NegotiationState::Successful
-			);
-			break;
-		case Action::Plunder:
-			if(state == State::Isolated || state == State::BoarderVictory)
-				succeeded = isBoarder;
-			else if(state == State::TargetVictory)
-				succeeded = !isBoarder;
-			else if(state == State::BoarderInvading)
-				succeeded = isBoarder ? wonPowerRoll : false;
-			else if(state == State::TargetInvading)
-				succeeded = isBoarder ? false : wonPowerRoll;
-			else if(state == State::Poised)
-				succeeded = wonPowerRoll;
-			else
-				succeeded = false;
-			break;
-		case Action::Resolve:
-			succeeded = negotiationState == NegotiationState::Active;
-			break;
-		case Action::SelfDestruct:
-			succeeded = wonPowerRoll && Random::Real() < ship->Attributes().Get("self destruct");
-			break;
-		default:
-			succeeded = false;
+		return Action(
+			intent,
+			Action::Activity(Action::Objective::Null, false),
+			// While the combatant's now invalid objective does not contribute
+			// to the number of casualty rolls, they still use it when
+			// determining their casualty power against other combatants.
+			Action::Effect(state, negotiation, intent.objective, casualtyRolls)
+		);
 	}
 
-	return succeeded ? action : Action::Null;
+	double power = ActionPower(intent.objective);
+	double totalPower = power + enemyPower;
+
+	bool wonPowerRoll = Random::Real() * totalPower <= power;
+
+	bool canPerformIntent = true;
+
+	if(intent.objective == Action::Objective::Defend)
+		canPerformIntent = enemyIntent.objective == Action::Objective::Attack;
+	else if(intent.objective == Action::Objective::Negotiate)
+		canPerformIntent = combat.IsLanguageShared();
+	else if(intent.objective == Action::Objective::Resolve)
+		canPerformIntent = enemyIntent.objective != Action::Objective::Reject;
+	else if(intent.objective == Action::Objective::SelfDestruct)
+		canPerformIntent = wonPowerRoll && Random::Real() < ship->Attributes().Get("self destruct");
+
+	Action::Activity actual = canPerformIntent
+		? intent
+		: Action::Activity(Action::Objective::Null, false);
+
+	casualtyRolls = CasualtyRolls(state, negotiation, actual.objective);
+
+	Action::Effect effect(
+		MaybeChangeState(state, actual, enemyIntent),
+		MaybeChangeNegotiation(negotiation, actual),
+		actual.objective,
+		casualtyRolls
+	);
+
+	return Action(intent, actual, effect);
 }
 
 
 
 /**
- * @param state The current state of the boarding combat.
- *
- * @return A map of each Action that a ship could possibly take during a
- * 	boarding combat, and whether or not the combatant is allowed to take
- * 	that action during the next turn of combat.
+ * @return A shared pointer to a map of each possible Objective and
+ * 	whether or not the combatant is able to attempt it based on the
+ * 	given state and negotiation status.
  */
-const shared_ptr<map<BoardingCombat::Action, bool>> BoardingCombat::Combatant::AvailableActions(State state) const
+const shared_ptr<Boarding::Action::ObjectiveCondition> BoardingCombat::Combatant::ValidObjectives(
+	State state,
+	Negotiation negotiation
+) const
 {
-	bool canAttack = (state == State::Isolated && isBoarder)
-		|| state == State::BoarderInvading
-		|| state == State::Poised
-		|| state == State::TargetInvading;
-	bool canDefend = (state == State::Isolated && !isBoarder)
-		|| state == State::BoarderInvading
-		|| state == State::Poised
-		|| state == State::TargetInvading;
-	bool canSelfDestruct = (state == State::Isolated && !isBoarder)
-		|| (state == State::BoarderInvading && !isBoarder)
-		|| state == State::Poised
-		|| (state == State::TargetInvading && isBoarder);
-	bool canPlunder = (state == State::Isolated && isBoarder)
-		|| (state == State::BoarderInvading && isBoarder)
-		|| (state == State::TargetInvading && !isBoarder)
-		|| (state == State::BoarderVictory && isBoarder)
-		|| (state == State::TargetVictory && !isBoarder);
-
-	bool canNegotiate = false; // Not implemented yet.
-	bool canResolve = false; // Not implemented yet.
-
-	bool canCapture = (state == State::BoarderVictory && isBoarder)
-		|| (state == State::TargetVictory && !isBoarder);
-	bool canRaid = (state == State::Isolated && isBoarder)
-		|| (state == State::BoarderVictory && isBoarder)
-		|| (state == State::TargetVictory && !isBoarder);
-	bool canLeave = (state == State::Isolated && isBoarder)
-		|| (state == State::BoarderVictory && isBoarder)
-		|| (state == State::TargetVictory && !isBoarder);
-	bool canDestroy = (state == State::Isolated && isBoarder)
-		|| (state == State::BoarderVictory && isBoarder)
-		|| (state == State::TargetVictory && !isBoarder);
-
-	return make_shared<map<Action, bool>>(map<Action, bool>
-		{
-			{Action::Attack, canAttack},
-			{Action::Defend, canDefend},
-			{Action::Plunder, canPlunder},
-			{Action::SelfDestruct, canSelfDestruct},
-			{Action::Negotiate, canNegotiate},
-			{Action::Resolve, canResolve},
-			{Action::Capture, canCapture},
-			{Action::Raid, canRaid},
-			{Action::Leave, canLeave},
-			{Action::Destroy, canDestroy}
-		}
-	);
+	return Action::ValidObjectives(state, negotiation, isBoarder);
 }
+
+
 
 // --- End of BoardingCombat::Combatant class implementation ---
 
@@ -1197,8 +1573,10 @@ const bool BoardingCombat::Offer::HasTerm(Term term) const
  * It also boosts performance by keeping the calculations out of the
  * BoardingPanel::Draw() function, which is called every frame.
  *
- * @param combat A reference to the BoardingCombat that is taking place.
- * @param isBoarder Whether or not the combatant is the boarder.
+ * @param combatant The combatant whose point of view this report is from.
+ * @param enemy The enemy of the combatant.
+ * @param turn The latest turn of the combat.
+ * @param previousReport The SituationReport from the previous turn.
  *
  * @return A SituationReport object that describes the combat as of the
  * 	latest turn, from the perspective of one of the combatants.
@@ -1206,23 +1584,41 @@ const bool BoardingCombat::Offer::HasTerm(Term term) const
 BoardingCombat::SituationReport::SituationReport(
 	const shared_ptr<Combatant> &combatant,
 	const shared_ptr<Combatant> &enemy,
-	const Turn &turn
-):
+	const Turn &turn,
+	const shared_ptr<SituationReport> &previousReport
+) :
 	combatant(combatant),
 	enemy(enemy),
 	turn(turn),
+	previousReport(previousReport),
 	ship(combatant->GetShip()),
 	enemyShip(enemy->GetShip()),
+	isBoarder(combatant->IsBoarder()),
+	actedFirst(isBoarder && turn.boarderActionIndex < turn.targetActionIndex),
 	isConquered(
-		combatant->IsBoarder()
+		isBoarder
 			? turn.state == State::TargetVictory
 			: turn.state == State::BoarderVictory
 	),
 	isEnemyConquered(
-		combatant->IsBoarder()
+		isBoarder
 			? turn.state == State::BoarderVictory
 			: turn.state == State::TargetVictory
 	),
+	isEnemyInvading(
+		isBoarder
+			? turn.state == State::TargetInvading
+			: turn.state == State::BoarderInvading
+	),
+	latestAction(
+		isBoarder
+			? turn.actions[turn.boarderActionIndex]
+			: turn.actions[turn.targetActionIndex]
+	),
+	enemyLatestAction(
+		isBoarder
+			? turn.actions[turn.targetActionIndex]
+			: turn.actions[turn.boarderActionIndex]),
 	invaders(combatant->Invaders()),
 	defenders(enemy->Defenders()),
 	crew(combatant->Crew()),
@@ -1230,30 +1626,43 @@ BoardingCombat::SituationReport::SituationReport(
 	enemyDefenders(combatant->Defenders()),
 	enemyCrew(enemy->Crew()),
 	cargoSpace(combatant->GetShip()->Cargo().Free()),
+	enemyCargoSpace(enemy->GetShip()->Cargo().Free()),
+	oddsAnalysis(),
 	attackPower(combatant->AttackPower()),
 	defensePower(combatant->DefensePower()),
 	enemyAttackPower(enemy->AttackPower()),
 	enemyDefensePower(enemy->DefensePower()),
 	attackingTotalPower(attackPower + enemyDefensePower),
 	defendingTotalPower(defensePower + enemyAttackPower),
-	minimumTurnsToVictory(invaders / (combatant->CasualtyRollsPerAction(Action::Attack) * (attackPower / attackingTotalPower))),
-	minimumTurnsToDefeat(enemyInvaders / (enemy->CasualtyRollsPerAction(Action::Attack) * (enemyAttackPower / defendingTotalPower))),
+	minimumTurnsToVictory(invaders / (
+		combatant->CasualtyRolls(
+			isBoarder ? State::BoarderInvading : State::TargetInvading,
+			Negotiation::NotAttempted,
+			Action::Objective::Attack
+		) * (attackPower / attackingTotalPower))),
+	minimumTurnsToDefeat(enemyInvaders / (
+		enemy->CasualtyRolls(
+			isBoarder ? State::TargetInvading : State::BoarderInvading,
+			Negotiation::NotAttempted,
+			Action::Objective::Attack
+		) * (enemyAttackPower / defendingTotalPower))),
+	selfDestructProbability(combatant->SelfDestructProbability(enemy)),
 	enemySelfDestructProbability(enemy->SelfDestructProbability(combatant)),
-	cumulativeSelfDestructProbability(1 - pow(1 - enemySelfDestructProbability, minimumTurnsToVictory)),
-	selfDestructCasualtyPower(enemy->Power(Action::SelfDestruct, Action::SelfDestruct)),
-	expectedSelfDestructCasualties(combatant->ExpectedSelfDestructCasualties(enemy)),
+	enemyCumulativeSelfDestructProbability(1 - pow(1 - enemySelfDestructProbability, minimumTurnsToVictory)),
+	enemySelfDestructCasualtyPower(enemy->CasualtyPower(Action::Objective::SelfDestruct)),
+	expectedSelfDestructCasualties(combatant->ExpectedSelfDestructCasualtiesInflicted(enemy)),
 	expectedInvasionCasualties(
-		combatant->GetOdds().AttackerCasualties(invaders, enemyDefenders)
-		+ cumulativeSelfDestructProbability * expectedSelfDestructCasualties
+		combatant->ExpectedInvasionCasualties(enemyDefenders)
+		+ enemyCumulativeSelfDestructProbability * expectedSelfDestructCasualties
 	),
 	expectedDefensiveCasualties(
-		enemy->GetOdds().AttackerCasualties(enemyInvaders, defenders)
+		combatant->ExpectedDefensiveCasualties(enemyInvaders)
 	),
 	invasionVictoryProbability(
-		combatant->GetOdds().Odds(invaders, enemyDefenders) * (1 - cumulativeSelfDestructProbability)
+		combatant->InvasionVictoryProbability(enemyDefenders) * (1 - enemyCumulativeSelfDestructProbability)
 	),
 	defensiveVictoryProbability(
-		enemy->GetOdds().Odds(enemyInvaders, defenders)
+		combatant->DefensiveVictoryProbability(enemyInvaders)
 	),
 	postCaptureSurvivalProbability(
 		combatant->PostCaptureSurvivalOdds()
@@ -1261,6 +1670,7 @@ BoardingCombat::SituationReport::SituationReport(
 	expectedCaptureProfit(
 		enemy->ExpectedCaptureProfit(expectedInvasionCasualties, invasionVictoryProbability)
 	),
+	expectedPlunderProfit(enemy->ExpectedPlunderProfit()),
 	expectedProtectedPlunderProfit(
 		enemy->ExpectedProtectedPlunderProfit(expectedInvasionCasualties, invasionVictoryProbability)
 	),
@@ -1268,11 +1678,14 @@ BoardingCombat::SituationReport::SituationReport(
 		enemy->ExpectedInvasionProfit(
 			combatant,
 			expectedCaptureProfit,
+			expectedPlunderProfit,
 			expectedProtectedPlunderProfit
 		)
 	),
+	isPlunderFinished(combatant->IsPlunderFinished()),
 	plunderOptions(combatant->PlunderOptions()),
-	availableActions(*combatant->AvailableActions(turn.state))
+	validObjectives(combatant->ValidObjectives(turn.state, turn.negotiation)),
+	enemyValidObjectives(enemy->ValidObjectives(turn.state, turn.negotiation))
 {
 }
 
@@ -1286,25 +1699,6 @@ BoardingCombat::SituationReport::SituationReport(
 // --- Start of BoardingCombat static members and functions ---
 
 
-/**
- * Some actions are considered aggressive, while others are considered
- * defensive. This is used to determine whether a combatant uses their
- * attack or defense power when performing a given action.
- */
-const map<BoardingCombat::Action, bool> BoardingCombat::aggressionByAction = {
-	{Action::Attack, true},
-	{Action::Defend, false},
-	{Action::Plunder, true},
-	{Action::SelfDestruct, false},
-	{Action::Negotiate, false},
-	{Action::Resolve, false},
-	{Action::Capture, true},
-	{Action::Raid, true},
-	{Action::Leave, false},
-	{Action::Destroy, true}
-};
-
-
 
 /**
  * Capturing a ship is especially risky. Not only can crew members be
@@ -1316,6 +1710,9 @@ const map<BoardingCombat::Action, bool> BoardingCombat::aggressionByAction = {
  * of a ship being destroyed post-capture. This allows it to factor that
  * possibility into its risk calculations when deciding whether or not
  * capturing a given ship might be financially worthwhile.
+ *
+ * This could be defined in the game rules instead of here, which would
+ * allow people to tweak the AI's decision making to their liking.
  */
 const map<string, double> BoardingCombat::postCaptureSurvivalOddsByCategory = {
 	{"Transport", 0.5},
@@ -1362,89 +1759,6 @@ string BoardingCombat::BuildCrewDisplayName(shared_ptr<Ship> &ship, bool startOf
 	displayName += ship->ExtraCrew() ? "marines" : "crew";
 
 	return displayName;
-}
-
-
-
-/**
- * Validates that ActionDetails are valid for a given Action.
- *
- * @param action The action that the combatant is attempting.
- * @param details The details of the action that the combatant is attempting.
- *
- * @return True if the details are valid for the action, false otherwise.
- */
-bool BoardingCombat::IsValidActionDetails(Action action, ActionDetails details)
-{
-	if(holds_alternative<int>(details)) {
-		return IsValidActionDetails(action, get<int>(details));
-	}	else if(holds_alternative<tuple<int, int>>(details)) {
-		return IsValidActionDetails(action, get<tuple<int, int>>(details));
-	} else if(holds_alternative<Offer>(details)) {
-		return IsValidActionDetails(action, get<Offer>(details));
-	}
-	return false; // If none of the types match, return false
-}
-
-
-
-/**
- * Validates that int ActionDetails are valid for a given Action.
- *
- * @param action The action that the combatant is attempting.
- * @param details The details of the action that the combatant is attempting.
- *
- * @return True if the details are valid for the action, false otherwise.
- */
-bool BoardingCombat::IsValidActionDetails(Action action, int details)
-{
-	switch(action)
-	{
-		case Action::Plunder : return true; break;
-		default : return false;
-	}
-}
-
-
-
-/**
- * Validates that Offer ActionDetails are valid for a given Action.
- *
- * @param action The action that the combatant is attempting.
- * @param details The details of the action that the combatant is attempting.
- *
- * @return True if the details are valid for the action, false otherwise.
- */
-bool BoardingCombat::IsValidActionDetails(Action action, Offer details)
-{
-	switch(action)
-	{
-		case Action::Negotiate : return true; break;
-		case Action::Resolve : return true; break;
-		default : return false;
-	}
-}
-
-
-
-/**
- * Validates that bool ActionDetails are valid for a given Action.
- * A false bool is the default value for an Action that does not require details.
- *
- * @param action The action that the combatant is attempting.
- * @param details The details of the action that the combatant is attempting.
- *
- * @return True if the details are valid for the action, false otherwise.
- */
-bool BoardingCombat::IsValidActionDetails(Action action, bool details)
-{
-	switch(action)
-	{
-		case Action::Plunder : return false; break;
-		case Action::Negotiate : return false; break;
-		case Action::Resolve : return false; break;
-		default : return !details;
-	}
 }
 
 
@@ -1522,16 +1836,18 @@ BoardingCombat::BoardingCombat(
 	shared_ptr<Ship> &targetShip
 ) :
 	player(player),
-	boardingObjective(boarderShip->GetBoardingObjective()),
+	boardingObjective(boarderShip->GetBoardingGoal(true)),
 	usingBoardingPanel(
 		boarderShip->IsPlayerFlagship()
 		|| targetShip->IsPlayerFlagship()
-		|| boardingObjective == Ship::BoardingObjective::CAPTURE_MANUALLY
-		|| boardingObjective == Ship::BoardingObjective::PLUNDER_MANUALLY
+		|| boardingObjective == Ship::BoardingGoal::CAPTURE_MANUALLY
+		|| boardingObjective == Ship::BoardingGoal::PLUNDER_MANUALLY
 	),
+	odds(make_shared<BoardingOdds>(boarderShip, targetShip)),
 	boarder(make_shared<BoardingCombat::Combatant>(
 		boarderShip,
 		targetShip,
+		odds,
 		true,
 		usingBoardingPanel,
 		player.Ships()
@@ -1539,6 +1855,7 @@ BoardingCombat::BoardingCombat(
 	target(make_shared<BoardingCombat::Combatant>(
 		targetShip,
 		boarderShip,
+		odds,
 		false,
 		usingBoardingPanel,
 		player.Ships()
@@ -1562,60 +1879,139 @@ BoardingCombat::BoardingCombat(
 
 
 /**
- * Determines the most likely next state of the boarding combat based on
- * the current state and the actions taken by the boarder and the target.
+ * At the end of the combat, or when one of the combatants is captured,
+ * we need to tally the casualties and apply any consequences for them.
  *
- * The state might end up being different based on the outcomes of the
- * actions taken by the combatants. For instance, if one of the combatants
- * conquers the other or succeeds at an action with a binary result, the
- * actual next state will reflect that.
+ * Make sure that you call this before anything changes the number of
+ * crew members that are on the player combatant's ship, as that will
+ * result in an incorrect analysis of the casualties.
  *
- * @param state The state of the boarding combat as of the previous turn.
- * @param boarderAction The action taken by the boarder during the last turn.
- * @param targetAction The action taken by the target during the last turn.
- *
- * @return The next state of the boarding combat.
+ * @return Whether or not the consequences have now been applied.
  */
-BoardingCombat::State BoardingCombat::GuessNextState(State state, Action boarderAction, Action targetAction) const
+bool BoardingCombat::ApplyCasualtyConsequences()
 {
-  switch(state) {
-		case State::Isolated:
-			if(boarderAction == Action::Attack)
-				return State::BoarderInvading;
-			else
-				return State::Isolated;
+  if(!pendingCasualtyConsequences)
+		return true;
 
-		case State::BoarderInvading:
-			if(boarderAction == Action::Defend)
-				return State::Poised;
-			else
-				return State::BoarderInvading;
+	auto playerCombatant = GetPlayerCombatant();
 
-		case State::Poised:
-			if(boarderAction == Action::Attack && targetAction == Action::Attack)
-				return State::Poised;
-			else if(boarderAction == Action::Attack)
-				return State::BoarderInvading;
-			else if(targetAction == Action::Attack)
-				return State::TargetInvading;
-			else
-				return State::Poised;
-
-		case State::TargetInvading:
-			if(targetAction == Action::Defend)
-				return State::Poised;
-			else
-				return State::TargetInvading;
-
-		case State::BoarderVictory:
-			return State::BoarderVictory;
-
-		case State::TargetVictory:
-			return State::TargetVictory;
-
-		case State::Ended:
-			return State::Ended;
+	// There aren't any consequences for casualties that occur during
+	// boarding combats between non-player ships. If that ever changes,
+	// this function will need to be updated to handle those consequences.
+	if(!playerCombatant)
+	{
+		pendingCasualtyConsequences = false;
+		return true;
 	}
+
+	auto casualtyAnalysis = playerCombatant->CasualtyAnalysis();
+
+	ostringstream out;
+	out << "During a boarding conflict involving " + playerCombatant->GetShip()->QuotedName() + " , " << Format::Number(casualtyAnalysis->casualtyCount) << " crew members were killed.";
+
+	if(casualtyAnalysis->deathBenefits || casualtyAnalysis->deathShares)
+		out << " You owe their estates ";
+
+	if(casualtyAnalysis->deathBenefits)
+	{
+		out << Format::Credits(casualtyAnalysis->deathBenefits) << " credits in death benefits";
+		player.Accounts().AddDeathBenefits(casualtyAnalysis->deathBenefits);
+
+		if(casualtyAnalysis->deathShares)
+			out << ", and ";
+	}
+
+	if(casualtyAnalysis->deathShares)
+	{
+		out << Format::Number(casualtyAnalysis->deathShares) << " extra shares in today's profits (if any).";
+		player.Accounts().AddDeathShares(casualtyAnalysis->deathShares);
+	}
+
+	Messages::Add(out.str(), Messages::Importance::Highest);
+
+	pendingCasualtyConsequences = false;
+	return true;
+}
+
+
+
+/**
+ * Determines the casualties that are suffered by each side during an
+ * Action performed by one of the combatants.
+ *
+ * Only rolls the casualties for one Action, so it needs to be called
+ * once for each Action that can produce casualties.
+ *
+ * This is not a pure function. Each time a casualty is rolled, it is
+ * applied to the corresponding combatant. This is necessary because the
+ * combatant's new crew count is used to determine their casualty power
+ * for the subsequent roll.
+ *
+ * It also sets the combat's pendingCasualtyConsequences flag to true
+ * if at least one casualty occurs.
+ *
+ * It does not directly alter the state of the combat, instead returning
+ * a new state as part of the casualty report.
+ *
+ * @param state The current state of the boarding combat.
+ * @param isBoarder Whether or not the Action is being performed by the
+ * 	boarder.
+ * @param boarderAction The action performed by the boarder.
+ * @param targetAction The action performed by the target.
+ *
+ * @return A report of the casualties suffered by each side during the
+ * 	Action, including the new state and negotiation status.
+ */
+BoardingCombat::CasualtyReport BoardingCombat::RollForCasualties(
+	State state,
+	bool isBoarder,
+	const Action &boarderAction,
+	const Action &targetAction
+)
+{
+	CasualtyReport report(state, 0, 0);
+
+	// Determine the number of casualty rolls that we need to make.
+	int casualtyRolls = isBoarder
+		? boarderAction.effect.casualtyRolls
+		: targetAction.effect.casualtyRolls;
+
+	if(casualtyRolls < 1)
+		return report;
+
+	Action::Objective boarderObjective = boarderAction.effect.casualtyObjective;
+	Action::Objective targetObjective = targetAction.effect.casualtyObjective;
+
+	// Cache the power of each side to avoid recalculating it unnecessarily.
+	double boarderPower = boarder->CasualtyPower(boarderObjective);
+	double targetPower = target->CasualtyPower(targetObjective);
+
+	// Determine the number of casualties suffered by each side.
+	for(int i = 0; i < casualtyRolls; ++i) {
+		// Roll to determine which side suffers a casualty.
+		bool isBoarderCasualty = Random::Real() * (boarderPower + targetPower) >= boarderPower;
+
+		// Apply the casualty to the combatant who lost the roll.
+		if(isBoarderCasualty) {
+			report.boarderCasualties++;
+			if(!boarder->ApplyCasualty(report.state == State::BoarderInvading)) {
+				report.state = State::TargetVictory;
+				break;
+			}
+			boarderPower = boarder->CasualtyPower(boarderObjective);
+		} else {
+			report.targetCasualties++;
+			if(!target->ApplyCasualty(report.state == State::TargetInvading)) {
+				report.state = State::BoarderVictory;
+				break;
+			}
+			targetPower = target->CasualtyPower(targetObjective);
+		}
+	}
+
+	pendingCasualtyConsequences = true;
+
+	return report;
 }
 
 
@@ -1681,6 +2077,504 @@ bool BoardingCombat::IsPlayerConquered() const
 
 
 /**
+ * When a binary action succeds, it can have a variety of effects on the
+ * combatants involved and may change the state of the combat.
+ *
+ * @param state The current state of the boarding combat.
+ * @param actor The combatant that performed the action.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return The combat's new state and negotiation state.
+ */
+Boarding::Action::Result BoardingCombat::ApplyAction(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	switch(action.actual.objective)
+	{
+		case Action::Objective::Null: return ApplyNull(state, negotiation, isBoarder, action, enemyAction);
+
+		case Action::Objective::Attack: return ApplyAttack(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Defend: return ApplyDefend(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Negotiate: return ApplyNegotiate(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Plunder: return ApplyPlunder(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Reject: return ApplyReject(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Resolve: return ApplyResolve(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::SelfDestruct: return ApplySelfDestruct(state, negotiation, isBoarder, action, enemyAction);
+
+		case Action::Objective::Capture: return ApplyCapture(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Destroy: return ApplyDestroy(state, negotiation, isBoarder, action, enemyAction);
+		case Action::Objective::Leave: return ApplyLeave(state, negotiation, isBoarder, action, enemyAction);
+
+		default:
+			throw invalid_argument("Invalid action objective: " + Action::GetObjectiveName(action.actual.objective));
+	}
+}
+
+
+
+/**
+ * Apply the effects of a Null action to the combatants.
+ *
+ * This does not do anything, and just returns an empty Action::Result.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyNull(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		state,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of an Attack action to the combatants.
+ *
+ * This rolls for casualties and applies them to the combatants.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyAttack(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	CasualtyReport report = RollForCasualties(state, isBoarder, action, enemyAction);
+
+	return Action::Result(
+		report.state,
+		negotiation,
+		isBoarder ? report.boarderCasualties : report.targetCasualties,
+		isBoarder ? report.targetCasualties : report.boarderCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of an Defend action to the combatants.
+ *
+ * If appropriate, this rolls for casualties and applies them to the
+ * combatants.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyDefend(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	CasualtyReport report = RollForCasualties(state, isBoarder, action, enemyAction);
+
+	return Action::Result(
+		report.state,
+		negotiation,
+		isBoarder ? report.boarderCasualties : report.targetCasualties,
+		isBoarder ? report.targetCasualties : report.boarderCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of an Negotiate action to the combatants.
+ *
+ * Taking a successful Negotiate action immediately changes the
+ * negotiation status mid-turn, so we don't need to do that here.
+ *
+ * All that this really does it create an Action::Result object so that
+ * we can follow a standard format for all of the Apply* functions.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyNegotiate(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		state,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of an Reject action to the combatants.
+ *
+ * Taking a successful Reject action immediately changes the
+ * negotiation status mid-turn, so we don't need to do that here.
+ *
+ * All that this really does it create an Action::Result object so that
+ * we can follow a standard format for all of the Apply* functions.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyReject(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		state,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of an Resolve action to the combatants.
+ *
+ * All that this really does it create an Action::Result object so that
+ * we can follow a standard format for all of the Apply* functions.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyResolve(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		state,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of a successful Plunder action to the combatants.
+ *
+ * If the actor takes the last item from the enemy, this also destroys
+ * their ship and ends the combat.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyPlunder(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	Action::Result result(state, negotiation, 0, 0);
+
+	auto actor = isBoarder ? boarder : target;
+	auto enemy = isBoarder ? target : boarder;
+
+	if(holds_alternative<tuple<int, int>>(action.actual.details))
+	{
+		auto [index, quantity] = get<tuple<int, int>>(action.actual.details);
+		actor->PlunderSession()->Take(index, quantity);
+	}
+	else
+		actor->PlunderSession()->Raid();
+
+	// Taking the last item from the enemy also destroys their ship.
+	if(enemy->PlunderSession()->RemainingPlunder().empty())
+	{
+		result.state = State::Ended;
+		result.enemyCasualties = enemy->GetShip()->Crew();
+		enemy->GetShip()->Destroy();
+	}
+
+	return result;
+}
+
+
+
+/**
+ * Apply the effects of a successful SelfDestruct action to the combatants.
+ *
+ * This destroys the actor's ship and rolls for casualties.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplySelfDestruct(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	CasualtyReport report = RollForCasualties(state, isBoarder, action, enemyAction);
+
+	auto actor = isBoarder ? boarder : target;
+	auto enemy = isBoarder ? target : boarder;
+
+	int casualties = actor->GetShip()->Crew() + (
+		isBoarder
+			? report.boarderCasualties
+			: report.targetCasualties
+	);
+
+	if(casualties > 0)
+		pendingCasualtyConsequences = true;
+
+	actor->GetShip()->SelfDestruct();
+
+	return Action::Result(
+		State::Ended,
+		negotiation,
+		casualties,
+		isBoarder ? report.targetCasualties : report.boarderCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of a successful Capture action to the combatants.
+ *
+ * This takes ownership of the enemy ship, transfers crew members as
+ * required, triggers various consequences, and outputs messages.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyCapture(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	auto actor = isBoarder ? boarder : target;
+	auto enemy = isBoarder ? target : boarder;
+
+	auto enemyShip = enemy->GetShip();
+	if(actor->IsPlayerControlled())
+		enemyShip->GetGovernment()->Offend(ShipEvent::CAPTURE, enemyShip->CrewValue());
+
+	// We need to do this before we transfer crew members to the other ship,
+	// otherwise we won't be able to count the casualties properly.
+	ApplyCasualtyConsequences();
+
+	int transferredCrew = enemyShip->WasCaptured(actor->GetShip());
+	int missingCrew = enemyShip->RequiredCrew() - enemyShip->Crew();
+
+	if(actor->IsPlayerControlled())
+	{
+		ostringstream out;
+		out << actor->GetShip()->QuotedName() << " has captured the ";
+		out << enemyShip->DisplayModelName() << " " + enemyShip->QuotedName();
+		out << ", transferring " << Format::Number(transferredCrew) << " crew members.";
+		Messages::Add(out.str(), Messages::Importance::High);
+
+		if(missingCrew)
+		{
+			out << enemyShip->QuotedName() + " needs " << Format::Number(missingCrew);
+			out << " more crew members. You can order your fleet to distribute their extra crew by pressing " + Command::TRANSFER_CREW.KeyName() + ".";
+			Messages::Add(out.str(), Messages::Importance::High);
+		}
+	}
+	else if(enemy->IsPlayerControlled())
+	{
+		ostringstream out;
+		out << "An enemy " + actor->GetShip()->DisplayModelName() + " " + actor->GetShip()->QuotedName() << " has boarded and captured your ";
+		out << enemyShip->DisplayModelName() << " " + enemyShip->QuotedName();
+		Messages::Add(out.str(), Messages::Importance::Highest);
+	}
+
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		State::Ended,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of a successful Destroy action to the combatants.
+ *
+ * This destroys the enemy's ship and ends the combat.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyDestroy(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	auto actor = isBoarder ? boarder : target;
+	auto enemy = isBoarder ? target : boarder;
+
+	int casualties = 0;
+	int enemyCasualties = actor->GetShip()->Crew();
+
+	if(enemyCasualties > 0)
+		pendingCasualtyConsequences = true;
+
+	enemy->GetShip()->Destroy();
+
+	return Action::Result(
+		State::Ended,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
+ * Apply the effects of a successful Leave action to the combatants.
+ *
+ * This immediately ends the combat.
+ *
+ * @param state The current state of the boarding combat.
+ * @param negotiation The combatant that the action was performed against.
+ * @param isBoarder Whether or not the action was performed by the boarder.
+ * @param action The action performed by the combatant.
+ * @param enemyAction The action performed by the enemy combatant.
+ *
+ * @return An Action::Result object that reports what happened.
+ */
+Boarding::Action::Result BoardingCombat::ApplyLeave(
+	State state,
+	Negotiation negotiation,
+	bool isBoarder,
+	const Action &action,
+	const Action &enemyAction
+)
+{
+	int casualties = 0;
+	int enemyCasualties = 0;
+
+	return Action::Result(
+		State::Ended,
+		negotiation,
+		casualties,
+		enemyCasualties
+	);
+}
+
+
+
+/**
  * @return Whether or not the player's enemy combatant has been conquered.
  */
 bool BoardingCombat::IsPlayerEnemyConquered() const
@@ -1719,23 +2613,46 @@ bool BoardingCombat::IsPlayerEnemyConquered() const
  *
  * @throws invalid_argument if the player tries to take an invalid action.
  */
-const shared_ptr<BoardingCombat::Turn> BoardingCombat::Step(Action playerAction, ActionDetails playerActionDetails)
+const shared_ptr<BoardingCombat::Turn> BoardingCombat::Step(
+	Action::Activity playerIntent
+)
 {
+	auto latest = history->back();
+
 	// Prevent the player from taking an invalid action.
-	if(!GetPlayerCombatant()->AvailableActions(history->back()->state)->at(playerAction))
+	if(!GetPlayerCombatant()->ValidObjectives(latest->state, latest->negotiation)->at(playerIntent.objective))
 	{
 		throw invalid_argument(
-			"BoardingCombat::Step - player tried to take an invalid action:"
-				+ to_string(static_cast<int>(playerAction))
+			"BoardingCombat::Step - player tried to take an invalid action: "
+				+ Action::GetObjectiveName(playerIntent.objective)
 				+ " while in state "
-				+ to_string(static_cast<int>(history->back()->state))
+				+ Boarding::GetStateName(history->back()->state)
+		);
+	}
+
+	// Prevent the player from taking actions with invalid details.
+	if(!Action::IsValidDetails(playerIntent.objective, playerIntent.details))
+	{
+		throw invalid_argument(
+			"BoardingCombat::Step - invalid details for player action: "
+				+ Action::GetObjectiveName(playerIntent.objective)
+				+ " while in state "
+				+ Boarding::GetStateName(history->back()->state)
 		);
 	}
 
 	// Create a new Turn object to represent the next step in the combat.
 	shared_ptr<Turn> next = boarder->IsPlayerControlled()
-		? make_shared<Turn>(*this, playerAction, target->DetermineAction(*this), playerActionDetails)
-		: make_shared<Turn>(*this, boarder->DetermineAction(*this), playerAction);
+		? make_shared<Turn>(
+			*this,
+			playerIntent,
+			target->DetermineIntent(latest->targetSituationReport)
+		)
+		: make_shared<Turn>(
+			*this,
+			boarder->DetermineIntent(latest->boarderSituationReport),
+			playerIntent
+		);
 
 	// Add the new Turn to the History.
 	history->push_back(next);
@@ -1776,8 +2693,14 @@ const string BoardingCombat::ResolveAutomatically()
  */
 const shared_ptr<BoardingCombat::Turn> BoardingCombat::Step()
 {
+	auto latest = history->back();
+
 	// Create a new Turn object to represent the next step in the combat.
-	shared_ptr<Turn> next = make_shared<Turn>(*this, boarder->DetermineAction(*this), target->DetermineAction(*this));
+	shared_ptr<Turn> next = make_shared<Turn>(
+		*this,
+		boarder->DetermineIntent(latest->boarderSituationReport),
+		target->DetermineIntent(latest->targetSituationReport)
+	);
 
 	// Add the new Turn to the History.
 	history->push_back(next);

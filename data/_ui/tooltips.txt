@@ -1250,14 +1250,14 @@ tip "View star map"
 tip "View player info"
 	`Open the player info panel.`
 
-tip "Toggle boarding attack strategy"
+tip "Toggle attack strategy"
 	`Changes the strategy used by your escorts to determine whether or not they will attack during boarding actions:`
 	`Cautious: Only attack if victory is assured and no friendly casualties are expected.`
 	`Aggressive: Attack if victory is assured and expected casualties don't exceed extra crew.`
 	`Reckless: Attack if victory is likely, regardless of the casualties.`
 	`This setting is only used when boarding actions are resolved automatically, not when you direct them yourself with the Boarding Panel."
 
-tip "Toggle boarding defense strategy"
+tip "Toggle defense strategy"
 	`Changes the strategy that your escorts defend themselves during boarding actions:`
 	`Repel: Focus on preventing enemy invaders from taking over the ship.`
 	`Counter: As Repel, but also try to lure enemies into the ship's defenses before attacking.`
@@ -1509,8 +1509,8 @@ tip `Game reload fee`
 	`Being able to reload the game whenever you want is nice, but it can also be a problem. Since the game saves automatically at each port, it can be very tempting to rewind time as soon as you encounter a setback. This encourages odd gameplay like trying dozens of times to capture a powerful ship, or amassing a fleet full of freighters with no protection. Knowing that you will eventually succeed at any goal if you reload enough times can make your victories less satisfying.`
 	`That said, sometimes a situation feels too awful to continue with. Plus, if you die or fail a story mission, you have to reload or it's game over. In these scenarios, it's nice to have a reasonable middle ground.`
 	`You can use the mouse wheel to increase or decrease the percentage value more quickly.`
-	`If you just want some motivation not to abuse the reload button, try 5% of your active worth or 50% of your gross credits.`
-	`For a tough but fair challenge, consider 10% of your active worth or 100% of your gross credits.`
+	`If you just want some motivation not to abuse the reload button, try 2% of your active worth or 25% of your gross credits.`
+	`For a tough but fair challenge, consider 5% of your active worth or 50% of your gross credits.`
 	`If you're after a punishing rogue-lite experience, you could choose something wild like 50% to 100% of your active fleet.`
 
 tip "    based on your"

@@ -864,8 +864,8 @@ outfit "Tuning Rifle"
 		Remnant
 	cost 22000
 	thumbnail "outfit/remnant rifle"
-	"capture attack" 1.2
-	"capture defense" 1.8
+	"boarding attack" 1.2
+	"boarding defense" 1.8
 	"unplunderable" 1
 	description "The Tuning Rifle uses sound waves to destabilize the weaker internal tissue of many races and liquefies them."
 
@@ -879,8 +879,8 @@ outfit "Void Rifle"
 		Remnant
 	cost 1000000
 	thumbnail "outfit/void rifle"
-	"capture attack" 20
-	"capture defense" 20
+	"boarding attack" 20
+	"boarding defense" 20
 	"energy consumption" 0.017
 	"unique" 1
 	"unplunderable" 1

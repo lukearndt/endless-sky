@@ -131,7 +131,7 @@ private:
 	static void Attack(Ship &ship, Command &command, const Ship &target);
 	static void AimToAttack(Ship &ship, Command &command, const Body &target);
 	static void MoveToAttack(Ship &ship, Command &command, const Body &target);
-	static bool MoveToBoard(Ship &ship, Command &command, Ship::BoardingObjective objective, const std::shared_ptr<Ship> &target);
+	static bool MoveToBoard(Ship &ship, Command &command, Ship::BoardingGoal goal, const std::shared_ptr<Ship> &target);
 	static void PickUp(Ship &ship, Command &command, const Body &target);
 	// Special decisions a ship might make.
 	static bool ShouldUseAfterburner(Ship &ship);
@@ -148,7 +148,7 @@ private:
 	void DoPatrol(Ship &ship, Command &command) const;
 	bool DoHostileBoarding(Ship &ship, Command &command, int orderType, std::shared_ptr<Ship> target = nullptr) const;
 	bool DoRepairing(Ship &ship, Command &command, std::shared_ptr<Ship> target = nullptr) const;
-	bool DisableAndBoard(Ship &ship, Command &command, std::shared_ptr<Ship> target, Ship::BoardingObjective objective, bool canAttemptObjective, bool allowRepeats = false) const;
+	bool DisableAndBoard(Ship &ship, Command &command, std::shared_ptr<Ship> target, Ship::BoardingGoal goal, bool canAttemptObjective, bool allowRepeats = false) const;
 	// Prevent ships from stacking on each other when many are moving in sync.
 	void DoScatter(Ship &ship, Command &command);
 	bool DoSecretive(Ship &ship, Command &command);

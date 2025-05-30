@@ -601,7 +601,7 @@ void PlayerInfo::ApplyGameReloadFee()
 	if(fee <= 0)
 		return;
 
-	double actualFeePercentage = fee / assetGroupValue * 100;
+	double actualFeePercentage = (100. * fee) / (double)assetGroupValue;
 
 	string feeMessage = "You incurred a game reload fee of "
 		+ Format::Credits(fee) + " credits, which was "
@@ -616,8 +616,8 @@ void PlayerInfo::ApplyGameReloadFee()
 	{
 		int64_t mortgage = fee - Accounts().Credits();
 		feeMessage += " " + Format::Credits(Accounts().Credits())
-			+ " have been paid, and the remaining " + Format::Credits(mortgage)
-			+ " have been applied as a mortgage.";
+			+ " credits have been paid, and the remaining " + Format::Credits(mortgage)
+			+ " amount has been applied as a mortgage.";
 		Accounts().AddMortgage(fee - Accounts().Credits());
 		Accounts().AddCredits(-Accounts().Credits());
 	}

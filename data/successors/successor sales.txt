@@ -92,7 +92,7 @@ outfitter "Successor Civilian"
 	"Fuel Pod"
 	"Cargo Expansion"
 	"Outfits Expansion"
-	"Barracks Conversion"
+	"Barracks"
 	"Successor Cooling"
 
 outfitter "Successor Heavy"

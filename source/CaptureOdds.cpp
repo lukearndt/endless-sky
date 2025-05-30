@@ -29,8 +29,8 @@ using namespace std;
 // Constructor.
 CaptureOdds::CaptureOdds(const Ship &attacker, const Ship &defender)
 {
-	powerA = Power(attacker, false);
-	powerD = Power(defender, true);
+	powerAttacker = Power(attacker, false);
+	powerDefender = Power(defender, true);
 	Calculate();
 }
 
@@ -51,7 +51,7 @@ double CaptureOdds::Odds(int attackingCrew, int defendingCrew) const
 	if(attackingCrew < 2 || index < 0)
 		return 0.;
 
-	return capture[index];
+	return captureChance[index];
 }
 
 
@@ -66,7 +66,7 @@ double CaptureOdds::AttackerCasualties(int attackingCrew, int defendingCrew) con
 	if(attackingCrew < 2 || !defendingCrew || index < 0)
 		return 0.;
 
-	return casualtiesA[index];
+	return casualtiesAttacker[index];
 }
 
 
@@ -81,7 +81,7 @@ double CaptureOdds::DefenderCasualties(int attackingCrew, int defendingCrew) con
 	if(attackingCrew < 2 || !defendingCrew || index < 0)
 		return 0.;
 
-	return casualtiesD[index];
+	return casualtiesDefender[index];
 }
 
 
@@ -90,10 +90,10 @@ double CaptureOdds::DefenderCasualties(int attackingCrew, int defendingCrew) con
 // weapons) for the attacker when they have the given number of crew remaining.
 double CaptureOdds::AttackerPower(int attackingCrew) const
 {
-	if(static_cast<unsigned>(attackingCrew - 1) >= powerA.size())
+	if(static_cast<unsigned>(attackingCrew - 1) >= powerAttacker.size())
 		return 0.;
 
-	return powerA[attackingCrew - 1];
+	return powerAttacker[attackingCrew - 1];
 }
 
 
@@ -102,10 +102,10 @@ double CaptureOdds::AttackerPower(int attackingCrew) const
 // weapons) for the defender when they have the given number of crew remaining.
 double CaptureOdds::DefenderPower(int defendingCrew) const
 {
-	if(static_cast<unsigned>(defendingCrew - 1) >= powerD.size())
+	if(static_cast<unsigned>(defendingCrew - 1) >= powerDefender.size())
 		return 0.;
 
-	return powerD[defendingCrew - 1];
+	return powerDefender[defendingCrew - 1];
 }
 
 
@@ -113,37 +113,61 @@ double CaptureOdds::DefenderPower(int defendingCrew) const
 // Generate the lookup tables.
 void CaptureOdds::Calculate()
 {
-	if(powerD.empty() || powerA.empty())
+	if(powerDefender.empty() || powerAttacker.empty())
 		return;
 
 	// The first row represents the case where the attacker has only one crew left.
 	// In that case, the defending ship can never be successfully captured.
-	capture.resize(powerD.size(), 0.);
-	casualtiesA.resize(powerD.size(), 0.);
-	casualtiesD.resize(powerD.size(), 0.);
-	unsigned up = 0;
-	for(unsigned a = 2; a <= powerA.size(); ++a)
+	captureChance.resize(powerDefender.size(), 0.);
+	casualtiesAttacker.resize(powerDefender.size(), 0.);
+	casualtiesDefender.resize(powerDefender.size(), 0.);
+
+	unsigned index = 0;
+
+	// Loop through each number of crew the attacker might have.
+	for(unsigned a = 2; a <= powerAttacker.size(); ++a)
 	{
-		double ap = powerA[a - 1];
+		double attackPower = powerAttacker[a - 1];
 		// Special case: odds for defender having only one person,
 		// because 0 people is outside the end of the table.
-		double odds = ap / (ap + powerD[0]);
-		capture.push_back(odds + (1. - odds) * capture[up]);
-		casualtiesA.push_back((1. - odds) * (casualtiesA[up] + 1.));
-		casualtiesD.push_back(odds + (1. - odds) * casualtiesD[up]);
-		++up;
+		double attackerActionChance = attackPower / (attackPower + powerDefender[0]);
+		double defenderActionChance = 1. - attackerActionChance;
+
+		captureChance.push_back(attackerActionChance + defenderActionChance * captureChance[index]);
+
+		casualtiesAttacker.push_back(defenderActionChance * (casualtiesAttacker[index] + 1.));
+
+		casualtiesDefender.push_back(attackerActionChance + defenderActionChance * casualtiesDefender[index]);
+		++index;
 
 		// Loop through each number of crew the defender might have.
-		for(unsigned d = 2; d <= powerD.size(); ++d)
+		for(unsigned defenderCrew = 1; defenderCrew < powerDefender.size(); ++defenderCrew)
 		{
-			// This is  basic 2D dynamic program, where each value is based on
+			//
+			// This is a basic 2D dynamic program, where each value is based on
 			// the odds of success and the values for one fewer crew members
 			// for the defender or the attacker depending on who wins.
-			odds = ap / (ap + powerD[d - 1]);
-			capture.push_back(odds * capture.back() + (1. - odds) * capture[up]);
-			casualtiesA.push_back(odds * casualtiesA.back() + (1. - odds) * (casualtiesA[up] + 1.));
-			casualtiesD.push_back(odds * (casualtiesD.back() + 1.) + (1. - odds) * casualtiesD[up]);
-			++up;
+			attackerActionChance = attackPower / (attackPower + powerDefender[defenderCrew]);
+			defenderActionChance = 1. - attackerActionChance;
+
+			// I think this is trying to generate an aggregate probability that the attacker will defeat all the defenders
+			// but I'm not sure it actually works.
+			captureChance.push_back(
+				attackerActionChance * captureChance.back() // one fewer defender
+				 + defenderActionChance * captureChance[index] // why are these different
+			);
+
+			casualtiesAttacker.push_back(
+				attackerActionChance * casualtiesAttacker.back()
+				 + defenderActionChance * (casualtiesAttacker[index] + 1.)
+			);
+
+			casualtiesDefender.push_back(
+				attackerActionChance * (casualtiesDefender.back() + 1.)
+				 + defenderActionChance * casualtiesDefender[index]
+			);
+
+			++index;
 		}
 	}
 }
@@ -154,12 +178,12 @@ void CaptureOdds::Calculate()
 // row in the table for 0 crew on either ship.
 int CaptureOdds::Index(int attackingCrew, int defendingCrew) const
 {
-	if(static_cast<unsigned>(attackingCrew - 1) > powerA.size())
+	if(static_cast<unsigned>(attackingCrew - 1) > powerAttacker.size())
 		return -1;
-	if(static_cast<unsigned>(defendingCrew - 1) > powerD.size())
+	if(static_cast<unsigned>(defendingCrew - 1) > powerDefender.size())
 		return -1;
 
-	return (attackingCrew - 1) * powerD.size() + (defendingCrew - 1);
+	return (attackingCrew - 1) * powerDefender.size() + (defendingCrew - 1);
 }
 
 
@@ -178,9 +202,10 @@ vector<double> CaptureOdds::Power(const Ship &ship, bool isDefender)
 		return power;
 
 	// Check for any outfits that assist with attacking or defending:
-	const string attribute = (isDefender ? "capture defense" : "capture attack");
-	const double crewPower = (isDefender ?
-		ship.GetGovernment()->CrewDefense() : ship.GetGovernment()->CrewAttack());
+	const string attribute = isDefender ? "boarding defense" : "boarding attack";
+	const double crewPower = isDefender
+		? ship.GetGovernment()->CrewDefense()
+		: ship.GetGovernment()->CrewAttack();
 
 	// Each crew member can wield one weapon. They use the most powerful ones
 	// that can be wielded by the remaining crew.

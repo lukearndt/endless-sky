@@ -77,12 +77,12 @@ private:
 
 private:
 	// Attacker and defender power lookup tables.
-	std::vector<double> powerA;
-	std::vector<double> powerD;
+	std::vector<double> powerAttacker;
+	std::vector<double> powerDefender;
 
 	// Capture odds lookup table.
-	std::vector<double> capture;
+	std::vector<double> captureChance;
 	// Expected casualties lookup table.
-	std::vector<double> casualtiesA;
-	std::vector<double> casualtiesD;
+	std::vector<double> casualtiesAttacker;
+	std::vector<double> casualtiesDefender;
 };

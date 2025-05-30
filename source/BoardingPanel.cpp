@@ -144,7 +144,7 @@ void BoardingPanel::Draw()
 	// Set which buttons are active.
 	info.ClearConditions();
 	if(CanLeave())
-		info.SetCondition("can exit");
+		info.SetCondition("can leave");
 	// TODO: The boarding UI png needs to be updated to include a "raid" button.
 	// This is a placeholder until that has been done.
 	// if(CanRaid(true, canTakeSomething))
@@ -191,24 +191,24 @@ void BoardingPanel::Draw()
 // Handle key presses or button clicks that were mapped to key presses.
 bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command, bool isNewPress)
 {
-	if((key == 'd' || key == 'x' || key == SDLK_ESCAPE || (key == 'w' && (mod & (KMOD_CTRL | KMOD_GUI)))) && CanLeave())
+	if((key == 'l' || key == 'x' || key == SDLK_ESCAPE || (key == 'w' && (mod & (KMOD_CTRL | KMOD_GUI)))) && CanLeave())
 	{
-		if(TakeTurn(Boarding::Action::Leave))
+		if(TakeTurn(Boarding::Action::Objective::Leave))
 			GetUI()->Pop(this);
 	}
 	else if(key == 't' && CanPlunderSelected())
 	{
 		int quantity = KMOD_SHIFT ? 1 : selectedPlunder->Count();
-		return TakeTurn(Boarding::Action::Plunder, make_tuple(plunderIndex, quantity));
+		return TakeTurn(Boarding::Action::Objective::Plunder, make_tuple(plunderIndex, quantity));
 	}
 	else if(key == 'r' && CanRaid())
-		return TakeTurn(Boarding::Action::Raid);
+		return TakeTurn(Boarding::Action::Objective::Plunder, false);
 	else if(key == SDLK_UP || key == SDLK_DOWN || key == SDLK_PAGEUP
 			|| key == SDLK_PAGEDOWN || key == SDLK_HOME || key == SDLK_END)
 		DoKeyboardNavigation(key);
 	else if(key == 'c' && CanCapture())
 	{
-		return TakeTurn(Boarding::Action::Capture);
+		return TakeTurn(Boarding::Action::Objective::Capture);
 		// A ship that self-destructs checks once when you board it, and again
 		// when you try to capture it, to see if it will self-destruct. This is
 		// so that capturing will be harder than plundering.
@@ -225,9 +225,9 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 		// messages.push_back("(It will end if you both choose to \"defend.\")");
 	}
 	else if(key == 'a' && CanAttack())
-		return TakeTurn(Boarding::Action::Attack);
+		return TakeTurn(Boarding::Action::Objective::Attack);
 	else if(key == 'd' && CanDefend())
-		return TakeTurn(Boarding::Action::Defend);
+		return TakeTurn(Boarding::Action::Objective::Defend);
 	// else if((key == 'a' || key == 'd') && CanAttack())
 	// {
 	// 	int yourStartCrew = you->Crew();
@@ -347,7 +347,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command,
 
 	// 			// We need to resolve any casualties before we transfer crew members
 	// 			// to the other ship. Otherwise, we won't be able to tally them correctly.
-	// 			ResolveCasualties();
+				// ResolveCasualties();
 
 	// 			// Transfer the crew and fuel from the captured ship to your ship.
 	// 			int crewTransferred = target->WasCaptured(you);
@@ -437,35 +437,18 @@ bool BoardingPanel::Scroll(double dx, double dy)
  */
 bool BoardingPanel::CanLeave() const
 {
-	return report->availableActions.at(Boarding::Action::Leave);
+	return report->validObjectives->at(Boarding::Action::Objective::Leave);
 }
 
 
 
 /**
- * Check if you can raid the ship for valuables.
- *
- * @param alreadyCheckedPlunder Whether or not the list of plunder has already
- * 	been checked to determine if you can take something. This lets us skip
- * 	that check if we already know the result, such as during Draw().
- * @param canTakeSomething Whether or not you can take at least one item.
- *
- * @return True if you can raid the ship for valuables.
+ * @return Whether or not the player can raid the ship for valuables.
  */
 bool BoardingPanel::CanRaid() const
 {
-	if(!report->availableActions.at(Boarding::Action::Raid))
-		return false;
-
-	// Check if the player can take any of the plunder options.
-	for(auto item : report->plunderOptions)
-		if(
-			item->HasEnoughSpace(report->ship)
-			&& (report->isEnemyConquered || !item->RequiresConquest())
-		)
-			return true;
-
-	return false;
+	return !report->isPlunderFinished
+		&& report->validObjectives->at(Boarding::Action::Objective::Plunder);
 }
 
 
@@ -476,7 +459,7 @@ bool BoardingPanel::CanRaid() const
  */
 bool BoardingPanel::CanPlunderSelected() const
 {
-	return report->availableActions.at(Boarding::Action::Plunder)
+	return report->validObjectives->at(Boarding::Action::Objective::Plunder)
 		&& selectedPlunder
 		&& selectedPlunder->HasEnoughSpace(report->ship)
 		&& (report->isEnemyConquered || !selectedPlunder->RequiresConquest());
@@ -493,7 +476,7 @@ bool BoardingPanel::CanPlunderSelected() const
  */
 bool BoardingPanel::CanCapture() const
 {
-	return report->availableActions.at(Boarding::Action::Capture)
+	return report->validObjectives->at(Boarding::Action::Objective::Capture)
 		&& (!report->enemyShip->RequiredCrew() || report->crew > 1);
 }
 
@@ -504,7 +487,7 @@ bool BoardingPanel::CanCapture() const
  */
 bool BoardingPanel::CanAttack() const
 {
-	return report->availableActions.at(Boarding::Action::Attack);
+	return report->validObjectives->at(Boarding::Action::Objective::Attack);
 }
 
 
@@ -514,7 +497,7 @@ bool BoardingPanel::CanAttack() const
  */
 bool BoardingPanel::CanDefend() const
 {
-  return report->availableActions.at(Boarding::Action::Defend);
+  return report->validObjectives->at(Boarding::Action::Objective::Defend);
 }
 
 
@@ -546,63 +529,35 @@ void BoardingPanel::DoKeyboardNavigation(const SDL_Keycode key)
 }
 
 
-// TODO: Make this happen as part of the BoardingCombat system.
-//
-// Build a list of casualties from the boarding action and trigger any
-// consequences that result from them, such as death benefits and death shares.
-// void BoardingPanel::ResolveCasualties()
-// {
-// 	if(!hasUnresolvedCasualties)
-// 		return;
-
-
-// 	ostringstream out;
-// 	out << "During the boarding action, " << Format::Number(casualtyAnalysis.casualtyCount) << " of your crew members were killed.";
-// 	if(casualtyAnalysis.deathBenefits || casualtyAnalysis.deathShares)
-// 		out << " You owe their estates ";
-// 	if(casualtyAnalysis.deathBenefits)
-// 	{
-// 		out << Format::Credits(casualtyAnalysis.deathBenefits) << " credits in death benefits";
-// 		player.Accounts().AddDeathBenefits(casualtyAnalysis.deathBenefits);
-
-// 		if(casualtyAnalysis.deathShares)
-// 			out << ", and ";
-// 	}
-// 	if(casualtyAnalysis.deathShares)
-// 	{
-// 		out << Format::Number(casualtyAnalysis.deathShares) << " extra shares in today's profits (if any).";
-// 		player.Accounts().AddDeathShares(casualtyAnalysis.deathShares);
-// 	}
-// 	Messages::Add(out.str(), Messages::Importance::Highest);
-
-// 	hasUnresolvedCasualties = false;
-// }
-
-
 
 /**
  * Attempt to take a turn in the boarding combat and assign a new
  * BoardingCombat::SituationReport to the panel's report variable.
  *
  * Logs an error if the turn could not be created, such as when a player
- * somehow takes an invalid action. This should not happen in practice,
- * and indicates a problem with the panel. If you see this error, check
- * the KeyDown() function to make sure that the key press validates the
- * action before proceeding.
+ * somehow attempts an invalid activity. This should not happen in
+ * practice, and indicates a problem with the panel. If you see this
+ * error, check the KeyDown() function to make sure that the key press
+ * validates the objective and details before proceeding.
  *
- * @param action The action that the player is taking.
- * @param details The details of that action.
+ * @param objective The objective that the player is attempting to achieve.
+ * @param details The details of that objective, if any.
  *
  * @return Whether or not a new turn was successfully created.
  */
-bool BoardingPanel::TakeTurn(Boarding::Action action, Boarding::ActionDetails details)
+bool BoardingPanel::TakeTurn(
+	Boarding::Action::Objective objective,
+	Boarding::Action::Details details
+)
 {
 	try {
-		shared_ptr<BoardingCombat::Turn> turn = combat.Step(action, details);
+		shared_ptr<BoardingCombat::Turn> turn = combat.Step(
+			Boarding::Action::Activity(objective, details)
+		);
 
 		report = isPlayerBoarder
-		? turn->boarderSituationReport
-		: turn->targetSituationReport;
+			? turn->boarderSituationReport
+			: turn->targetSituationReport;
 
 		for(auto message : turn->messages)
 			messages.push_back(message);

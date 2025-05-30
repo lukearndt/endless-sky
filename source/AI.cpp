@@ -3184,18 +3184,23 @@ void AI::MoveToAttack(Ship &ship, Command &command, const Body &target)
  * @param command The command being executed.
  * @param target The ship to board. If this is a nullptr, the routine
  * 	immediately returns false and does nothing else.
- * @param objective A Ship::BoardingObjective to assign the ship so that
+ * @param goal A Ship::BoardingGoal to assign the ship so that
  * 	it knows what to do once it reaches the target.
  *
  * @return Whether or not the ship is attempting to board the target.
  */
-bool AI::MoveToBoard(Ship &ship, Command &command, Ship::BoardingObjective objective, const shared_ptr<Ship> &target)
+bool AI::MoveToBoard(
+	Ship &ship,
+	Command &command,
+	Ship::BoardingGoal goal,
+	const shared_ptr<Ship> &target
+)
 {
 	if(!target)
 		return false;
 
 	ship.SetTargetShip(target);
-	ship.SetBoardingObjective(objective);
+	ship.SetBoardingGoal(goal);
 	MoveTo(ship, command, target->Position(), target->Velocity(), 40., .8);
 	command |= Command::BOARD;
 	return true;
@@ -3940,33 +3945,33 @@ bool AI::DoHostileBoarding(
 ) const
 {
 	bool isManualOrder = false;
-	Ship::BoardingObjective objective = Ship::BoardingObjective::NONE;
-	bool canAttemptObjective = false;
+	Ship::BoardingGoal goal = Ship::BoardingGoal::DEFAULT;
+	bool canAttemptGoal = false;
 
 	if(orderType == Orders::CAPTURE)
 	{
-		objective = Ship::BoardingObjective::CAPTURE;
-		canAttemptObjective = ship.Crew() > ship.RequiredCrew();
+		goal = Ship::BoardingGoal::CAPTURE;
+		canAttemptGoal = ship.Crew() > ship.RequiredCrew();
 	}
 	else if(orderType == Orders::CAPTURE_MANUALLY)
 	{
 		isManualOrder = true;
-		objective = Ship::BoardingObjective::CAPTURE_MANUALLY;
-		canAttemptObjective = ship.Crew() > ship.RequiredCrew();
+		goal = Ship::BoardingGoal::CAPTURE_MANUALLY;
+		canAttemptGoal = ship.Crew() > ship.RequiredCrew();
 	}
 	else if(orderType == Orders::PLUNDER)
 	{
-		objective = Ship::BoardingObjective::PLUNDER;
-		canAttemptObjective = ship.Cargo().Free() > 0;
+		goal = Ship::BoardingGoal::PLUNDER;
+		canAttemptGoal = ship.Cargo().Free() > 0;
 	}
 	else if(orderType == Orders::PLUNDER_MANUALLY)
 	{
 		isManualOrder = true;
-		objective = Ship::BoardingObjective::PLUNDER_MANUALLY;
-		canAttemptObjective = ship.Cargo().Free() > 0;
+		goal = Ship::BoardingGoal::PLUNDER_MANUALLY;
+		canAttemptGoal = ship.Cargo().Free() > 0;
 	}
 	else
-		throw logic_error("DoHostileBoarding called with unsupported order: " + to_string(orderType));
+		throw invalid_argument("DoHostileBoarding called with unsupported order: " + to_string(orderType));
 
 	// If the order has a specific target, only consider that.
 	if(target)
@@ -3982,16 +3987,16 @@ bool AI::DoHostileBoarding(
 			return false;
 		}
 
-		return DisableAndBoard(ship, command, target, objective, canAttemptObjective);
+		return DisableAndBoard(ship, command, target, goal, canAttemptGoal);
 	}
 
-	// Avoid searching for a target if this ship can't attempt the objective.
-	if(!canAttemptObjective)
+	// Avoid searching for a target if this ship can't attempt the goal.
+	if(!canAttemptGoal)
 		return false;
 
 	// Find a disabled hostile target, and attempt to board it.
 	// If this ship already has a target, it will consider that first.
-	return DisableAndBoard(ship, command, FindHostileBoardingTarget(ship), objective, canAttemptObjective);
+	return DisableAndBoard(ship, command, FindHostileBoardingTarget(ship), goal, canAttemptGoal);
 }
 
 
@@ -4017,7 +4022,7 @@ bool AI::DoRepairing(Ship &ship, Command &command, shared_ptr<Ship> target) cons
 		// If the target is disabled, attempt to repair it.
 		if(target->IsDisabled())
 		{
-			MoveToBoard(ship, command, Ship::BoardingObjective::REPAIR, target);
+			MoveToBoard(ship, command, Ship::BoardingGoal::REPAIR, target);
 			return true;
 		}
 
@@ -4028,7 +4033,7 @@ bool AI::DoRepairing(Ship &ship, Command &command, shared_ptr<Ship> target) cons
 		return false;
 	}
 
-	return MoveToBoard(ship, command, Ship::BoardingObjective::REPAIR, FindRepairTarget(ship));
+	return MoveToBoard(ship, command, Ship::BoardingGoal::REPAIR, FindRepairTarget(ship));
 }
 
 
@@ -4044,14 +4049,14 @@ bool AI::DoRepairing(Ship &ship, Command &command, shared_ptr<Ship> target) cons
  * target, it will do so and return true.
  *
  * If the target is disabled and the ship cannot carry out the boarding
- * objective, it releases the target and the routine returns false.
+ * goal, it releases the target and the routine returns false.
  *
  * @param ship The ship that is executing the command.
  * @param command The command being executed.
  * @param target A specific target to disable and consider boarding.
  * 	If the target is null, the routine immediately returns false.
- * @param objective What the ship is trying to achieve by boarding.
- * @param canAttemptObjective Whether or not the ship can attempt the boarding objective.
+ * @param goal What the ship is trying to achieve by boarding.
+ * @param canAttemptGoal Whether or not the ship can attempt the boarding goal.
  * @param allowRepeats Whether or not the ship can board the
  * 	same target multiple times. Default is false.
  *
@@ -4061,8 +4066,8 @@ bool AI::DisableAndBoard(
 	Ship &ship,
 	Command &command,
 	std::shared_ptr<Ship> target,
-	Ship::BoardingObjective objective,
-	bool canAttemptObjective,
+	Ship::BoardingGoal goal,
+	bool canAttemptGoal,
 	bool allowRepeats
 ) const
 {
@@ -4081,12 +4086,12 @@ bool AI::DisableAndBoard(
 
 	// Avoid boarding the target multiple times unless instructed to.
 	if(!allowRepeats && Has(ship, target, ShipEvent::BOARD))
-		canAttemptObjective = false;
+		canAttemptGoal = false;
 
-	// Board the target if this ship can attempt the objective.
-	if(canAttemptObjective)
+	// Board the target if this ship can attempt the goal.
+	if(canAttemptGoal)
 	{
-		MoveToBoard(ship, command, objective, target);
+		MoveToBoard(ship, command, goal, target);
 		return true;
 	}
 

@@ -1759,8 +1759,9 @@ void Engine::MoveShip(const shared_ptr<Ship> &ship)
 	}
 
 	// Boarding:
-	// If the boarding ship is the player's flagship, we will display the
-	// boarding panel. Otherwise, it will perform any plundering automatically.
+	// If one of the ships is the player's flagship or the boarding ship
+	// has a manual boarding goal, we display the boarding panel.
+	// Otherwise, we resolve the boarding combat automatically.
 	// If the player's flagship is boarding a carrier that they own,
 	// attempts to transfer them to the carrier by making it the flagship.
 	shared_ptr<Ship> target = ship->Board(player);

@@ -38,14 +38,15 @@ target_sources(EndlessSkyLib PRIVATE
 	Bitset.cpp
 	Bitset.h
 	Boarding.h
+	Boarding.cpp
 	BoardingCombat.h
 	BoardingCombat.cpp
+	BoardingPrediction.cpp
+	BoardingPrediction.h
 	BoardingPanel.cpp
 	BoardingPanel.h
 	Body.cpp
 	Body.h
-	CaptureOdds.cpp
-	CaptureOdds.h
 	CargoHold.cpp
 	CargoHold.h
 	CategoryList.cpp

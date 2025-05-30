@@ -1137,8 +1137,8 @@ interface "boarding"
 		center -235 115
 		dimensions 70 30
 
-	active if "can exit"
-	button x "_Done"
+	active if "can leave"
+	button x "_Leave"
 		center -155 115
 		dimensions 70 30
 

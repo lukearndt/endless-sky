@@ -408,8 +408,8 @@ outfit "Enforcer Confrontation Gear"
 		Heliarch
 	cost 369000
 	thumbnail "outfit/enforcer confrontation gear"
-	"capture attack" 3.1
-	"capture defense" 4.9
+	"boarding attack" 3.1
+	"boarding defense" 4.9
 	"unplunderable" 1
 	description "The peak of Heliarch combat engineering, this weapon uses condensed blasts of energy to dispatch any who dare threaten the safety of the Coalition."
 
@@ -419,8 +419,8 @@ outfit "Enforcer Riot Staff"
 		Heliarch
 	cost 97000
 	thumbnail "outfit/enforcer riot staff"
-	"capture attack" 2.0
-	"capture defense" 3.5
+	"boarding attack" 2.0
+	"boarding defense" 3.5
 	"unplunderable" 1
 	description "Made to deal with the occasional dissidents that pop up around Coalition space in a non-lethal manner, these weapons see minimal use in shipbound combat, but are carried anyway in the event a dissident gets aboard."
 
@@ -428,8 +428,8 @@ outfit "Anti-Materiel Gun"
 	category "Hand to Hand"
 	cost 257200
 	thumbnail "outfit/anti-materiel gun"
-	"capture attack" 3.4
-	"capture defense" 1.9
+	"boarding attack" 3.4
+	"boarding defense" 1.9
 	"unplunderable" 1
 	description "Easy to use and relatively cheap to manufacture, these weapons were born by refurbishing the Heliarchs' favored arms, with the new barrel shaping the energy into deadly blasts that make short work of even the toughest body armor."
 

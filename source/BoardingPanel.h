@@ -18,7 +18,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Panel.h"
 
 #include "BoardingCombat.h"
-#include "CaptureOdds.h"
 #include "Crew.h"
 #include "Plunder.h"
 
@@ -65,7 +64,10 @@ private:
 
 	void DoKeyboardNavigation(const SDL_Keycode key);
 
-	bool TakeTurn(Boarding::Action action, Boarding::ActionDetails details = 0);
+	bool TakeTurn(
+		Boarding::Action::Objective objective,
+		Boarding::Action::Details details = false
+	);
 
 	BoardingCombat combat;
 	PlayerInfo &player;

@@ -794,8 +794,8 @@ outfit "Thermal Repeater Rifle"
 	category "Hand to Hand"
 	cost 53000
 	thumbnail "outfit/korath rifle"
-	"capture attack" 1.6
-	"capture defense" 2.4
+	"boarding attack" 1.6
+	"boarding defense" 2.4
 	"unplunderable" 1
 	description "This rifle is commonplace among the Korath, predating the creation of the ship-scale Thermal Repeater by at least two centuries. As it uses superheated plasma instead of lasers, the rifle is slow to fire and can sometimes burn its user's hands if they aren't careful. It makes up for these setbacks by guaranteeing that those hit won't live long enough to fire back."
 
@@ -805,7 +805,7 @@ outfit "Microbot Defense Station"
 	thumbnail "outfit/microbot defense station"
 	mass 2
 	"outfit space" -3
-	"capture defense" 18
+	"boarding defense" 18
 	illegal 10000000
 	"energy consumption" 0.01
 	"heat generation" 0.1
