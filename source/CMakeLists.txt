@@ -41,8 +41,8 @@ target_sources(EndlessSkyLib PRIVATE
 	Boarding.cpp
 	BoardingCombat.h
 	BoardingCombat.cpp
-	BoardingPrediction.cpp
-	BoardingPrediction.h
+	BoardingProbability.cpp
+	BoardingProbability.h
 	BoardingPanel.cpp
 	BoardingPanel.h
 	Body.cpp

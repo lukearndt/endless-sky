@@ -387,7 +387,7 @@ Boarding::Action BoardingCombat::Turn::TargetAction() const
 BoardingCombat::Combatant::Combatant(
 	shared_ptr<Ship> &ship,
 	shared_ptr<Ship> &enemyShip,
-	shared_ptr<BoardingOdds> &odds,
+	shared_ptr<BoardingProbability> &probability,
 	bool isBoarder,
 	bool usingBoardingPanel,
 	const vector<shared_ptr<Ship>> &playerFleet
@@ -407,7 +407,7 @@ BoardingCombat::Combatant::Combatant(
 	),
 	automatedDefenders(static_cast<int>(ship->Attributes().Get("automated defenders"))),
 	automatedInvaders(static_cast<int>(ship->Attributes().Get("automated invaders"))),
-	odds(odds),
+	probability(probability),
 	crewAnalysisBefore(make_shared<Crew::ShipAnalysis>(ship, ship->IsPlayerFlagship())),
 	crewDisplayNameMidSentence(BoardingCombat::BuildCrewDisplayName(ship, false)),
 	crewDisplayNameStartOfSentence(BoardingCombat::BuildCrewDisplayName(ship, true)),
@@ -514,7 +514,7 @@ int BoardingCombat::Combatant::CasualtyRolls(
 		1,
 		static_cast<int>(
 			GameData::GetGamerules().BoardingCasualtyPercentagePerAction()
-			* (Action::isObjectiveDefensive.at(objective) ? Defenders() : Invaders())
+			* (Action::IsObjectiveDefensive(objective) ? Defenders() : Invaders())
 		)
 	);
 }
@@ -1135,6 +1135,7 @@ double BoardingCombat::Combatant::DefensePower() const
 }
 
 
+
 /**
  * Activating a self-destruct system requires the following:
  *
@@ -1341,7 +1342,7 @@ double BoardingCombat::Combatant::PostCaptureSurvivalOdds() const
  */
 double BoardingCombat::Combatant::ActionPower(Action::Objective objective) const
 {
-  if(Action::isObjectiveDefensive.at(objective))
+  if(Action::IsObjectiveDefensive(objective))
 		return DefensePower();
 	else
 		return AttackPower();
@@ -1372,7 +1373,7 @@ double BoardingCombat::Combatant::CasualtyPower(Action::Objective objective) con
 	if(objective == Action::Objective::SelfDestruct)
 		multiplier *= GameData::GetGamerules().BoardingSelfDestructCasualtyPowerMultiplier();
 
-  if(Action::isObjectiveDefensive.at(objective))
+  if(Action::IsObjectiveDefensive(objective))
 		return DefensePower() * multiplier;
 	else
 		return AttackPower() * multiplier;
@@ -1627,7 +1628,7 @@ BoardingCombat::SituationReport::SituationReport(
 	enemyCrew(enemy->Crew()),
 	cargoSpace(combatant->GetShip()->Cargo().Free()),
 	enemyCargoSpace(enemy->GetShip()->Cargo().Free()),
-	oddsAnalysis(),
+	probabilityReport(combatant->),
 	attackPower(combatant->AttackPower()),
 	defensePower(combatant->DefensePower()),
 	enemyAttackPower(enemy->AttackPower()),
@@ -1843,11 +1844,11 @@ BoardingCombat::BoardingCombat(
 		|| boardingObjective == Ship::BoardingGoal::CAPTURE_MANUALLY
 		|| boardingObjective == Ship::BoardingGoal::PLUNDER_MANUALLY
 	),
-	odds(make_shared<BoardingOdds>(boarderShip, targetShip)),
+	probability(make_shared<BoardingProbability>(boarderShip, targetShip)),
 	boarder(make_shared<BoardingCombat::Combatant>(
 		boarderShip,
 		targetShip,
-		odds,
+		probability,
 		true,
 		usingBoardingPanel,
 		player.Ships()
@@ -1855,7 +1856,7 @@ BoardingCombat::BoardingCombat(
 	target(make_shared<BoardingCombat::Combatant>(
 		targetShip,
 		boarderShip,
-		odds,
+		probability,
 		false,
 		usingBoardingPanel,
 		player.Ships()

@@ -113,31 +113,6 @@ std::string Boarding::GetStateName(State state)
 
 
 
-// Determines whether or not a given Action::Objective is considered
-// defensive, allowing the combatant to use their defense power when
-// performing that action.
-// If the Objective is not considered defensive, the combatant will use
-// their attack power instead.
-const Boarding::Action::ObjectiveCondition Boarding::Action::isObjectiveDefensive
-{
-	// Null and Pending are not on this list because we ought not to
-	// use them in any of the calculations that make use of this map.
-	// If this results in an error, it signals that we have a bug.
-	// If that principle changes, we will need to add them to map.
-	{Action::Objective::Attack, false},
-	{Action::Objective::Defend, true},
-	{Action::Objective::Plunder, false},
-	{Action::Objective::SelfDestruct, true},
-	{Action::Objective::Negotiate, true},
-	{Action::Objective::Reject, false},
-	{Action::Objective::Resolve, true},
-	{Action::Objective::Capture, false},
-	{Action::Objective::Leave, true},
-	{Action::Objective::Destroy, false}
-};
-
-
-
 // A map of all possible Action::Objective enum values and the name of each
 // of their underlying constants. This is intended for use in error
 // messages rather than in the game itself.
@@ -280,6 +255,27 @@ const shared_ptr<Boarding::Action::ObjectiveCondition> Boarding::Action::ValidOb
 			{Action::Objective::Destroy, canDestroy}
 		})
 	);
+}
+
+
+
+/**
+ * Each Action::Objective is considered to be either defensive or
+ * offensive in nature. This determines the kinds of effective crew
+ * members and outfits that a combatant uses to attempt it, and their
+ * resulting power ratings.
+ *
+ * Defensive objectives are performed by effective defenders and prefer
+ * outfits with higher "boarding defense" attributes.
+ *
+ * Offensive objectives are performed by effective invaders and prefer
+ * outfits with higher "boarding attack" attributes.
+ *
+ * @return Whether or not an objective is considered defensive.
+ */
+bool Boarding::Action::IsObjectiveDefensive(Objective objective)
+{
+  return isObjectiveDefensive.at(objective);
 }
 
 
@@ -516,3 +512,28 @@ Boarding::Action::Action() :
 	actual(Activity(Objective::Null, false)),
 	effect({})
 {}
+
+
+
+// Determines whether or not a given Action::Objective is considered
+// defensive, allowing the combatant to use their defense power when
+// performing that action.
+// If the Objective is not considered defensive, the combatant will use
+// their attack power instead.
+const Boarding::Action::ObjectiveCondition Boarding::Action::isObjectiveDefensive
+{
+	// Null and Pending are not on this list because we ought not to
+	// use them in any of the calculations that make use of this map.
+	// If this results in an error, it signals that we have a bug.
+	// If that principle changes, we will need to add them to map.
+	{Action::Objective::Attack, false},
+	{Action::Objective::Defend, true},
+	{Action::Objective::Plunder, false},
+	{Action::Objective::SelfDestruct, true},
+	{Action::Objective::Negotiate, true},
+	{Action::Objective::Reject, false},
+	{Action::Objective::Resolve, true},
+	{Action::Objective::Capture, false},
+	{Action::Objective::Leave, true},
+	{Action::Objective::Destroy, false}
+};

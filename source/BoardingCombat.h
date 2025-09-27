@@ -17,7 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Boarding.h"
-#include "BoardingPrediction.h"
+#include "BoardingProbability.h"
 #include "Crew.h"
 #include "Outfit.h"
 #include "PlayerInfo.h"
@@ -148,7 +148,7 @@ public:
 		Combatant(
 			std::shared_ptr<Ship> &ship,
 			std::shared_ptr<Ship> &enemyShip,
-			std::shared_ptr<BoardingPrediction> &prediction,
+			std::shared_ptr<BoardingProbability> &probability,
 			bool isBoarder,
 			bool isPlayerControlled, // True if the player is using the BoardingPanel.
 			const std::vector<std::shared_ptr<Ship>> &playerFleet = {} // Unfortunate dependency, used for displaying a cargo space message.
@@ -228,7 +228,7 @@ public:
 		int Defenders() const;
     int Invaders() const;
 
-    BoardingPrediction GetOdds() const;
+    BoardingProbability GetOdds() const;
 
 		std::shared_ptr<Ship> &GetShip();
 		const std::shared_ptr<Ship> &GetShip() const;
@@ -257,7 +257,7 @@ public:
 		int automatedDefenders;
 		int automatedInvaders;
 
-		std::shared_ptr<BoardingPrediction> prediction;
+		std::shared_ptr<BoardingProbability> probability;
 
 		std::shared_ptr<Crew::CasualtyAnalysis> casualtyAnalysis = nullptr;
 		std::shared_ptr<Crew::ShipAnalysis> crewAnalysisAfter = nullptr;
@@ -326,7 +326,7 @@ public:
 		int cargoSpace;
 		int enemyCargoSpace;
 
-		BoardingPrediction::Report predictionReport;
+		BoardingProbability::Report probabilityReport;
 
 		double attackPower;
 		double defensePower;
@@ -508,7 +508,7 @@ private:
 	bool hasNegotiationFailed = false;
 	bool isLanguageShared;
 
-	std::shared_ptr<BoardingPrediction> prediction;
+	std::shared_ptr<BoardingProbability> probability;
 
 	std::shared_ptr<Combatant> boarder;
 	std::shared_ptr<Combatant> target;

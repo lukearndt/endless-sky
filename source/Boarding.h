@@ -233,6 +233,7 @@ public:
 		// true of false for that Objective.
 		using ObjectiveCondition = std::map<Objective, bool>;
 
+		static bool IsObjectiveDefensive(Objective objective);
 
 		static bool IsValidDetails(Objective objective, Details details);
 		static bool IsValidDetails(Objective objective, bool details);
@@ -240,7 +241,6 @@ public:
 		static bool IsValidDetails(Objective objective, Offer details);
 
 		static const ObjectiveCondition casualtiesPreventedByObjective;
-		static const ObjectiveCondition isObjectiveDefensive;
 
 		static const std::map<Objective, std::string> objectiveConstNames;
 		static std::string GetObjectiveName(Objective objective);
@@ -269,6 +269,9 @@ public:
 		Effect effect;
 		// The result of the Action after its Effect has been applied.
 		Result result;
+
+	private:
+		static const ObjectiveCondition isObjectiveDefensive;
 	};
 
 	static const std::map<State, bool> casualtiesPreventedByState;

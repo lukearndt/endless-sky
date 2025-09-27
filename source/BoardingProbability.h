@@ -1,4 +1,4 @@
-/* BoardingPrediction.h
+/* BoardingProbability.h
 Copyright (c) 2025 by Luke Arndt
 Some logic extracted from CaptureOdds.h, copyright (c) 2014 by Michael Zahniser
 
@@ -40,9 +40,9 @@ class Ship;
  * possible power for their current action. Defending also grants each
  * defender a +1 power bonus.
  */
-class BoardingPrediction {
+class BoardingProbability {
 public:
-	BoardingPrediction(
+	BoardingProbability(
 		const std::shared_ptr<Ship> &boarder,
 		const std::shared_ptr<Ship> &target
 	);
@@ -56,10 +56,12 @@ public:
 
 	struct Scenario {
 		double boarderActionChance;
+		double boarderSelfDestructChance;
 		double boarderVictoryChance;
 		double boarderCasualties;
 
 		double targetActionChance;
+		double targetSelfDestructChance;
 		double targetVictoryChance;
 		double targetCasualties;
 	};
@@ -75,40 +77,41 @@ public:
 		Forces boarderForces;
 		Forces targetForces;
 
-		Scenario boarderInvades;
-		Scenario targetInvades;
+		Scenario boarderInvadesTargetDefends;
+		Scenario boarderInvadesTargetSelfDestructs;
+
+		Scenario targetInvadesBoarderDefends;
+		Scenario targetInvadesBoarderSelfDestructs;
+
 		Scenario bothAttack;
 	};
 
-	// The Possibilities type represents the complete range of potential
+	// The Scenarios type represents the complete range of potential
 	// scenarios for a given strategy. Each Scenario describes the attack
 	// and defense power of each combatant, along with their probability
 	// of victory and expected number of casualties suffered.
 	//
-	// Each Possibilities collection is conceptually a two-dimensional
+	// Each Scenarios collection is conceptually a two-dimensional
 	// vector of Scenario structs, indexed by the number of effective crew
 	// members remaining to each combatant. Unless a Scenario represents
 	// total victory for a combatant, the combat can transition from that
 	// Scenario to one of two other possible Scenario nodes: one where the
 	// next casualty is suffered by the boarder, and the other where the
-	// target does. In this way, the combat navigates the Possibilities
+	// target does. In this way, the combat navigates the Scenarios
 	// similarly to a binary tree structure, with a root node for each
 	// possible victory outcome - where a combatant is reduced to 0 crew.
 	//
-	// As a performance optimisation, we store the Possibilities for each
-	// strategy as a single flattened vector. This lets the Possibilities
+	// As a performance optimisation, we store the Scenarios for each
+	// strategy as a single flattened vector. This lets the Scenarios
 	// occupy a single contiguous location in memory, and prevents the
 	// game from instantiating a new vector for each possible value of
 	// boarderCrew. It uses a calculated index, which we can generate with
 	// the ScenarioIndex function.
-	using Possibilities = std::vector<Scenario>;
+	using Scenarios = std::vector<Scenario>;
 
 	Report GetReport() const;
 
 private:
-
-	// Generate the lookup tables.
-	void Calculate();
 
 	// Map crew numbers into an index in the lookup table.
 	unsigned ScenarioIndex(
@@ -121,7 +124,7 @@ private:
 		const std::shared_ptr<Ship> &ship,
 		bool isAttacking
 	) const;
-	Possibilities PrepareStrategy(
+	Scenarios PrepareStrategy(
 		bool boarderAttacks,
 		bool targetAttacks
 	) const;
@@ -145,6 +148,14 @@ private:
 	unsigned initialTargetInvaders;
 	unsigned initialTargetDefenders;
 
+	// Whether or not each action is considered defensive, which is used
+	// to calculate a combatant's power when performing that action.
+	// This is determined by Boarding::Action, but we cache it here for
+	// each instance of BoardingProbability as a performance optimisation.
+	bool isDefensiveAttack;
+	bool isDefensiveDefend;
+	bool isDefensiveSelfDestruct;
+
 	// List of individual power values for each member of a ship's effective crew,
 	// in descending order of power value when performing that role.
 	std::vector<double> boarderInvaderPower;
@@ -164,8 +175,10 @@ private:
 	//
 	// The term 'strategy' here describes the choices taken by both of the
 	// combatants, not just one. For example, when the boarder attacks and
-	// the target defends, they are following the boarderInvades strategy.
-	Possibilities boarderInvades;
-	Possibilities targetInvades;
-	Possibilities bothAttack;
+	// the target defends, they are following boarderInvadesTargetDefends.
+	Scenarios boarderInvadesTargetDefends;
+	Scenarios boarderInvadesTargetSelfDestructs;
+	Scenarios targetInvadesBoarderDefends;
+	Scenarios targetInvadesBoarderSelfDestructs;
+	Scenarios bothAttack;
 };

@@ -1,5 +1,6 @@
-/* BoardingPrediction.cpp
-Copyright (c) 2014 by Michael Zahniser
+/* BoardingProbability.cpp
+Copyright (c) 2025 by Luke Arndt
+Some logic extracted from CaptureOdds.h, copyright (c) 2014 by Michael Zahniser
 
 Endless Sky is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
@@ -13,8 +14,9 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "BoardingPrediction.h"
+#include "BoardingProbability.h"
 
+#include "Boarding.h"
 #include "Government.h"
 #include "Logger.h"
 #include "Outfit.h"
@@ -29,7 +31,7 @@ using namespace std;
 
 
 // Constructor.
-BoardingPrediction::BoardingPrediction(
+BoardingProbability::BoardingProbability(
 	const shared_ptr<Ship> &boarder,
 	const shared_ptr<Ship> &target
 ) :
@@ -41,28 +43,40 @@ BoardingPrediction::BoardingPrediction(
 	initialTargetInvaders(target->Invaders()),
 	initialTargetDefenders(target->Defenders()),
 
-	boarderInvaderPower(EffectiveCrewPower(boarder, false)),
-	boarderDefenderPower(EffectiveCrewPower(boarder, true)),
-	targetInvaderPower(EffectiveCrewPower(target, false)),
-	targetDefenderPower(EffectiveCrewPower(target, true)),
+	isDefensiveAttack(
+		Boarding::Action::IsObjectiveDefensive(Boarding::Action::Objective::Attack)
+	),
+	isDefensiveDefend(
+		Boarding::Action::IsObjectiveDefensive(Boarding::Action::Objective::Defend)
+	),
+	isDefensiveSelfDestruct(
+		Boarding::Action::IsObjectiveDefensive(Boarding::Action::Objective::SelfDestruct)
+	),
 
-	totalBoarderAttackPower(TotalPower(boarder, boarderInvaderPower, false)),
-	totalBoarderDefensePower(TotalPower(boarder, boarderDefenderPower, true)),
-	totalTargetAttackPower(TotalPower(target, targetInvaderPower, false)),
-	totalTargetDefensePower(TotalPower(target, targetDefenderPower, true)),
+	boarderInvaderPower(EffectiveCrewPower(boarder, isDefensiveAttack)),
+	boarderDefenderPower(EffectiveCrewPower(boarder, isDefensiveDefend)),
+	targetInvaderPower(EffectiveCrewPower(target, isDefensiveAttack)),
+	targetDefenderPower(EffectiveCrewPower(target, isDefensiveDefend)),
 
-	boarderInvades(PrepareStrategy(true, false)),
-	targetInvades(PrepareStrategy(false, true)),
+	totalBoarderAttackPower(TotalPower(boarder, boarderInvaderPower, isDefensiveAttack)),
+	totalBoarderDefensePower(TotalPower(boarder, boarderDefenderPower, isDefensiveDefend)),
+	totalTargetAttackPower(TotalPower(target, targetInvaderPower, isDefensiveAttack)),
+	totalTargetDefensePower(TotalPower(target, targetDefenderPower, isDefensiveDefend)),
+
+	boarderInvadesTargetDefends(PrepareStrategy(true, false)),
+	boarderInvadesTargetSelfDestructs(PrepareStrategy())
+	targetInvadesBoarderDefends(PrepareStrategy(false, true)),
+
 	bothAttack(PrepareStrategy(true, true))
 {}
 
 
 
 /**
- * @return A BoardingPrediction::Report struct with information about
+ * @return A BoardingProbability::Report struct with information about
  * 	the odds of the conflict in its current state.
  */
-BoardingPrediction::Report BoardingPrediction::GetReport() const
+BoardingProbability::Report BoardingProbability::GetReport() const
 {
 	unsigned boarderInvaders = boarder->Invaders();
 	unsigned boarderDefenders = boarder->Defenders();
@@ -84,12 +98,12 @@ BoardingPrediction::Report BoardingPrediction::GetReport() const
 			totalTargetDefensePower[targetDefenders]
 		}, // targetForces
 
-		boarderInvades[
+		boarderInvadesTargetDefends[
 			ScenarioIndex(boarderInvaders, targetDefenders, false)
-		], // boarderInvades
-		targetInvades[
+		], // boarderInvadesTargetDefends
+		targetInvadesBoarderDefends[
 			ScenarioIndex(boarderDefenders, targetInvaders, true)
-		], // targetInvades
+		], // targetInvadesBoarderDefends
 		bothAttack[
 			ScenarioIndex(boarderInvaders, targetInvaders, true)
 		] // bothAttack
@@ -121,9 +135,9 @@ BoardingPrediction::Report BoardingPrediction::GetReport() const
  * @param targetAttacks Whether or not the target is attacking.
  *
  * @return An index that can be used to locate the Scenario in a
- * 	Possibilities collection that matches the given strategy.
+ * 	Scenarios collection that matches the given strategy.
  */
-unsigned BoardingPrediction::ScenarioIndex(
+unsigned BoardingProbability::ScenarioIndex(
 	unsigned boarderCrew,
 	unsigned targetCrew,
 	bool targetAttacks
@@ -139,12 +153,12 @@ unsigned BoardingPrediction::ScenarioIndex(
 
 
 /**
- * Builds a Possibilities collection for a boarding combat that follows
+ * Builds a Scenarios collection for a boarding combat that follows
  * one of the three potential strategies:
  *
- * 1. boarderInvades: The boarder attacks while the boarder defends.
+ * 1. boarderInvadesTargetDefends: The boarder attacks while the boarder defends.
  *
- * 2. targetInvades: The target attacks while the boarder defends.
+ * 2. targetInvadesBoarderDefends: The target attacks while the boarder defends.
  *
  * 3. bothAttack: Both the boarder and target attack each other.
  *
@@ -166,18 +180,18 @@ unsigned BoardingPrediction::ScenarioIndex(
  * already-calculated Scenario values held by that state.
  *
  * By repeating this process using each of the potential victory states
- * as a root, we can map out the entire tree of Possibilities and make
+ * as a root, we can map out the entire tree of Scenarios and make
  * a Scenario struct for each one.
  *
  * During gameplay, the boarding combat system can then look up the
  * Scenario for a given combination of remaining crew members without
- * having to recalculate the entire tree of Possibilities leading from
+ * having to recalculate the entire tree of Scenarios leading from
  * that state.
  *
  * @param boarderAttacks Whether or not the boarder is attacking.
  * @param targetAttacks Whether or not the target is attacking.
  *
- * @return A Possibilities collection containing a Scenario for each
+ * @return A Scenarios collection containing a Scenario for each
  * 	potential combination of boarderCrew and targetCrew, specific to the
  * 	strategy (attack / defense combination) specified by the inputs.
  *
@@ -185,8 +199,8 @@ unsigned BoardingPrediction::ScenarioIndex(
  * 	not result in any combat. Calling the function in this manner is
  * 	therefore assumed to be a programming error.
  */
-BoardingPrediction::Possibilities BoardingPrediction::PrepareStrategy(
-	bool boarderAttacks,
+BoardingProbability::Scenarios BoardingProbability::PrepareStrategy(
+	Boarding::Action::Objective boarderAttacks, // TODO-NEXT: You were adding support for self destruct scenarios, so that the logic can be pulled away from Boarding::Combatant and the calculations can use the tree probability system.
 	bool targetAttacks
 ) const
 {
@@ -261,7 +275,7 @@ BoardingPrediction::Possibilities BoardingPrediction::PrepareStrategy(
 			// Calculate the total power of both combatants
 			double totalPower = boarderPower[boarderCrew] + targetPower[targetCrew];
 
-			// Calculate the probability of who will suffer the next casualty.
+			// Calculate the odds of who will suffer the next casualty.
 			//
 			// Total power should not be negative or zero unless something has
 			// gone wrong, as we apply a minimum value when building the
@@ -270,7 +284,7 @@ BoardingPrediction::Possibilities BoardingPrediction::PrepareStrategy(
 			double boarderActionChance = boarderPower[boarderCrew] / totalPower;
 			double targetActionChance = 1.0 - boarderActionChance;
 
-			// Look up predictions for each state that might result from here.
+			// Look up scenarios for each state that might result from here.
 			const Scenario &boarderCasualty = result[
 				ScenarioIndex(boarderCrew - 1, targetCrew, targetAttacks)
 			];
@@ -312,7 +326,7 @@ BoardingPrediction::Possibilities BoardingPrediction::PrepareStrategy(
 			// Since we're covering every possible case, this generates a
 			// holistic estimate at any given step. Random chance is still
 			// in play, though, so we cannot know for sure which path the
-			// combat will take through the tree of Possibilities. The actual
+			// combat will take through the tree of Scenarios. The actual
 			// result could be wildly different from the expected value.
 			//
 			// As a future enhancement, we might consider adding a supporting
@@ -345,23 +359,23 @@ BoardingPrediction::Possibilities BoardingPrediction::PrepareStrategy(
 
 /**
  * Build a lookup table for the individual power of each crew member
- * on a given ship, based on whether or not they are attacking or
- * defending.
+ * on a given ship, based on that ship's current state and whether or
+ * not their objective is defensive in nature.
  *
  * @param ship The ship whose effective crew power is to be calculated.
- * @param isAttacking Whether or not the ship is attacking.
- *
+ * @param isDefensive Whether or not the ship is attempting a defensive
+ * 	objective.
  * @return A vector listing the power of each effective crew member on
  *  the ship, in descending order of their power value.
  */
-vector<double> BoardingPrediction::EffectiveCrewPower(
+vector<double> BoardingProbability::EffectiveCrewPower(
 	const shared_ptr<Ship> &ship,
-	bool isAttacking
+	bool isDefensive
 ) const
 {
 	vector<double> power;
 
-	int effectiveCrewMembers = isAttacking
+	int effectiveCrewMembers = isDefensive
 		? ship->Defenders()
 		: ship->Invaders();
 
@@ -369,15 +383,15 @@ vector<double> BoardingPrediction::EffectiveCrewPower(
 		return power;
 
 	// Get the base crew power for this ship based on its government.
-	const double baseCrewPower = isAttacking
-		? ship->GetGovernment()->CrewAttack()
-		: ship->GetGovernment()->CrewDefense();
+	const double baseCrewPower = isDefensive
+		? ship->GetGovernment()->CrewDefense()
+		: ship->GetGovernment()->CrewAttack();
 
 	// Check for any outfits that assist with attacking or defending.
 	// Each outfit can be wielded only once, and each effective crew member
 	// can wield one outfit. Outfits are claimed in descending power order.
 	// Each outfit's attribute value is added to the ship's base crew power.
-	const string attribute = isAttacking ? "boarding attack" : "boarding defense";
+	const string attribute = isDefensive ? "boarding defense" : "boarding attack";
 	for(const auto &it : ship->Outfits())
 	{
 		double outfitPower = it.first->Get(attribute);
@@ -417,7 +431,7 @@ vector<double> BoardingPrediction::EffectiveCrewPower(
  * 	number of remaining effective crew members equal to the index of the
  * 	vector at that position.
  */
-vector<double> BoardingPrediction::TotalPower(
+vector<double> BoardingProbability::TotalPower(
 	const shared_ptr<Ship> &ship,
 	const vector<double> &effectiveCrewPower,
 	bool isAttacking
